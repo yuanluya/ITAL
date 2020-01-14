@@ -18,13 +18,14 @@ def main():
     tfconfig.gpu_options.allow_growth = True
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     sess = tf.Session(config = tfconfig)
-    np.random.seed(425)
+    np.random.seed(1000)
 
 
     lr = 3e-4
     lt = int(sys.argv[1])
-    config_T = edict({'data_pool_size': 200, 'data_dim': 10, 'lr': lr, 'loss_type': lt})
-    config_L = edict({'particle_num': 1000, 'data_dim': 10, 'reg_coef': 0, 'lr': lr, 'loss_type': lt})
+    dd = 10 if lt != 0 else 10
+    config_T = edict({'data_pool_size': 30, 'data_dim': dd, 'lr': lr, 'loss_type': lt})
+    config_L = edict({'particle_num': 1000, 'data_dim': dd, 'reg_coef': 0, 'lr': lr, 'loss_type': lt})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_L.particle_num, config_L.data_dim]),
                               np.zeros([config_L.particle_num, 1])], 1)
     init_w = np.mean(init_ws, 0, keepdims = True)
@@ -33,6 +34,7 @@ def main():
     learnerS = LearnerS(sess, config_L)
     init = tf.global_variables_initializer()
     sess.run(init)
+    
     
     [w] = sess.run([learner.w_])
     dists0 = [np.sum(np.square(w - teacher.gt_w_))]
@@ -64,11 +66,11 @@ def main():
         data_idx = teacher.choose_sur(gradients, losses)
         data_choices1.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
-        w, best_idx = learner.learn(data_point, gradients)
+        #w, best_idx = learner.learn(data_point, gradients)
+        w = learner.learn(data_point)
         dists1.append(np.sum(np.square(w - teacher.gt_w_)))
     line1, = plt.plot(dists1, label = 'regular')
     
-
     learnerS.reset(init_ws)
     w = learnerS.current_mean_
     dists2 = [np.sum(np.square(w - teacher.gt_w_))]
@@ -92,7 +94,8 @@ def main():
         data_idx = teacher.choose_sur(gradients, losses)
         data_choices3.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
-        w, eliminate = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, True)
+        w, eliminate = learnerS.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, True)
+        #w, eliminate = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, True)
         eliminates.append(eliminate)
         dists3.append(np.sum(np.square(w - teacher.gt_w_)))
     line3, = plt.plot(dists3, label = 'smarter')

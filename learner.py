@@ -16,14 +16,11 @@ class Learner:
         self.x_ = tf.placeholder(shape = [None, self.config_.data_dim + 1], dtype = tf.float32)
         self.linear_val_ = tf.reduce_sum(self.w_ * self.x_, 1)# + self.b_
         if self.loss_type_ == 'RR':
-            self.losses_ = tf.square(self.linear_val_ - self.y_)
-            self.loss_ = 0.5 * tf.reduce_sum(self.losses_)
+            self.loss_ = 0.5 * tf.square(self.linear_val_ - self.y_)
         elif self.loss_type_ == 'LR':
-            self.losses_ = tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_))
-            self.loss_ = tf.reduce_sum(self.losses_)
+            self.loss_ = tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_))
         elif self.loss_type_ == 'SVM':
-            self.losses_ = tf.maximum(1 - self.y_ * self.linear_val_, 0)
-            self.loss_ = tf.reduce_sum(self.losses_)
+            self.loss_ = tf.maximum(1 - self.y_ * self.linear_val_, 0)
         self.loss_ = tf.reduce_mean(self.loss_) + 0.5 * self.config_.reg_coef * tf.reduce_sum(tf.square(self.w_))
         self.gradient_ = tf.gradients(self.loss_, [self.w_])
         self.gradient_manual_ = tf.matmul(tf.transpose(self.x_), tf.expand_dims(self.linear_val_ - self.y_, 1))

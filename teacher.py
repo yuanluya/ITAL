@@ -14,6 +14,7 @@ class Teacher:
                                                 size = [self.config_.data_pool_size, self.config_.data_dim])
             self.data_pool_ = np.concatenate([self.data_pool_, np.ones([self.config_.data_pool_size, 1])], 1)
             self.gt_y_ = np.sum(self.data_pool_ * self.gt_w_, 1)
+            self.gt_loss_ = np.zeros(self.config_.data_pool_size)
         else:
             self.gt_w_ = np.ones(shape = [1, self.config_.data_dim + 1])
             self.gt_w_[0, -1] = 0
@@ -25,6 +26,10 @@ class Teacher:
                                              np.ones([self.config_.data_pool_size, 1])], 1)
             self.gt_y_ = np.ones(self.config_.data_pool_size)
             self.gt_y_[int(0.5 * self.config_.data_pool_size): ] *= -1
+            if self.config_.loss_type == 1:
+                self.gt_loss_ = np.log(1 + np.exp(-1 * self.gt_y_ * np.sum(self.data_pool_ * self.gt_w_, 1)))
+            elif self.config_.loss_type == 2:
+                self.gt_loss_ = np.maximum(0, 1 - self.gt_y_ * np.sum(self.data_pool_ * self.gt_w_, 1))
     
     def choose(self, gradients, prev_w):
         vals = np.sum(self.config_.lr * self.config_.lr * np.square(gradients), 1) -\
@@ -33,7 +38,7 @@ class Teacher:
 
     def choose_sur(self, gradients, prev_losses):
         vals = np.sum(self.config_.lr * self.config_.lr * np.square(gradients), 1) -\
-               2 * self.config_.lr * prev_losses
+               2 * self.config_.lr * (prev_losses - self.gt_loss_)
         return np.argmin(vals)
 
 def main():

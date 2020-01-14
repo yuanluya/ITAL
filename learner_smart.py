@@ -77,13 +77,61 @@ class LearnerS:
 
         return self.current_mean_, eliminate
 
+    def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss, smarter = False):
+        new_particle_losses = []
+        if not self.use_tf_:
+            for i in range(self.config_.particle_num):
+                
+                gradient = np.matmul(data_pool[data_idx: data_idx + 1, :].T,
+                                    (np.sum(data_pool[data_idx: data_idx + 1, :] * self.particles_[i: i + 1, :], 1, keepdims = True) - data_y[data_idx]))
+                self.particles_[i, :] -= self.config_.lr * gradient[:, 0]
+                new_particle_losses.append(0.5 * np.square(np.sum(data_pool * self.particles_[i: i + 1, :], 1) - data_y))
+        else:
+            gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, :],
+                                                            self.W_: self.particles_,
+                                                            self.y_: data_y[data_idx] * np.ones([self.config_.particle_num, 1], dtype = np.float32)})
+            
+            self.particles_ -= self.config_.lr * gradient_tf[0]
+            for i in range(self.config_.particle_num):
+                losses = self.sess_.run(self.losses_, {self.X_: data_pool,
+                                                       self.W_: self.particles_[i: i + 1, :],
+                                                       self.y_: np.expand_dims(data_y, 1)})
+                new_particle_losses.append(losses[:, 0])
+
+        eliminate = 0
+        #if smarter:
+        gradient = gradients[data_idx: data_idx + 1, :]
+        new_center = self.current_mean_ - self.config_.lr * gradient
+        val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient))
+        
+        gradient_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), 1)
+        for i in range(self.config_.particle_num):
+            if smarter:
+                val_target_temp = val_target - 2 * self.config_.lr * (prev_loss[data_idx] - new_particle_losses[i][data_idx])
+                val_cmps = gradient_cache - 2 * self.config_.lr * (prev_loss - new_particle_losses[i])
+            for j in range(data_pool.shape[0]):
+                if j != data_idx:
+                    if not smarter:
+                        rd = np.random.choice(2, p = [0.15, 0.85])
+                        if rd == 0:
+                            break
+                    if not smarter or (smarter and val_cmps[j] < val_target_temp):
+                        noise = np.random.normal(scale = 0.1, size = [1, self.config_.data_dim + 1])
+                        self.particles_[i: i + 1, :] = new_center + noise
+                        eliminate += 1
+                        break
+
+        self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
+
+        return self.current_mean_, eliminate
+
     def get_grads(self, data_pool, data_y):
         gradients = []
         gradient_tfs = []
         losses = []
         for i in range(data_pool.shape[0]):
             if not self.use_tf_:
-                diff = (np.sum(data_pool[i: i + 1, :] * self.current_mean_, 1, keepdims = True) - data_y[i])
+                diff = np.sum(data_pool[i: i + 1, :] * self.current_mean_, 1, keepdims = True) - data_y[i]
                 gradient = np.matmul(data_pool[i: i + 1, :].T, diff)
                 gradients.append(gradient)
                 losses.append(0.5 * np.square(diff[0, 0]))
