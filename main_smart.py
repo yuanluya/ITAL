@@ -104,7 +104,8 @@ def main():
                ['batch', 'sgd', 'machine teaching: %d' % np.unique(data_choices1).shape[0],\
                 'compare: %d' % np.unique(data_choices2).shape[0], 'pragmatic: %d' % np.unique(data_choices3).shape[0]], prop={'size': 12})
     plt.title(learnerS.loss_type_)
-    plt.show()
+    #plt.show()
+    plt.savefig('figure_%s.png' % learnerS.loss_type_)
     pdb.set_trace()
 
 if __name__ == '__main__':
