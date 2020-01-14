@@ -20,7 +20,7 @@ class Learner:
         elif self.loss_type_ == 'LR':
             self.loss_ = tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_))
         elif self.loss_type_ == 'SVM':
-            self.loss_ = tf.max(1 - self.y_ * self.linear_val_, 0)
+            self.loss_ = tf.maximum(1 - self.y_ * self.linear_val_, 0)
         self.loss_ = tf.reduce_mean(self.loss_) + 0.5 * self.config_.reg_coef * tf.reduce_sum(tf.square(self.w_))
         self.gradient_ = tf.gradients(self.loss_, [self.w_])
         self.gradient_manual_ = tf.matmul(tf.transpose(self.x_), tf.expand_dims(self.linear_val_ - self.y_, 1))

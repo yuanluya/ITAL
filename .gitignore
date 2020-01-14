@@ -116,3 +116,4 @@ sftp*
 #vscode
 .vscode
 
+*.png

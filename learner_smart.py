@@ -6,20 +6,44 @@ from easydict import EasyDict as edict
 import pdb
 
 class LearnerS:
-    def __init__(self, config):
+    def __init__(self, sess, config):
+        all_types = ['RR', 'LR', 'SVM']
+        self.sess_ = sess
         self.config_ = config
+        self.loss_type_ = all_types[self.config_.loss_type]
+        self.use_tf_ = (self.loss_type_ != 0)
         self.particles_ = np.random.uniform(-1, 1, size = [self.config_.particle_num, self.config_.data_dim + 1])
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
+
+        self.X_ = tf.placeholder(dtype = tf.float32, shape = [None, self.config_.data_dim + 1])
+        self.y_ = tf.placeholder(dtype = tf.float32, shape = [None])
+        self.W_ = tf.placeholder(dtype = tf.float32, shape = [None, self.config_.data_dim + 1])
+
+        self.linear_val_ = tf.matmul(self.X_, tf.transpose(self.W_))
+        if self.loss_type_ == 'RR':
+            self.loss_ = 0.5 * tf.reduce_sum(tf.square(self.linear_val_ - self.y_))
+        elif self.loss_type_ == 'LR':
+            self.loss_ = tf.reduce_sum(tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_)))
+        elif self.loss_type_ == 'SVM':
+            self.loss_ = tf.reduce_sum(tf.maximum(1 - self.y_ * self.linear_val_, 0))
+        
+        self.gradient_w_ = tf.gradients(self.loss_, [self.W_])
 
     def reset(self, init_ws):
         self.particles_ = copy.deepcopy(init_ws)
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
     def learn(self, data_pool, data_y, data_idx, gradients, smarter = False):
-        for i in range(self.config_.particle_num):
-            gradient = np.matmul(data_pool[data_idx: data_idx + 1, :].T,
-                                 (np.sum(data_pool[data_idx: data_idx + 1, :] * self.particles_[i: i + 1, :], 1, keepdims = True) - data_y[data_idx]))
-            self.particles_[i, :] -= self.config_.lr * gradient[:, 0]
+        if not self.use_tf_:
+            for i in range(self.config_.particle_num):
+                gradient = np.matmul(data_pool[data_idx: data_idx + 1, :].T,
+                                    (np.sum(data_pool[data_idx: data_idx + 1, :] * self.particles_[i: i + 1, :], 1, keepdims = True) - data_y[data_idx]))
+                self.particles_[i, :] -= self.config_.lr * gradient[:, 0]
+        else:
+            gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, :],
+                                                            self.W_: self.particles_,
+                                                            self.y_: data_y[data_idx] * np.ones(self.config_.particle_num, dtype = np.float32)})
+            self.particles_ -= self.config_.lr * gradient_tf[0]
 
         eliminate = 0
         #if smarter:
@@ -50,11 +74,21 @@ class LearnerS:
 
     def get_grads(self, data_pool, data_y):
         gradients = []
+        gradient_tfs = []
         for i in range(data_pool.shape[0]):
-            gradient = np.matmul(data_pool[i: i + 1, :].T,
-                                 (np.sum(data_pool[i: i + 1, :] * self.current_mean_, 1, keepdims = True) - data_y[i]))
-            gradients.append(gradient)
-        return np.concatenate(gradients, 1).T
+            if not self.use_tf_:
+                gradient = np.matmul(data_pool[i: i + 1, :].T,
+                                    (np.sum(data_pool[i: i + 1, :] * self.current_mean_, 1, keepdims = True) - data_y[i]))
+                gradients.append(gradient)
+            else:
+                gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[i: i + 1, :],
+                                                                self.y_: np.expand_dims(data_y[i], 1),
+                                                                self.W_: self.current_mean_})
+                gradient_tfs.append(gradient_tf[0])
+        if not self.use_tf_:
+            return np.concatenate(gradients, 1).T
+        gradient_tf = np.concatenate(gradient_tfs, 0)
+        return gradient_tf
         
 
 def main():

@@ -21,14 +21,15 @@ def main():
 
 
     lr = 3e-4
-    config_T = edict({'data_pool_size': 100, 'data_dim': 10, 'lr': lr})
-    config_L = edict({'particle_num': 1000, 'data_dim': 10, 'reg_coef': 0, 'lr': lr})
+    lt = 2
+    config_T = edict({'data_pool_size': 200, 'data_dim': 10, 'lr': lr, 'loss_type': lt})
+    config_L = edict({'particle_num': 1000, 'data_dim': 10, 'reg_coef': 0, 'lr': lr, 'loss_type': lt})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_L.particle_num, config_L.data_dim]),
                               np.zeros([config_L.particle_num, 1])], 1)
     init_w = np.mean(init_ws, 0, keepdims = True)
     teacher = Teacher(config_T)
     learner = Learner(sess, init_w, 0, config_L)
-    learnerS = LearnerS(config_L)
+    learnerS = LearnerS(sess, config_L)
     init = tf.global_variables_initializer()
     sess.run(init)
 
@@ -40,6 +41,7 @@ def main():
         dists0.append(np.sum(np.square(w - teacher.gt_w_)))
     
     line_neg1, = plt.plot(dists0, label = 'batch')
+
 
     sess.run(init)
     [w] = sess.run([learner.w_])
