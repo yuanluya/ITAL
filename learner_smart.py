@@ -11,23 +11,27 @@ class LearnerS:
         self.sess_ = sess
         self.config_ = config
         self.loss_type_ = all_types[self.config_.loss_type]
-        self.use_tf_ = (self.loss_type_ != 0)
+        self.use_tf_ = (self.loss_type_ != 'RR')
         self.particles_ = np.random.uniform(-1, 1, size = [self.config_.particle_num, self.config_.data_dim + 1])
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
         self.X_ = tf.placeholder(dtype = tf.float32, shape = [None, self.config_.data_dim + 1])
-        self.y_ = tf.placeholder(dtype = tf.float32, shape = [None])
+        self.y_ = tf.placeholder(dtype = tf.float32, shape = [None, 1])
         self.W_ = tf.placeholder(dtype = tf.float32, shape = [None, self.config_.data_dim + 1])
 
         self.linear_val_ = tf.matmul(self.X_, tf.transpose(self.W_))
         if self.loss_type_ == 'RR':
-            self.loss_ = 0.5 * tf.reduce_sum(tf.square(self.linear_val_ - self.y_))
+            self.losses_ = tf.square(self.linear_val_ - self.y_)
+            self.loss_ = 0.5 * tf.reduce_sum(self.losses_)
         elif self.loss_type_ == 'LR':
-            self.loss_ = tf.reduce_sum(tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_)))
+            self.losses_ = tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_))
+            self.loss_ = tf.reduce_sum(self.losses_)
         elif self.loss_type_ == 'SVM':
-            self.loss_ = tf.reduce_sum(tf.maximum(1 - self.y_ * self.linear_val_, 0))
+            self.losses_ = tf.maximum(1 - self.y_ * self.linear_val_, 0)
+            self.loss_ = tf.reduce_sum(self.losses_)
         
         self.gradient_w_ = tf.gradients(self.loss_, [self.W_])
+        self.gradient_lv_ = tf.gradients(self.loss_, [self.linear_val_])
 
     def reset(self, init_ws):
         self.particles_ = copy.deepcopy(init_ws)
@@ -42,7 +46,7 @@ class LearnerS:
         else:
             gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, :],
                                                             self.W_: self.particles_,
-                                                            self.y_: data_y[data_idx] * np.ones(self.config_.particle_num, dtype = np.float32)})
+                                                            self.y_: data_y[data_idx] * np.ones([self.config_.particle_num, 1], dtype = np.float32)})
             self.particles_ -= self.config_.lr * gradient_tf[0]
 
         eliminate = 0
@@ -70,25 +74,32 @@ class LearnerS:
         
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
+
         return self.current_mean_, eliminate
 
     def get_grads(self, data_pool, data_y):
         gradients = []
         gradient_tfs = []
+        losses = []
         for i in range(data_pool.shape[0]):
             if not self.use_tf_:
-                gradient = np.matmul(data_pool[i: i + 1, :].T,
-                                    (np.sum(data_pool[i: i + 1, :] * self.current_mean_, 1, keepdims = True) - data_y[i]))
+                diff = (np.sum(data_pool[i: i + 1, :] * self.current_mean_, 1, keepdims = True) - data_y[i])
+                gradient = np.matmul(data_pool[i: i + 1, :].T, diff)
                 gradients.append(gradient)
+                losses.append(0.5 * np.square(diff[0, 0]))
             else:
-                gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[i: i + 1, :],
-                                                                self.y_: np.expand_dims(data_y[i], 1),
+                gradient_tf, loss = self.sess_.run([self.gradient_w_, self.loss_], {self.X_: data_pool[i: i + 1, :],
+                                                                self.y_: np.expand_dims(data_y[i: i + 1], 1),
                                                                 self.W_: self.current_mean_})
                 gradient_tfs.append(gradient_tf[0])
+                losses.append(loss)
+
         if not self.use_tf_:
-            return np.concatenate(gradients, 1).T
+            return np.concatenate(gradients, 1).T, np.array(losses)
         gradient_tf = np.concatenate(gradient_tfs, 0)
-        return gradient_tf
+
+        # losses = self.sess_.run(self.losses_, {self.X_: data_pool, self.W_: self.current_mean_, self.y_: np.expand_dims(data_y, 1)})
+        return gradient_tf, np.array(losses)
         
 
 def main():

@@ -31,6 +31,11 @@ class Teacher:
                2 * self.config_.lr * np.sum((prev_w - self.gt_w_) * gradients, 1)
         return np.argmin(vals)
 
+    def choose_sur(self, gradients, prev_losses):
+        vals = np.sum(self.config_.lr * self.config_.lr * np.square(gradients), 1) -\
+               2 * self.config_.lr * prev_losses
+        return np.argmin(vals)
+
 def main():
     config = edict({'data_pool_size': 30, 'data_dim': 10})
     teacher = Teacher(config)

@@ -16,11 +16,14 @@ class Learner:
         self.x_ = tf.placeholder(shape = [None, self.config_.data_dim + 1], dtype = tf.float32)
         self.linear_val_ = tf.reduce_sum(self.w_ * self.x_, 1)# + self.b_
         if self.loss_type_ == 'RR':
-            self.loss_ = 0.5 * tf.square(self.linear_val_ - self.y_)
+            self.losses_ = tf.square(self.linear_val_ - self.y_)
+            self.loss_ = 0.5 * tf.reduce_sum(self.losses_)
         elif self.loss_type_ == 'LR':
-            self.loss_ = tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_))
+            self.losses_ = tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_))
+            self.loss_ = tf.reduce_sum(self.losses_)
         elif self.loss_type_ == 'SVM':
-            self.loss_ = tf.maximum(1 - self.y_ * self.linear_val_, 0)
+            self.losses_ = tf.maximum(1 - self.y_ * self.linear_val_, 0)
+            self.loss_ = tf.reduce_sum(self.losses_)
         self.loss_ = tf.reduce_mean(self.loss_) + 0.5 * self.config_.reg_coef * tf.reduce_sum(tf.square(self.w_))
         self.gradient_ = tf.gradients(self.loss_, [self.w_])
         self.gradient_manual_ = tf.matmul(tf.transpose(self.x_), tf.expand_dims(self.linear_val_ - self.y_, 1))
@@ -46,10 +49,12 @@ class Learner:
 
     def get_grads(self, data_pool, data_y):
         gradients = []
+        losses = []
         for d in range(data_pool.shape[0]):
-            gradient = self.sess_.run(self.gradient_, {self.x_: data_pool[d: d + 1], self.y_: data_y[d: d + 1]})
+            gradient, loss = self.sess_.run([self.gradient_, self.loss_], {self.x_: data_pool[d: d + 1], self.y_: data_y[d: d + 1]})
             gradients.append(gradient)
-        return np.squeeze(np.array(gradients))
+            losses.append(loss)
+        return np.squeeze(np.array(gradients)), np.array(losses)
 
 def main():
     config = edict({'data_dim': 10, 'reg_coef': 0, 'lr': 1e-4})

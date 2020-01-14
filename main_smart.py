@@ -2,6 +2,7 @@ from easydict import EasyDict as edict
 import tensorflow as tf
 import numpy as np
 import os
+import sys
 import copy
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -21,7 +22,7 @@ def main():
 
 
     lr = 3e-4
-    lt = 2
+    lt = int(sys.argv[1])
     config_T = edict({'data_pool_size': 200, 'data_dim': 10, 'lr': lr, 'loss_type': lt})
     config_L = edict({'particle_num': 1000, 'data_dim': 10, 'reg_coef': 0, 'lr': lr, 'loss_type': lt})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_L.particle_num, config_L.data_dim]),
@@ -32,7 +33,7 @@ def main():
     learnerS = LearnerS(sess, config_L)
     init = tf.global_variables_initializer()
     sess.run(init)
-
+    
     [w] = sess.run([learner.w_])
     dists0 = [np.sum(np.square(w - teacher.gt_w_))]
     for _ in tqdm(range(10000)):
@@ -59,8 +60,8 @@ def main():
     dists1 = [np.sum(np.square(w - teacher.gt_w_))]
     data_choices1 = []
     for i in tqdm(range(10000)):
-        gradients = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
-        data_idx = teacher.choose(gradients, w)
+        gradients, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
+        data_idx = teacher.choose_sur(gradients, losses)
         data_choices1.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         w, best_idx = learner.learn(data_point, gradients)
@@ -73,14 +74,13 @@ def main():
     dists2 = [np.sum(np.square(w - teacher.gt_w_))]
     data_choices2 = []
     for i in tqdm(range(10000)):
-        gradients = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
-        data_idx = teacher.choose(gradients, w)
+        gradients, losses = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
+        data_idx = teacher.choose_sur(gradients, losses)
         data_choices2.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         w, _ = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients)
         dists2.append(np.sum(np.square(w - teacher.gt_w_)))
     line2, = plt.plot(dists2, label = 'smart')
-
 
     learnerS.reset(init_ws)
     w = learnerS.current_mean_
@@ -88,8 +88,8 @@ def main():
     data_choices3 = []
     eliminates = []
     for i in tqdm(range(10000)):
-        gradients = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
-        data_idx = teacher.choose(gradients, w)
+        gradients, losses = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
+        data_idx = teacher.choose_sur(gradients, losses)
         data_choices3.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         w, eliminate = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, True)
@@ -100,6 +100,7 @@ def main():
     plt.legend([line_neg1, line0, line1, line2, line3],
                ['batch', 'sgd', 'machine teaching: %d' % np.unique(data_choices1).shape[0],\
                 'compare: %d' % np.unique(data_choices2).shape[0], 'pragmatic: %d' % np.unique(data_choices3).shape[0]], prop={'size': 12})
+    plt.title(learnerS.loss_type_)
     plt.show()
     pdb.set_trace()
 
