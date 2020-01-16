@@ -5,12 +5,12 @@ from easydict import EasyDict as edict
 import pdb
 
 class Learner:
-    def __init__(self, sess, init_w, loss_type, config):
+    def __init__(self, sess, init_w, config):
         all_types = ['RR', 'LR', 'SVM']
         self.sess_ = sess
         self.init_w_ = init_w
         self.config_ = config
-        self.loss_type_ = all_types[loss_type]
+        self.loss_type_ = all_types[self.config_.loss_type]
         self.w_ = tf.Variable(initial_value = self.init_w_, name = 'weight', dtype = tf.float32)
         self.y_ = tf.placeholder(shape = [None], dtype = tf.float32)
         self.x_ = tf.placeholder(shape = [None, self.config_.data_dim + 1], dtype = tf.float32)
@@ -21,7 +21,7 @@ class Learner:
             self.loss_ = tf.log(1 + tf.exp(-1 * self.y_ * self.linear_val_))
         elif self.loss_type_ == 'SVM':
             self.loss_ = tf.maximum(1 - self.y_ * self.linear_val_, 0)
-        self.loss_ = tf.reduce_mean(self.loss_) + 0.5 * self.config_.reg_coef * tf.reduce_sum(tf.square(self.w_))
+        self.loss_ = tf.reduce_mean(self.loss_) + 0.5 * self.config_.reg_coef * tf.reduce_sum(tf.square(self.w_[:, 0: -1]))
         self.gradient_ = tf.gradients(self.loss_, [self.w_])
         self.gradient_manual_ = tf.matmul(tf.transpose(self.x_), tf.expand_dims(self.linear_val_ - self.y_, 1))
 
