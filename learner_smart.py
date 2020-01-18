@@ -37,7 +37,7 @@ class LearnerS:
         self.particles_ = copy.deepcopy(init_ws)
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
-    def learn(self, data_pool, data_y, data_idx, gradients, random_prob = False):
+    def learn(self, data_pool, data_y, data_idx, gradients, random_prob = None):
         if not self.use_tf_:
             for i in range(self.config_.particle_num):
                 gradient = np.matmul(data_pool[data_idx: data_idx + 1, :].T,
@@ -127,7 +127,7 @@ class LearnerS:
             w_param = self.current_mean_
         for i in range(data_pool.shape[0]):
             if not self.use_tf_:
-                diff = np.sum(data_pool[i: i + 1, :] * self.current_mean_, 1, keepdims = True) - data_y[i]
+                diff = np.sum(data_pool[i: i + 1, :] * w_param, 1, keepdims = True) - data_y[i]
                 gradient = np.matmul(data_pool[i: i + 1, :].T, diff)
                 gradients.append(gradient)
                 losses.append(0.5 * np.square(diff[0, 0]))

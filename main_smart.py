@@ -20,20 +20,20 @@ def main():
     sess = tf.Session(config = tfconfig)
     np.random.seed(1000)
 
-    mode_idx = 1
+    mode_idx = 2
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
 
     lr = 1e-4
     lt = int(sys.argv[1])
     dd = 10 if lt != 0 else 50
-    train_iter_simple = 25000
-    train_iter_smart = 2500
+    train_iter_simple = 10000
+    train_iter_smart = 5000 #2500 + 2500 * (lt == 0)
     reg_coef = 0 if lt == 0 else 5e-5
 
-    config_T = edict({'data_pool_size': 100, 'data_dim': dd, 'loss_type': lt, 'lr': lr, 'transform': mode == 'imit'})
-    config_L = edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': 10 * lr, 'loss_type': lt})
-    config_LS = edict({'particle_num': 1000, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': lt})
+    config_T = edict({'data_pool_size': 50 + 150 * (lt == 2), 'data_dim': dd, 'loss_type': lt, 'lr': 0.1 * lr, 'transform': mode == 'imit'})
+    config_L = edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': (1 + 9 * (lt != 0))  * lr, 'loss_type': lt})
+    config_LS = edict({'particle_num': 1000, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': (0.3 + 2 * (lt == 0)) * lr, 'loss_type': lt})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, dd]),
                               np.zeros([config_LS.particle_num, 1])], 1)
     init_w = np.mean(init_ws, 0, keepdims = True)
@@ -75,10 +75,9 @@ def main():
         elif mode == 'omni':
             data_idx = teacher.choose(gradients, w, config_L.lr)
         else:
-            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_, teacher.gt_y_, teacher.stu_current_w_)
-            data_idx = teacher.choose_imit(gradients_tea, config_L.lr)
-            stu_linear_val = np.sum(teacher.data_pool_[data_idx: data_idx + 1, :] * w)
-            teacher.update_stu_est(teacher.data_pool_tea_[data_idx: data_idx + 1, :], stu_linear_val)
+            stu2tea = np.concatenate([np.matmul(w[:, 0: -1], teacher.t_mat_.T), w[0, -1] * np.ones([1, 1])], 1)
+            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_, teacher.gt_y_, stu2tea)
+            data_idx = teacher.choose_sur(gradients_tea, losses, config_L.lr)
         data_choices1.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         #w, best_idx = learner.learn(data_point, gradients)
@@ -98,16 +97,15 @@ def main():
         elif mode == 'surr':
             data_idx = teacher.choose_sur(gradients, losses, config_LS.lr)
         else:
-            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_, teacher.gt_y_, teacher.stu_current_w_)
-            data_idx = teacher.choose_imit(gradients_tea, config_L.lr)
-            stu_linear_val = np.sum(teacher.data_pool_[data_idx: data_idx + 1, :] * w)
-            teacher.update_stu_est(teacher.data_pool_tea_[data_idx: data_idx + 1, :], stu_linear_val)
+            stu2tea = np.concatenate([np.matmul(w[:, 0: -1], teacher.t_mat_.T), w[0, -1] * np.ones([1, 1])], 1)
+            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_, teacher.gt_y_, stu2tea)
+            data_idx = teacher.choose_sur(gradients_tea, losses, config_LS.lr)
         data_choices3.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
-        if mode == 'surr':
+        if mode == 'omni':
+            w, eliminate = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients)
+        else:
             w, eliminate = learnerS.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses)
-        elif mode == 'omni' or mode == 'imit':
-            w, eliminate = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, True)
         eliminates.append(eliminate)
         dists3.append(np.sum(np.square(w - teacher.gt_w_)))
     line3, = plt.plot(dists3, label = 'smarter')
@@ -123,10 +121,9 @@ def main():
         elif mode == 'surr':
             data_idx = teacher.choose_sur(gradients, losses, config_LS.lr)
         else:
-            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_, teacher.gt_y_, teacher.stu_current_w_)
-            data_idx = teacher.choose_imit(gradients_tea, config_L.lr)
-            stu_linear_val = np.sum(teacher.data_pool_[data_idx: data_idx + 1, :] * w)
-            teacher.update_stu_est(teacher.data_pool_tea_[data_idx: data_idx + 1, :], stu_linear_val)
+            stu2tea = np.concatenate([np.matmul(w[:, 0: -1], teacher.t_mat_.T), w[0, -1] * np.ones([1, 1])], 1)
+            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_, teacher.gt_y_, stu2tea)
+            data_idx = teacher.choose_sur(gradients_tea, losses, config_LS.lr)
         data_choices2.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         w, _ = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx,
@@ -138,7 +135,7 @@ def main():
                ['batch', 'sgd', 'machine teaching: %d, %f' % (np.unique(data_choices1).shape[0], config_L.lr),\
                 'compare: %d' % np.unique(data_choices2).shape[0],
                 'pragmatic: %d, %f' % (np.unique(data_choices3).shape[0], config_LS.lr)], prop={'size': 12})
-    plt.title('%s: %s' % (mode, learnerS.loss_type_))
+    plt.title('%s: %s_%d' % (mode, learnerS.loss_type_, dd))
     plt.show()
     #plt.savefig('figure_%s.png' % learnerS.loss_type_)
     pdb.set_trace()
