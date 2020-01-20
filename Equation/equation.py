@@ -1,19 +1,53 @@
+from functools import cmp_to_key
+from collections import defaultdict
 import numpy as np
 from scipy.special import comb
 import copy
 
+import pdb
 class Equation:
-    def __init__(self, num_var, order, coef_range):
+    def __init__(self, num_var, order, coef_range,
+                 length_mean = 4, length_low = 1, length_high = 7):
         assert(num_var <= 4)
+        assert(order <= 9 and order > 0)
         self.num_var_ = num_var
         self.order_ = order
         self.coef_range_ = coef_range
+        self.length_mean_ = length_mean
+        self.length_low_ = length_low
+        self.length_high_ = length_high
         all_var_names = ['x', 'y', 'z', 'w']
         self.all_var_names_ = all_var_names[0: self.num_var_]
         self.all_var_names_.append('1')
         all_variables_stack = [[]]
         self.all_variables_ = []
         self.all_coefs_ = []
+
+        #sort by the exp-degree of variables
+        def cmp_term(term1, term2):
+            if term1 == term2:
+                return 0
+            deg1 = term1[2::3]
+            deg2 = term2[2::3]
+            var1 = term1[0::3]
+            var2 = term2[0::3]
+            i = 0
+            while True:
+                if i == len(var1):
+                    return -1
+                elif i == len(var2):
+                    return 1
+                vidx1 = self.all_var_names_.index(var1[i])
+                vidx2 = self.all_var_names_.index(var2[i])
+                if vidx1 != vidx2:
+                    return vidx2 - vidx1
+                d1 = int(deg1[i])
+                d2 = int(deg2[i])
+                if d1 != d2:
+                    return d1 - d2
+                i += 1
+            
+        self.cmp_ = cmp_term
 
         while len(all_variables_stack) > 0:
             current = all_variables_stack.pop(0)
@@ -45,10 +79,294 @@ class Equation:
                     self.all_coefs_.append('%d/%d' % (ii, jj))
         self.all_coefs_ = list(set(self.all_coefs_))
 
+    def generate(self):
+        left_length = 0
+        right_length = 0
+        while left_length < self.length_low_ or left_length > self.length_high_:
+            left_length = np.random.poisson(self.length_mean_)
+        while right_length < self.length_low_ or right_length > self.length_high_:
+            right_length = np.random.poisson(self.length_mean_)
+        sign_sequence = []
+        coef_sequence = []
+        var_sequence = []
+        for i in range(left_length):
+            rd = np.random.uniform()
+            sign = '+' if rd <= 0.5 else '-'
+            coef = self.all_coefs_[np.random.randint(len(self.all_coefs_))]
+            var = self.all_variables_[np.random.randint(len(self.all_variables_))]
+            sign_sequence.append(sign)
+            coef_sequence.append(coef)
+            var_sequence.append(var if var != '1' else '')
+        sign_sequence.append('')
+        coef_sequence.append('')
+        var_sequence.append('=')
+        for i in range(right_length):
+            rd = np.random.uniform()
+            sign = '+' if rd <= 0.5 else '-'
+            coef = self.all_coefs_[np.random.randint(len(self.all_coefs_))]
+            var = self.all_variables_[np.random.randint(len(self.all_variables_))]
+            sign_sequence.append(sign)
+            coef_sequence.append(coef)
+            var_sequence.append(var if var != '1' else '')
+        return [sign_sequence, coef_sequence, var_sequence]
+    
+    def tuple2str(self, seq_tuple):
+        merge_seq = list(zip(*seq_tuple))
+        return ' '.join([' '.join(tup) for tup in merge_seq])
+    
+    def scale(self, seq_tuple, pos, scale):
+        if pos < 0 or pos >= len(seq_tuple[0]):
+            return seq_tuple
+        if seq_tuple[2][pos] == '=':
+            return seq_tuple
+        if seq_tuple[1][pos].find('/') == -1:
+            return seq_tuple
+        dash_pos = seq_tuple[1][pos].find('/')
+        nominator = int(seq_tuple[1][pos][0: dash_pos])
+        denominator = int(seq_tuple[1][pos][dash_pos + 1:])
+        seq_tuple[1][pos] = '%d/%d' % (nominator * scale, denominator * scale)
+        return seq_tuple
+
+    def reduction(self, seq_tuple, pos):
+        if seq_tuple[0][pos] == '':
+            return seq_tuple
+        dpos = seq_tuple[1][pos].find('/')
+        if dpos == -1:
+            return seq_tuple
+        nominator = int(seq_tuple[1][pos][0: dpos])
+        denominator = int(seq_tuple[1][pos][dpos + 1: ])
+        g = np.gcd(nominator, denominator)
+        if g == 1:
+            return seq_tuple
+        else:
+            seq_tuple[1][pos] = '%d/%d' % (nominator, denominator)
+            return seq_tuple
+        
+
+    def check0(self, seq_tuple):
+        if seq_tuple[2].index('=') == 0:
+            seq_tuple[0].insert(0, '')
+            seq_tuple[1].insert(0, '')
+            seq_tuple[2].insert(0, '0')
+        if seq_tuple[2].index('=') == len(seq_tuple[2]) - 1:
+            seq_tuple[0].append('')
+            seq_tuple[1].append('')
+            seq_tuple[2].append('0')
+        return seq_tuple
+
+    def swap(self, seq_tuple, pos1, pos2):
+        if pos1 < 0 or pos1 > len(seq_tuple) or\
+           pos2 < 0 or pos2 > len(seq_tuple) or\
+           pos1 == pos2:
+            return seq_tuple
+        eqs_pos = seq_tuple[2].index('=')
+        loc = (pos1 - eqs_pos) * (pos2 - eqs_pos)
+        if loc == 0:
+            return seq_tuple
+        elif loc > 0:
+            temp_sign = seq_tuple[0][pos1]
+            temp_coef = seq_tuple[1][pos1]
+            temp_var = seq_tuple[2][pos1]
+            seq_tuple[0][pos1] = seq_tuple[0][pos2]
+            seq_tuple[1][pos1] = seq_tuple[1][pos2]
+            seq_tuple[2][pos1] = seq_tuple[2][pos2]
+            seq_tuple[0][pos2] = temp_sign
+            seq_tuple[1][pos2] = temp_coef
+            seq_tuple[2][pos2] = temp_var
+        else:
+            temp_sign = seq_tuple[0][pos1]
+            temp_coef = seq_tuple[1][pos1]
+            temp_var = seq_tuple[2][pos1]
+            seq_tuple[0][pos1] = '-' if seq_tuple[0][pos2] == '+' else '+'
+            seq_tuple[1][pos1] = seq_tuple[1][pos2]
+            seq_tuple[2][pos1] = seq_tuple[2][pos2]
+            seq_tuple[0][pos2] = '-' if temp_sign == '+' else '+'
+            seq_tuple[1][pos2] = temp_coef
+            seq_tuple[2][pos2] = temp_var
+        
+        return seq_tuple
+
+    # move elements at pos1, so that it becomes pos2 in the resulting sequence
+    def move(self, seq_tuple, pos1, pos2):
+        if seq_tuple[2][pos1] == '=' or pos1 == pos2:
+            return seq_tuple
+        eqs_pos1 = seq_tuple[2].index('=')
+        seq_tuple[0].insert(pos2, seq_tuple[0].pop(pos1))
+        seq_tuple[1].insert(pos2, seq_tuple[1].pop(pos1))
+        seq_tuple[2].insert(pos2, seq_tuple[2].pop(pos1))
+        eqs_pos2 = seq_tuple[2].index('=')
+
+        if(pos1 - eqs_pos1) * (pos2 - eqs_pos2) < 0:
+            seq_tuple[0][pos2] = '-' if seq_tuple[0][pos2] == '+' else '+'
+
+        return self.check0(seq_tuple)
+    
+    def merge(self, seq_tuple, pos1, pos2):
+        if seq_tuple[2][pos1] != seq_tuple[2][pos2] or pos1 == pos2:
+            return seq_tuple
+        assert(seq_tuple[2][pos1] != '=')
+        assert(seq_tuple[2][pos2] != '=')
+        dp1 = seq_tuple[1][pos1].find('/')
+        dp2 = seq_tuple[1][pos2].find('/')
+        denominator = 1
+        if dp1 != -1 and dp2 != -1:
+            denominator1 = int(seq_tuple[1][pos1][dp1 + 1:])
+            denominator2 = int(seq_tuple[1][pos2][dp2 + 1:])
+            if denominator1 != denominator2:
+                return seq_tuple
+            denominator = denominator1
+        elif dp1 == -1:
+            denominator = int(seq_tuple[1][pos2][dp2 + 1:])
+        elif dp2 == -1:
+            denominator = int(seq_tuple[1][pos1][dp1 + 1:])
+
+        small_pos = min(pos1, pos2)
+        big_pos = max(pos1, pos2)
+        if small_pos == pos1:
+            dps = dp1
+            dpb = dp2
+        else:
+            dps = dp2
+            dpb = dp1
+        eqs_pos = seq_tuple[2].index('=')
+        nominators = int(seq_tuple[1][small_pos][0: dps]) if dps != -1 else int(seq_tuple[1][small_pos][0:])
+        nominatorb = int(seq_tuple[1][big_pos][0: dpb]) if dpb != -1 else int(seq_tuple[1][big_pos][0:])
+        if denominator != 1 and dps == -1:
+            nominators *= denominator
+        elif denominator != 1 and dpb == -1:
+            nominatorb *= denominator
+
+        signs = 1 if seq_tuple[0][small_pos] == '+' else -1
+        signb = 1 if ((small_pos - eqs_pos) * (big_pos - eqs_pos) > 0 and seq_tuple[0][big_pos] == '+') or\
+                     ((small_pos - eqs_pos) * (big_pos - eqs_pos) < 0 and seq_tuple[0][big_pos] == '-') else -1
+        new_nominator = signs * nominators + signb * nominatorb
+        if new_nominator != 0:
+            seq_tuple[0][small_pos] = '+' if new_nominator > 0 else '-'
+            if denominator != 1:
+                seq_tuple[1][small_pos] = '%d/%d' % (abs(new_nominator), denominator)
+                seq_tuple = self.reduction(seq_tuple, small_pos)
+            else:
+                seq_tuple[1][small_pos] = '%d' % abs(new_nominator)
+            seq_tuple[0].pop(big_pos)
+            seq_tuple[1].pop(big_pos)
+            seq_tuple[2].pop(big_pos)
+        else:
+            seq_tuple[0].pop(big_pos)
+            seq_tuple[1].pop(big_pos)
+            seq_tuple[2].pop(big_pos)
+            seq_tuple[0].pop(small_pos)
+            seq_tuple[1].pop(small_pos)
+            seq_tuple[2].pop(small_pos)
+
+        return self.check0(seq_tuple)
+    
+    def merge_helper(self, seq_tuple, same_denom = True):
+        history = []
+        repeat_vars = []
+        term2pos = defaultdict(list)
+        for idx, term in enumerate(seq_tuple[2]):
+            if term != '=':
+                term2pos[term].append(idx)
+        term_repeat = [term for term in term2pos if len(term2pos[term]) > 1]
+        term_repeat.sort(key = cmp_to_key(self.cmp_), reverse = True)
+        while len(term_repeat) > 0:
+            current_term = term_repeat.pop(0)
+            poses = [idx for idx, term in enumerate(seq_tuple[2]) if term == current_term]
+            denoms = []
+            for p in poses:
+                denom = 1 if seq_tuple[1][p].find('/') == -1 else int(seq_tuple[1][p][seq_tuple[1][p].find('/') + 1: ])
+                denoms.append(denom)
+            if not same_denom:
+                lcm = np.lcm(denoms[-1], denoms[-2])
+                f1 = lcm / denoms[-1]
+                f2 = lcm / denoms[-2]
+                if f1 != 1:
+                    self.scale(seq_tuple, poses[-1], f1)
+                    history.append(self.tuple2str(seq_tuple))
+                if f2 != 1:
+                    self.scale(seq_tuple, poses[-2], f2)
+                    history.append(self.tuple2str(seq_tuple))
+                self.merge(seq_tuple, poses[-1], poses[-2])
+                history.append(self.tuple2str(seq_tuple))
+                return history
+            else:
+                Ud, Udc = np.unique(denoms, return_counts = True)
+                biggest_idx = 0
+                biggest_idx_denominator = None
+                for idx, d in enumerate(Ud):
+                    last_occurance = len(denoms) - 1 - denoms[::-1].index(d)
+                    if Udc[idx] > 1 and last_occurance > biggest_idx:
+                        biggest_idx = last_occurance
+                        biggest_idx_denominator = Ud[idx]
+                if biggest_idx_denominator is not None:
+                    for i in range(biggest_idx - 1, -1, -1):
+                        if denoms[i] == biggest_idx_denominator:
+                            self.merge(seq_tuple, poses[biggest_idx], poses[i])
+                            history.append(self.tuple2str(seq_tuple))
+                            return history
+
+        return history
+        
+    def simplify(self, seq_tuple):
+        history = [self.tuple2str(seq_tuple)]
+        # 1. merge terms with same denominator
+        while True:
+            new_hist = self.merge_helper(seq_tuple, True)
+            if len(new_hist) == 0:
+                break
+            history += new_hist
+        # 2. merge terms with different denominator
+        while True:
+            new_hist = self.merge_helper(seq_tuple, False)
+            if len(new_hist) == 0:
+                break
+            history += new_hist
+        # 3. remove denominators
+        denoms = []
+        noms = []
+        for idx, term in enumerate(seq_tuple[2]):
+            if term != '=':
+                dpos = seq_tuple[1][idx].find('/')
+                if dpos == -1:
+                    denoms.append(1)
+                else:
+                    denoms.append(int(seq_tuple[1][idx][dpos + 1:]))
+                if dpos != -1:
+                    noms.append(int(seq_tuple[1][idx][0: dpos]))
+                else:
+                    noms.append(int(seq_tuple[1][idx][0:]))
+        i = 0
+        lcm = np.lcm.reduce(denoms)
+        for idx in range(len(seq_tuple[2])):
+            if seq_tuple[2][idx] != '=':
+                seq_tuple[1][idx] = '%d' % (noms[i] * lcm / denoms[i])
+                i += 1
+        history.append(self.tuple2str(seq_tuple))
+        # 4. sort by descending exp-degress
+        variables = [term for term in seq_tuple[2] if term != '=']
+        variables.sort(key = cmp_to_key(self.cmp_), reverse = True)
+        print(variables)
+        i = 0
+        while i < len(variables):
+            pos = seq_tuple[2].index(variables[i])
+            self.move(seq_tuple, pos, i)
+            history.append(self.tuple2str(seq_tuple))
+            i += 1
+        return history
+
+
 def main():
-    eq = Equation(1, 6, 20)
+    eq = Equation(2, 3, 20)
     print(eq.all_variables_)
     print(eq.all_coefs_)
+    equation = eq.generate()
+    # equation = [['-', '+', '-', '', '+', '+', '+'], ['2/19', '3/6', '6/7', '', '2/3', '10/3', '1'], ['x^1y^2', 'x^2', 'y^1', '=', 'x^2', 'y^1', 'x^3']]
+    # print(eq.tuple2str(eq.scale(equation, 4, 2)))
+    # print(eq.tuple2str(eq.merge(equation, 1, 4)))
+    print(eq.tuple2str(equation))
+    history = eq.simplify(equation)
+    pdb.set_trace()
+    
 
 if __name__ == '__main__':
     main()
