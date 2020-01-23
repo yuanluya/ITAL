@@ -20,20 +20,22 @@ def main():
     sess = tf.Session(config = tfconfig)
     np.random.seed(1000)
 
-    mode_idx = 2
+    mode_idx = 0
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
 
     lr = 1e-4
     lt = int(sys.argv[1])
-    dd = 10 if lt != 0 else 50
-    train_iter_simple = 10000
-    train_iter_smart = 5000 #2500 + 2500 * (lt == 0)
-    reg_coef = 0 if lt == 0 else 5e-5
+    dd = 5 if lt != 0 else 30
+    dps = 50# + 150 * (lt == 2)
+    num_particles = 1000
+    train_iter_simple = 3000
+    train_iter_smart = 1000 #2500 + 2500 * (lt == 0)
+    reg_coef = 0# if lt == 0 else 5e-5
 
-    config_T = edict({'data_pool_size': 50 + 150 * (lt == 2), 'data_dim': dd, 'loss_type': lt, 'lr': 0.1 * lr, 'transform': mode == 'imit'})
-    config_L = edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': (1 + 9 * (lt != 0))  * lr, 'loss_type': lt})
-    config_LS = edict({'particle_num': 1000, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': (0.3 + 2 * (lt == 0)) * lr, 'loss_type': lt})
+    config_T = edict({'data_pool_size': dps, 'data_dim': dd, 'loss_type': lt, 'lr': 0.1 * lr, 'transform': mode == 'imit'})
+    config_L = edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': lt})
+    config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': lt})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, dd]),
                               np.zeros([config_LS.particle_num, 1])], 1)
     init_w = np.mean(init_ws, 0, keepdims = True)
@@ -114,10 +116,12 @@ def main():
     w = learnerS.current_mean_
     dists2 = [np.sum(np.square(w - teacher.gt_w_))]
     data_choices2 = []
+    random_ratio = 0#np.mean(eliminates) / config_LS.particle_num
     for i in tqdm(range(train_iter_smart)):
         gradients, losses = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
         if mode == 'omni':
             data_idx = teacher.choose(gradients, w, config_LS.lr)
+            #data_idx = np.random.randint(config_T.data_pool_size)
         elif mode == 'surr':
             data_idx = teacher.choose_sur(gradients, losses, config_LS.lr)
         else:
@@ -127,15 +131,16 @@ def main():
         data_choices2.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         w, _ = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx,
-                              gradients, np.mean(eliminates) / config_LS.particle_num)
+                              gradients, random_prob = random_ratio)
         dists2.append(np.sum(np.square(w - teacher.gt_w_)))
     line2, = plt.plot(dists2, label = 'smart')
 
+    pdb.set_trace()
     plt.legend([line_neg1, line0, line1, line2, line3],
                ['batch', 'sgd', 'machine teaching: %d, %f' % (np.unique(data_choices1).shape[0], config_L.lr),\
                 'compare: %d' % np.unique(data_choices2).shape[0],
                 'pragmatic: %d, %f' % (np.unique(data_choices3).shape[0], config_LS.lr)], prop={'size': 12})
-    plt.title('%s: %s_%d' % (mode, learnerS.loss_type_, dd))
+    plt.title('%s: %s_dim:%d_data:%d_particle:%d' % (mode, learnerS.loss_type_, dd, dps, num_particles))
     plt.show()
     #plt.savefig('figure_%s.png' % learnerS.loss_type_)
     pdb.set_trace()

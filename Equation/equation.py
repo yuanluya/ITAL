@@ -6,13 +6,14 @@ import copy
 
 import pdb
 class Equation:
-    def __init__(self, num_var, order, coef_range,
+    def __init__(self, num_var, order, coef_range_nom, coef_range_denom,
                  length_mean = 4, length_low = 1, length_high = 7):
         assert(num_var <= 4)
         assert(order <= 9 and order > 0)
         self.num_var_ = num_var
         self.order_ = order
-        self.coef_range_ = coef_range
+        self.coef_range_nom_ = coef_range_nom
+        self.coef_range_denom_ = coef_range_denom
         self.length_mean_ = length_mean
         self.length_low_ = length_low
         self.length_high_ = length_high
@@ -68,8 +69,8 @@ class Equation:
         self.all_variables_ = list(set(self.all_variables_))
         assert(len(self.all_variables_) == int(comb(self.num_var_ + self.order_, self.num_var_)))
 
-        for i in range(1, coef_range + 1):
-            for j in range(1, coef_range + 1):
+        for i in range(1, self.coef_range_nom_ + 1):
+            for j in range(1, self.coef_range_denom_ + 1):
                 g = np.gcd(i, j)
                 ii = i / g
                 jj = j / g
@@ -78,6 +79,7 @@ class Equation:
                 else:
                     self.all_coefs_.append('%d/%d' % (ii, jj))
         self.all_coefs_ = list(set(self.all_coefs_))
+        self.codebook_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + self.all_var_names_[0: -1] + [' ']
 
     def generate(self):
         left_length = 0
@@ -112,35 +114,39 @@ class Equation:
     
     def tuple2str(self, seq_tuple):
         merge_seq = list(zip(*seq_tuple))
-        return ' '.join([' '.join(tup) for tup in merge_seq])
+        return ' '.join([''.join(tup) for tup in merge_seq])
+    
+    def encode(self, string):
+        digits = [self.codebook_.index(s) for s in string]
+        return digits
     
     def scale(self, seq_tuple, pos, scale):
         if pos < 0 or pos >= len(seq_tuple[0]):
-            return seq_tuple
+            return seq_tuple, False
         if seq_tuple[2][pos] == '=':
-            return seq_tuple
+            return seq_tuple, False
         if seq_tuple[1][pos].find('/') == -1:
-            return seq_tuple
+            return seq_tuple, False
         dash_pos = seq_tuple[1][pos].find('/')
         nominator = int(seq_tuple[1][pos][0: dash_pos])
         denominator = int(seq_tuple[1][pos][dash_pos + 1:])
         seq_tuple[1][pos] = '%d/%d' % (nominator * scale, denominator * scale)
-        return seq_tuple
+        return seq_tuple, True
 
     def reduction(self, seq_tuple, pos):
         if seq_tuple[0][pos] == '':
-            return seq_tuple
+            return seq_tuple, False
         dpos = seq_tuple[1][pos].find('/')
         if dpos == -1:
-            return seq_tuple
+            return seq_tuple, False
         nominator = int(seq_tuple[1][pos][0: dpos])
         denominator = int(seq_tuple[1][pos][dpos + 1: ])
         g = np.gcd(nominator, denominator)
         if g == 1:
-            return seq_tuple
+            return seq_tuple, False
         else:
             seq_tuple[1][pos] = '%d/%d' % (nominator, denominator)
-            return seq_tuple
+            return seq_tuple, True
         
 
     def check0(self, seq_tuple):
@@ -148,21 +154,23 @@ class Equation:
             seq_tuple[0].insert(0, '')
             seq_tuple[1].insert(0, '')
             seq_tuple[2].insert(0, '0')
+            return seq_tuple, True
         if seq_tuple[2].index('=') == len(seq_tuple[2]) - 1:
             seq_tuple[0].append('')
             seq_tuple[1].append('')
             seq_tuple[2].append('0')
-        return seq_tuple
+            return seq_tuple, True
+        return seq_tuple, False
 
     def swap(self, seq_tuple, pos1, pos2):
         if pos1 < 0 or pos1 > len(seq_tuple) or\
            pos2 < 0 or pos2 > len(seq_tuple) or\
            pos1 == pos2:
-            return seq_tuple
+            return seq_tuple, False
         eqs_pos = seq_tuple[2].index('=')
         loc = (pos1 - eqs_pos) * (pos2 - eqs_pos)
         if loc == 0:
-            return seq_tuple
+            return seq_tuple, False
         elif loc > 0:
             temp_sign = seq_tuple[0][pos1]
             temp_coef = seq_tuple[1][pos1]
@@ -184,12 +192,12 @@ class Equation:
             seq_tuple[1][pos2] = temp_coef
             seq_tuple[2][pos2] = temp_var
         
-        return seq_tuple
+        return seq_tuple, True
 
     # move elements at pos1, so that it becomes pos2 in the resulting sequence
     def move(self, seq_tuple, pos1, pos2):
         if seq_tuple[2][pos1] == '=' or pos1 == pos2:
-            return seq_tuple
+            return seq_tuple, False
         eqs_pos1 = seq_tuple[2].index('=')
         seq_tuple[0].insert(pos2, seq_tuple[0].pop(pos1))
         seq_tuple[1].insert(pos2, seq_tuple[1].pop(pos1))
@@ -199,7 +207,7 @@ class Equation:
         if(pos1 - eqs_pos1) * (pos2 - eqs_pos2) < 0:
             seq_tuple[0][pos2] = '-' if seq_tuple[0][pos2] == '+' else '+'
 
-        return self.check0(seq_tuple)
+        return self.check0(seq_tuple)[0], True
     
     def merge(self, seq_tuple, pos1, pos2):
         if seq_tuple[2][pos1] != seq_tuple[2][pos2] or pos1 == pos2:
@@ -213,7 +221,7 @@ class Equation:
             denominator1 = int(seq_tuple[1][pos1][dp1 + 1:])
             denominator2 = int(seq_tuple[1][pos2][dp2 + 1:])
             if denominator1 != denominator2:
-                return seq_tuple
+                return seq_tuple, False
             denominator = denominator1
         elif dp1 == -1:
             denominator = int(seq_tuple[1][pos2][dp2 + 1:])
@@ -244,7 +252,7 @@ class Equation:
             seq_tuple[0][small_pos] = '+' if new_nominator > 0 else '-'
             if denominator != 1:
                 seq_tuple[1][small_pos] = '%d/%d' % (abs(new_nominator), denominator)
-                seq_tuple = self.reduction(seq_tuple, small_pos)
+                seq_tuple = self.reduction(seq_tuple, small_pos)[0]
             else:
                 seq_tuple[1][small_pos] = '%d' % abs(new_nominator)
             seq_tuple[0].pop(big_pos)
@@ -258,14 +266,14 @@ class Equation:
             seq_tuple[1].pop(small_pos)
             seq_tuple[2].pop(small_pos)
 
-        return self.check0(seq_tuple)
+        return self.check0(seq_tuple)[0], True
     
     def merge_helper(self, seq_tuple, same_denom = True):
         history = []
         repeat_vars = []
         term2pos = defaultdict(list)
         for idx, term in enumerate(seq_tuple[2]):
-            if term != '=':
+            if term != '=' and term != '0':
                 term2pos[term].append(idx)
         term_repeat = [term for term in term2pos if len(term2pos[term]) > 1]
         term_repeat.sort(key = cmp_to_key(self.cmp_), reverse = True)
@@ -281,13 +289,13 @@ class Equation:
                 f1 = lcm / denoms[-1]
                 f2 = lcm / denoms[-2]
                 if f1 != 1:
-                    self.scale(seq_tuple, poses[-1], f1)
-                    history.append(self.tuple2str(seq_tuple))
+                    if self.scale(seq_tuple, poses[-1], f1)[1]:
+                        history.append(self.tuple2str(seq_tuple))
                 if f2 != 1:
-                    self.scale(seq_tuple, poses[-2], f2)
+                    if self.scale(seq_tuple, poses[-2], f2)[1]:
+                        history.append(self.tuple2str(seq_tuple))
+                if self.merge(seq_tuple, poses[-1], poses[-2])[1]:
                     history.append(self.tuple2str(seq_tuple))
-                self.merge(seq_tuple, poses[-1], poses[-2])
-                history.append(self.tuple2str(seq_tuple))
                 return history
             else:
                 Ud, Udc = np.unique(denoms, return_counts = True)
@@ -301,8 +309,8 @@ class Equation:
                 if biggest_idx_denominator is not None:
                     for i in range(biggest_idx - 1, -1, -1):
                         if denoms[i] == biggest_idx_denominator:
-                            self.merge(seq_tuple, poses[biggest_idx], poses[i])
-                            history.append(self.tuple2str(seq_tuple))
+                            if self.merge(seq_tuple, poses[biggest_idx], poses[i])[1]:
+                                history.append(self.tuple2str(seq_tuple))
                             return history
 
         return history
@@ -325,7 +333,7 @@ class Equation:
         denoms = []
         noms = []
         for idx, term in enumerate(seq_tuple[2]):
-            if term != '=':
+            if term != '=' and term != '0':
                 dpos = seq_tuple[1][idx].find('/')
                 if dpos == -1:
                     denoms.append(1)
@@ -338,25 +346,25 @@ class Equation:
         i = 0
         lcm = np.lcm.reduce(denoms)
         for idx in range(len(seq_tuple[2])):
-            if seq_tuple[2][idx] != '=':
+            if seq_tuple[2][idx] != '=' and seq_tuple[2][idx] != '0':
                 seq_tuple[1][idx] = '%d' % (noms[i] * lcm / denoms[i])
                 i += 1
         history.append(self.tuple2str(seq_tuple))
         # 4. sort by descending exp-degress
-        variables = [term for term in seq_tuple[2] if term != '=']
+        variables = [term for term in seq_tuple[2] if term != '=' and term != '0']
         variables.sort(key = cmp_to_key(self.cmp_), reverse = True)
         print(variables)
         i = 0
         while i < len(variables):
             pos = seq_tuple[2].index(variables[i])
-            self.move(seq_tuple, pos, i)
-            history.append(self.tuple2str(seq_tuple))
+            if self.move(seq_tuple, pos, i)[1]:
+                history.append(self.tuple2str(seq_tuple))
             i += 1
         return history
 
 
 def main():
-    eq = Equation(2, 3, 20)
+    eq = Equation(2, 3, 20, 10)
     print(eq.all_variables_)
     print(eq.all_coefs_)
     equation = eq.generate()
@@ -365,8 +373,28 @@ def main():
     # print(eq.tuple2str(eq.merge(equation, 1, 4)))
     print(eq.tuple2str(equation))
     history = eq.simplify(equation)
-    pdb.set_trace()
+    data_size = 10
+    file_name = '../Data/equations.txt'
     
+    f = open(file_name, 'w')
+    for i in range(data_size):
+        equation = eq.generate()
+        history = eq.simplify(equation)
+        for h in history:
+            f.write(h)
+            f.write(';')
+        f.write('\n')
+    f.close()
+    f = open(file_name, 'r')
+    seq_encodes = []
+    lines = f.readlines()
+    for l in lines:
+        seq_encode = []
+        raw_eqs = l[0: -1].split(';')[0: -1]
+        seq_encode = [eq.encode(raw_eq) for raw_eq in raw_eqs]
+        seq_encodes.append(seq_encode)
+    pdb.set_trace()
+
 
 if __name__ == '__main__':
     main()

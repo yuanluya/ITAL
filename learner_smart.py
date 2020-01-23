@@ -58,21 +58,24 @@ class LearnerS:
         
         gradients_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), 1)
         for i in range(self.config_.particle_num):
+            if random_prob is not None:
+                rd = np.random.choice(2, p = [1 - random_prob, random_prob])
+                if rd == 1:
+                    noise = np.random.normal(scale = 0.1, size = [1, self.config_.data_dim + 1])
+                    self.particles_[i: i + 1, :] = new_center + noise
+                    eliminate += 1
+                continue
             particle_cache = self.current_mean_ - self.particles_[i: i + 1, :]
             for j in range(data_pool.shape[0]):
                 if j != data_idx:
                     val_cmp = gradients_cache[j] - 2 * self.config_.lr * np.sum(particle_cache * gradients[j, :])
-                    if random_prob is not None:
-                        rd = np.random.choice(2, p = [1 - random_prob, random_prob])
-                        if rd == 0:
-                            break
-                    if (not random_prob is None) or val_cmp < val_target[i]:
+                    if val_cmp < val_target[i]:
                         noise = np.random.normal(scale = 0.1, size = [1, self.config_.data_dim + 1])
                         self.particles_[i: i + 1, :] = new_center + noise
                         eliminate += 1
                         break
         
-
+        #pdb.set_trace()
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
         return self.current_mean_, eliminate

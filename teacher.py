@@ -19,11 +19,15 @@ class Teacher:
             self.gt_y_ = np.sum(self.data_pool_ * self.gt_w_, 1)
             self.gt_loss_ = np.zeros(self.config_.data_pool_size)
         else:
+            pos_mean = np.random.uniform(low = -1, high = 1, size = self.config_.data_dim)
+            neg_mean = np.random.uniform(low = -1, high = 1, size = self.config_.data_dim)
+            midpoint = 0.5 * (pos_mean + neg_mean)
             self.gt_w_ = np.ones(shape = [1, self.config_.data_dim + 1])
-            self.gt_w_[0, -1] = 0
-            self.data_pool_pos_ = np.random.normal(loc = 0.5 * np.ones(self.config_.data_dim), scale = 1.0,
+            self.gt_w_[0, 0: -1] = pos_mean - neg_mean
+            self.gt_w_[0, -1] = -1 * np.sum(midpoint * (pos_mean - neg_mean))
+            self.data_pool_pos_ = np.random.normal(loc = pos_mean, scale = 1.0,
                                                    size = [int(0.5 * self.config_.data_pool_size), self.config_.data_dim])
-            self.data_pool_neg_ = np.random.normal(loc = -0.5 * np.ones(self.config_.data_dim), scale = 1.0,
+            self.data_pool_neg_ = np.random.normal(loc = neg_mean, scale = 1.0,
                                                    size = [int(0.5 * self.config_.data_pool_size), self.config_.data_dim])
             self.data_pool_ = np.concatenate([np.concatenate([self.data_pool_pos_, self.data_pool_neg_], 0),
                                              np.ones([self.config_.data_pool_size, 1])], 1)
