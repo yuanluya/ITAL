@@ -26,14 +26,14 @@ def main():
 
     lr = 1e-4
     lt = int(sys.argv[1])
-    dd = 5 if lt != 0 else 30
-    dps = 50# + 150 * (lt == 2)
+    dd = 20 if lt != 0 else 50
+    dps = 2 * dd# + 150 * (lt == 2)
     num_particles = 1000
-    train_iter_simple = 3000
-    train_iter_smart = 1000 #2500 + 2500 * (lt == 0)
+    train_iter_simple = 5000
+    train_iter_smart = 5000 #2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
 
-    config_T = edict({'data_pool_size': dps, 'data_dim': dd, 'loss_type': lt, 'lr': 0.1 * lr, 'transform': mode == 'imit'})
+    config_T = edict({'data_pool_size': dps, 'data_dim': dd, 'loss_type': lt, 'lr': 0.1 * lr, 'transform': mode == 'imit', 'sample_size': int(0.2 * dps)})
     config_L = edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': lt})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': lt})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, dd]),
@@ -49,6 +49,7 @@ def main():
     [w] = sess.run([learner.w_])
     dists0 = [np.sum(np.square(w - teacher.gt_w_))]
     for _ in tqdm(range(train_iter_simple)):
+        teacher.sample()
         data_point = [teacher.data_pool_, teacher.gt_y_]
         w = learner.learn(data_point)
         dists0.append(np.sum(np.square(w - teacher.gt_w_)))
@@ -59,7 +60,8 @@ def main():
     [w] = sess.run([learner.w_])
     dists0 = [np.sum(np.square(w - teacher.gt_w_))]
     for _ in tqdm(range(train_iter_simple)):
-        data_idx = np.random.randint(config_T.data_pool_size)
+        teacher.sample()
+        data_idx = np.random.randint(teacher.data_pool_.shape[0])
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         w = learner.learn(data_point)
         dists0.append(np.sum(np.square(w - teacher.gt_w_)))
@@ -71,6 +73,7 @@ def main():
     dists1 = [np.sum(np.square(w - teacher.gt_w_))]
     data_choices1 = []
     for i in tqdm(range(train_iter_simple)):
+        teacher.sample()
         gradients, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
         if mode == 'surr':
             data_idx = teacher.choose_sur(gradients, losses, config_L.lr)
@@ -93,6 +96,7 @@ def main():
     data_choices3 = []
     eliminates = []
     for i in tqdm(range(train_iter_smart)):
+        teacher.sample()
         gradients, losses = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
         if mode == 'omni':
             data_idx = teacher.choose(gradients, w, config_LS.lr)
@@ -114,10 +118,37 @@ def main():
 
     learnerS.reset(init_ws)
     w = learnerS.current_mean_
+    dists3 = [np.sum(np.square(w - teacher.gt_w_))]
+    data_choices3 = []
+    eliminates = []
+    for i in tqdm(range(train_iter_smart)):
+        teacher.gt_loss_ = teacher.gt_loss_full_
+        gradients, losses = learnerS.get_grads(teacher.data_pool_full_, teacher.gt_y_full_)
+        if mode == 'omni':
+            data_idx = teacher.choose(gradients, w, config_LS.lr)
+        elif mode == 'surr':
+            data_idx = teacher.choose_sur(gradients, losses, config_LS.lr)
+        else:
+            stu2tea = np.concatenate([np.matmul(w[:, 0: -1], teacher.t_mat_.T), w[0, -1] * np.ones([1, 1])], 1)
+            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_full_, teacher.gt_y_full_, stu2tea)
+            data_idx = teacher.choose_sur(gradients_tea, losses, config_LS.lr)
+        data_choices3.append(data_idx)
+        data_point = [teacher.data_pool_full_[data_idx: data_idx + 1], teacher.gt_y_full_[data_idx: data_idx + 1]]
+        if mode == 'omni':
+            w, eliminate = learnerS.learn(teacher.data_pool_full_, teacher.gt_y_full_, data_idx, gradients)
+        else:
+            w, eliminate = learnerS.learn_sur(teacher.data_pool_full_, teacher.gt_y_full_, data_idx, gradients, losses)
+        eliminates.append(eliminate)
+        dists3.append(np.sum(np.square(w - teacher.gt_w_)))
+    line3S, = plt.plot(dists3, label = 'smarter_strong')
+
+    learnerS.reset(init_ws)
+    w = learnerS.current_mean_
     dists2 = [np.sum(np.square(w - teacher.gt_w_))]
     data_choices2 = []
-    random_ratio = 0#np.mean(eliminates) / config_LS.particle_num
+    random_ratio = np.mean(eliminates) / config_LS.particle_num
     for i in tqdm(range(train_iter_smart)):
+        teacher.sample()
         gradients, losses = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
         if mode == 'omni':
             data_idx = teacher.choose(gradients, w, config_LS.lr)
@@ -135,11 +166,33 @@ def main():
         dists2.append(np.sum(np.square(w - teacher.gt_w_)))
     line2, = plt.plot(dists2, label = 'smart')
 
-    pdb.set_trace()
-    plt.legend([line_neg1, line0, line1, line2, line3],
+    learnerS.reset(init_ws)
+    w = learnerS.current_mean_
+    dists2 = [np.sum(np.square(w - teacher.gt_w_))]
+    data_choices2 = []
+    random_ratio = 1
+    for i in tqdm(range(train_iter_smart)):
+        teacher.sample()
+        gradients, losses = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
+        if mode == 'omni':
+            data_idx = teacher.choose(gradients, w, config_LS.lr)
+            #data_idx = np.random.randint(config_T.data_pool_size)
+        elif mode == 'surr':
+            data_idx = teacher.choose_sur(gradients, losses, config_LS.lr)
+        else:
+            stu2tea = np.concatenate([np.matmul(w[:, 0: -1], teacher.t_mat_.T), w[0, -1] * np.ones([1, 1])], 1)
+            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_, teacher.gt_y_, stu2tea)
+            data_idx = teacher.choose_sur(gradients_tea, losses, config_LS.lr)
+        data_choices2.append(data_idx)
+        data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
+        w, _ = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx,
+                              gradients, random_prob = random_ratio)
+        dists2.append(np.sum(np.square(w - teacher.gt_w_)))
+    line2_1, = plt.plot(dists2, label = 'one')
+
+    plt.legend([line_neg1, line0, line1, line2, line2_1, line3, line3S],
                ['batch', 'sgd', 'machine teaching: %d, %f' % (np.unique(data_choices1).shape[0], config_L.lr),\
-                'compare: %d' % np.unique(data_choices2).shape[0],
-                'pragmatic: %d, %f' % (np.unique(data_choices3).shape[0], config_LS.lr)], prop={'size': 12})
+                'compare', 'compare_1', 'pragmatic, %f' % (config_LS.lr), 'pragmatic_full'], prop={'size': 12})
     plt.title('%s: %s_dim:%d_data:%d_particle:%d' % (mode, learnerS.loss_type_, dd, dps, num_particles))
     plt.show()
     #plt.savefig('figure_%s.png' % learnerS.loss_type_)

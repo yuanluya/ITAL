@@ -8,10 +8,17 @@ class EqValue:
     def __init__(self, config, init_w):
         self.config_ = config
         self.init_w_ = init_w
-        self.lower_eqs_ = tf.placeholder(tf.float32, shape = [None, None, self.config_.encoding_dims])
-        self.higher_eqs_ = tf.placeholder(tf.float32, shape = [None, None, self.config_.encoding_dims])
-        self.initial_states_ = tf.placeholder(tf.float32, shape = [self.lower_eqs_.shape[0], self.config_.rnn_dim])
+        self.lower_eqs_idx_ = tf.placeholder(tf.int32, shape = [None, None, 1])
+        self.higher_eqs_idx_ = tf.placeholder(tf.int32, shape = [None, None, 1])
+        self.initial_states_ = tf.placeholder(tf.float32, shape = [self.lower_eqs_idx_.shape[0], self.config_.rnn_dim])
 
+        self.codebook_ = tf.get_variable('codebook', shape = [self.config_.num_character, self.config_.encoding_dims],
+                                         dtype = tf.float32, initializer = tf.random_normal_initializer())
+        self.codebook_0_ = tf.concat([self.codebook_, tf.zeros(shape = [1, self.config_.encoding_dims])], 0)
+        
+        self.lower_eqs_ = tf.squeeze(tf.nn.embedding_lookup(self.codebook_0_, self.lower_eqs_idx_), 2)
+        self.higher_eqs_ = tf.squeeze(tf.nn.embedding_lookup(self.codebook_0_, self.higher_eqs_idx_), 2)
+        
         self.gru_1_ = tf.keras.layers.GRU(self.config_.rnn_dim, stateful = False,
                                         return_sequences = True, return_state = False)
         self.bi_encoder_ = tf.keras.layers.Bidirectional(self.gru_1_)
@@ -37,16 +44,20 @@ class EqValue:
 
 
 def main():
-    config = edict({'encoding_dims': 20, 'rnn_dim': 15, 'C': 1, 'lr': 1e-4})
+    config = edict({'encoding_dims': 20, 'rnn_dim': 15, 'C': 1, 'lr': 1e-4, 'num_character': 17})
     init_w = np.random.uniform(size = [1, config.rnn_dim])
     eqv = EqValue(config, init_w)
     sess = tf.Session()
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    _, loss = sess.run([eqv.train_op_, eqv.loss_], {eqv.lower_eqs_: np.random.uniform(size = [32, 9, config.encoding_dims]),
-                                                    eqv.higher_eqs_: np.random.uniform(size = [32, 9, config.encoding_dims]),
-                                                    eqv.initial_states_: np.zeros([32, config.rnn_dim])})
+    lei = np.random.randint(config.num_character + 1, size = [32, 19, 1])
+    hei = np.random.randint(config.num_character + 1, size = [32, 9, 1])
+    _, loss, he, le, codebook =\
+        sess.run([eqv.train_op_, eqv.loss_, eqv.higher_eqs_, eqv.lower_eqs_, eqv.codebook_],
+                 {eqv.lower_eqs_idx_: lei, eqv.higher_eqs_idx_: hei,
+                  eqv.initial_states_: np.zeros([32, config.rnn_dim])})
+    pdb.set_trace()
     return
 
 if __name__ == '__main__':
