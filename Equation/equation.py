@@ -353,7 +353,6 @@ class Equation:
         # 4. sort by descending exp-degress
         variables = [term for term in seq_tuple[2] if term != '=' and term != '0']
         variables.sort(key = cmp_to_key(self.cmp_), reverse = True)
-        print(variables)
         i = 0
         while i < len(variables):
             pos = seq_tuple[2].index(variables[i])
@@ -365,12 +364,31 @@ class Equation:
 
 def main():
     eq = Equation(2, 3, 20, 10)
-    print(eq.all_variables_)
-    print(eq.all_coefs_)
+    #print(eq.all_variables_)
+    #print(eq.all_coefs_)
     equation = eq.generate()
     # equation = [['-', '+', '-', '', '+', '+', '+'], ['2/19', '3/6', '6/7', '', '2/3', '10/3', '1'], ['x^1y^2', 'x^2', 'y^1', '=', 'x^2', 'y^1', 'x^3']]
     # print(eq.tuple2str(eq.scale(equation, 4, 2)))
     # print(eq.tuple2str(eq.merge(equation, 1, 4)))
+    for i in range(100):
+        equation = eq.generate()
+        print('tuple', equation)
+        print('string', eq.tuple2str(equation))
+        #history = eq.simplify(equation)                                                                                                                                          
+        try:
+            history = eq.simplify(equation)
+            print('path')
+            for x in history:
+                print(x)
+        except ValueError:
+            path = eq.get_path()
+            print('path error')
+            for x in path:
+                print(x)
+            print(equation)
+            return
+
+    '''
     print(eq.tuple2str(equation))
     history = eq.simplify(equation)
     data_size = 10
@@ -395,7 +413,7 @@ def main():
         seq_encodes.append(seq_encode)
     pdb.set_trace()
 
-
+    '''
 if __name__ == '__main__':
     main()
 
