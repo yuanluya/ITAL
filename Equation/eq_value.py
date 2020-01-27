@@ -66,7 +66,6 @@ class EqValue:
         higher_eqs_idx = np.array(higher_eqs_idx)
         lower_eqs_idx = np.expand_dims(lower_eqs_idx, axis=-1)
         higher_eqs_idx = np.expand_dims(higher_eqs_idx, axis=-1)
-        print(lower_eqs_idx.shape)
 
         _, w, loss = self.sess_.run([self.train_op_, self.weight_, self.loss_], {self.lower_eqs_idx_: lower_eqs_idx, self.higher_eqs_idx_: higher_eqs_idx, self.initial_states_: np.zeros([lower_eqs_idx.shape[0], self.config_.rnn_dim])})
         #[w] = self.sess_.run([self.weight_])
