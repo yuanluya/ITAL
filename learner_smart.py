@@ -61,7 +61,7 @@ class LearnerS:
             if random_prob is not None:
                 rd = np.random.choice(2, p = [1 - random_prob, random_prob])
                 if rd == 1:
-                    noise = np.random.normal(scale = 0.1, size = [1, self.config_.data_dim + 1])
+                    noise = np.random.normal(scale = self.config_.noise_scale, size = [1, self.config_.data_dim + 1])
                     self.particles_[i: i + 1, :] = new_center + noise
                     eliminate += 1
                 continue
@@ -70,7 +70,7 @@ class LearnerS:
                 if j != data_idx:
                     val_cmp = gradients_cache[j] - 2 * self.config_.lr * np.sum(particle_cache * gradients[j, :])
                     if val_cmp < val_target[i]:
-                        noise = np.random.normal(scale = 0.1, size = [1, self.config_.data_dim + 1])
+                        noise = np.random.normal(scale = self.config_.noise_scale, size = [1, self.config_.data_dim + 1])
                         self.particles_[i: i + 1, :] = new_center + noise
                         eliminate += 1
                         break
@@ -113,7 +113,7 @@ class LearnerS:
             val_cmps = gradient_cache - 2 * self.config_.lr * (prev_loss - new_particle_losses[i])
             for j in range(data_pool.shape[0]):
                 if j != data_idx and val_cmps[j] < val_target_temp:
-                    noise = np.random.normal(scale = 0.1, size = [1, self.config_.data_dim + 1])
+                    noise = np.random.normal(scale = self.config_.noise_scale, size = [1, self.config_.data_dim + 1])
                     self.particles_[i: i + 1, :] = new_center + noise
                     eliminate += 1
                     break

@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+from scipy.stats import t
 import tensorflow as tf
 from easydict import EasyDict as edict
 
@@ -9,7 +10,7 @@ class LearnerSM:
     def __init__(self, sess, config):
         self.sess_ = sess
         self.config_ = config
-        self.particles_ = np.random.uniform(-1, 1, size = [self.config_.particle_num,\
+        self.particles_ = np.random.uniform(-2, 2, size = [self.config_.particle_num,\
                                             self.config_.num_classes, self.config_.data_dim + 1])
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
@@ -29,7 +30,7 @@ class LearnerSM:
         self.particles_ = copy.deepcopy(init_ws)
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
-    def learn(self, data_pool, data_y, data_idx, gradients, random_prob = None):
+    def learn(self, data_pool, data_y, data_idx, gradients, step, random_prob = None):
         gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
                                                         self.W_: self.particles_,
                                                         self.y_: data_y[data_idx: data_idx + 1, :]})
@@ -43,34 +44,42 @@ class LearnerSM:
                             2 * self.config_.lr * np.sum((self.current_mean_ - self.particles_) * gradient, axis = (1, 2))
         
         gradients_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
+        scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
+                np.exp (-1 * step / self.config_.noise_scale_decay)
+
         for i in range(self.config_.particle_num):
             if random_prob is not None:
                 rd = np.random.choice(2, p = [1 - random_prob, random_prob])
                 if rd == 1:
                     if random_prob != 1:
-                        noise = np.random.normal(scale = 0.02, size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                        noise = np.random.normal(scale = scale,
+                                                 size = [1, self.config_.num_classes, self.config_.data_dim + 1])
                     self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
                     eliminate += 1
                 continue
             particle_cache = self.current_mean_ - self.particles_[i: i + 1, ...]
+            count = 0
             for j in range(data_pool.shape[0]):
                 if j != data_idx:
                     val_cmp = gradients_cache[j] - 2 * self.config_.lr * np.sum(particle_cache * gradients[j: j + 1, ...])
                     if val_cmp < val_target[i]:
-                        # rd = np.random.choice(2, p = [0.1, 0.9])
+                        # rd = np.random.choice(2, p = [0.5, 0.5])
                         # if rd == 1:
-                        if True:
-                            noise = np.random.normal(scale = 0.02, size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-                            self.particles_[i: i + 1, ...] = new_center + noise
-                            eliminate += 1
-                            break
-        
+                        count += 1
+                    if count == self.config_.replace_count:
+                        noise = np.random.normal(scale = scale,
+                                                    size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                        # noise = t.rvs(df = 5, scale = scale,
+                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                        self.particles_[i: i + 1, ...] = new_center + noise
+                        eliminate += 1
+                        break
         #pdb.set_trace()
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
         return self.current_mean_, eliminate
 
-    def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss):
+    def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss, step):
         new_particle_losses = []
         gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
                                                         self.W_: self.particles_,
@@ -84,20 +93,22 @@ class LearnerSM:
             new_particle_losses.append(losses)
 
         eliminate = 0
+        to_keeps = []
         #if smarter:
         gradient = gradients[data_idx: data_idx + 1, ...]
         new_center = self.current_mean_ - self.config_.lr * gradient
         val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient))
-        
+        scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
+                np.exp (-1 * step / self.config_.noise_scale_decay)
         gradient_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
         for i in range(self.config_.particle_num):
             val_target_temp = val_target - 2 * self.config_.lr * (prev_loss[data_idx] - new_particle_losses[i][data_idx])
             val_cmps = gradient_cache - 2 * self.config_.lr * (prev_loss - new_particle_losses[i])
             for j in range(data_pool.shape[0]):
                 if j != data_idx and val_cmps[j] < val_target_temp:
-                    noise = np.random.normal(scale = 0.02, size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                    noise = np.random.normal(scale = scale,
+                                             size = [1, self.config_.num_classes, self.config_.data_dim + 1])
                     self.particles_[i: i + 1, ...] = new_center + noise
-                    eliminate += 1
                     break
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
