@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from easydict import EasyDict as edict
+from tqdm import tqdm
 
 import pdb
 
