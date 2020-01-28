@@ -363,36 +363,10 @@ class Equation:
 
 
 def main():
-    eq = Equation(2, 3, 20, 10)
-    #print(eq.all_variables_)
-    #print(eq.all_coefs_)
-    equation = eq.generate()
-    # equation = [['-', '+', '-', '', '+', '+', '+'], ['2/19', '3/6', '6/7', '', '2/3', '10/3', '1'], ['x^1y^2', 'x^2', 'y^1', '=', 'x^2', 'y^1', 'x^3']]
-    # print(eq.tuple2str(eq.scale(equation, 4, 2)))
-    # print(eq.tuple2str(eq.merge(equation, 1, 4)))
-    for i in range(100):
-        equation = eq.generate()
-        print('tuple', equation)
-        print('string', eq.tuple2str(equation))
-        #history = eq.simplify(equation)                                                                                                                                          
-        try:
-            history = eq.simplify(equation)
-            print('path')
-            for x in history:
-                print(x)
-        except ValueError:
-            path = eq.get_path()
-            print('path error')
-            for x in path:
-                print(x)
-            print(equation)
-            return
-
-    '''
-    print(eq.tuple2str(equation))
-    history = eq.simplify(equation)
-    data_size = 10
+    data_size = 100000
     file_name = '../Data/equations.txt'
+    
+    eq = Equation(4, 9, 20, 10)
     
     f = open(file_name, 'w')
     for i in range(data_size):
@@ -411,9 +385,11 @@ def main():
         raw_eqs = l[0: -1].split(';')[0: -1]
         seq_encode = [eq.encode(raw_eq) for raw_eq in raw_eqs]
         seq_encodes.append(seq_encode)
-    pdb.set_trace()
+    seq_encodes = np.array(seq_encodes)
+    #seq_encodes = np.expand_dims(seq_encodes, axis=-1)
+    np.save('../Data/equations_encoded.npy', seq_encodes)
+    
 
-    '''
 if __name__ == '__main__':
     main()
 
