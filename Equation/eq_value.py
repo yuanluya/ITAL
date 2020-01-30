@@ -2,6 +2,9 @@ import tensorflow as tf
 import numpy as np
 from easydict import EasyDict as edict
 from tqdm import tqdm
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 import pdb
 
@@ -54,38 +57,19 @@ class EqValue:
         self.opt_ = tf.train.AdamOptimizer(learning_rate = self.config_.lr)
         self.train_op_ = self.opt_.minimize(self.loss_)
 
-    def learn(self, lower_eqs, higher_eqs):
-        lower_eqs_idx = [list(map(lambda x: self.chars_.index(x), s)) for s in lower_eqs]
-        higher_eqs_idx = [list(map(lambda x: self.chars_.index(x), s)) for s in higher_eqs]
-        '''
-        for s in lower_eqs:
-            lower_eqs_idx.append(list(map(lambda x: self.chars_.index(x), s)))
-        for s in higher_eqs:
-            higher_eqs_idx.append(list(map(lambda x: self.chars_.index(x), s)))
-        '''
-        lower_eqs_idx = np.array(lower_eqs_idx)
-        higher_eqs_idx = np.array(higher_eqs_idx)
-        lower_eqs_idx = np.expand_dims(lower_eqs_idx, axis=-1)
-        higher_eqs_idx = np.expand_dims(higher_eqs_idx, axis=-1)
-
-        _, w, loss = self.sess_.run([self.train_op_, self.weight_, self.loss_], {self.lower_eqs_idx_: lower_eqs_idx, self.higher_eqs_idx_: higher_eqs_idx, self.initial_states_: np.zeros([lower_eqs_idx.shape[0], self.config_.rnn_dim])})
-        #[w] = self.sess_.run([self.weight_])
-        return w, loss        
-
-
 def main():
     eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 15, 'C': 1, 'lr': 1e-4, 'num_character': 20})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
     eqv = EqValue(eqv_config, init_w, sess)
 
-    train_iter = 1
+    train_iter = 10000
     init = tf.global_variables_initializer()
     sess.run(init)
 
     data = np.load('../Data/equations_encoded.npy', allow_pickle=True)
-    batch_size = 1
-    data_size = 10
+    batch_size = 10
+    data_size = 10000
     dists0 = []
     for _ in tqdm(range(train_iter)):
         lower_equations = []
@@ -105,9 +89,11 @@ def main():
         higher_eqs_idx = np.expand_dims(higher_equations, axis=-1)
         _, w, loss = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_], {eqv.lower_eqs_idx_: lower_eqs_idx, \
                                                     eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
+        dists0.append(loss)
 
-
-    
+    plt.figure()
+    plt.plot(dists0)
+    plt.savefig('value func.png')
     return
 
 if __name__ == '__main__':
