@@ -15,22 +15,28 @@ class TeacherM:
         for i in range(self.config_.num_classes):
             mean = np.random.uniform(low = -1, high = 1, size = self.config_.data_dim)
             self.means_.append(mean)
-        self.data_pool_full_ = []
-        self.gt_y_full_ = []
-        self.gt_y_label_full_ = []
-        for i in range(self.config_.num_classes):
-            data_points = np.random.normal(loc = self.means_[i], scale = 0.5,
-                                           size = [self.config_.data_pool_size_class, self.config_.data_dim])
-            self.data_pool_full_.append(data_points)
-            labels = np.zeros([self.config_.data_pool_size_class, self.config_.num_classes])
-            labels[:, i] = np.ones(self.config_.data_pool_size_class)
-            self.gt_y_full_.append(labels)
-            self.gt_y_label_full_.append(i * np.ones(self.config_.data_pool_size_class))
+        if self.config_.data_x is not None:
+            self.data_pool_full_ = np.concatenate([self.config_.data_x,
+                                             np.ones([self.config_.data_x.shape[0], 1])], 1)
+            self.gt_y_full_ = self.config_.data_y
+            self.gt_y_label_full_ = np.argmax(self.config_.data_y, 1)
+        else:
+            self.data_pool_full_ = []
+            self.gt_y_full_ = []
+            self.gt_y_label_full_ = []
+            for i in range(self.config_.num_classes):
+                data_points = np.random.normal(loc = self.means_[i], scale = 0.5,
+                                               size = [self.config_.data_pool_size_class, self.config_.data_dim])
+                self.data_pool_full_.append(data_points)
+                labels = np.zeros([self.config_.data_pool_size_class, self.config_.num_classes])
+                labels[:, i] = np.ones(self.config_.data_pool_size_class)
+                self.gt_y_full_.append(labels)
+                self.gt_y_label_full_.append(i * np.ones(self.config_.data_pool_size_class))
 
-        self.data_pool_full_ = np.concatenate([np.concatenate(self.data_pool_full_, 0),
-                                         np.ones([self.config_.data_pool_size_class * self.config_.num_classes, 1])], 1)
-        self.gt_y_full_ = np.concatenate(self.gt_y_full_)
-        self.gt_y_label_full_ = np.concatenate(self.gt_y_label_full_)
+            self.data_pool_full_ = np.concatenate([np.concatenate(self.data_pool_full_, 0),
+                                             np.ones([self.config_.data_pool_size_class * self.config_.num_classes, 1])], 1)
+            self.gt_y_full_ = np.concatenate(self.gt_y_full_)
+            self.gt_y_label_full_ = np.concatenate(self.gt_y_label_full_)
         self.clf_ = LogisticRegression(random_state = 0, fit_intercept = False, max_iter = 5000, solver = 'sag')
         self.clf_.fit(self.data_pool_full_, self.gt_y_label_full_)
         self.gt_w_ = self.clf_.coef_
