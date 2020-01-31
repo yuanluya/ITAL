@@ -44,8 +44,9 @@ class LearnerSM:
                             2 * self.config_.lr * np.sum((self.current_mean_ - self.particles_) * gradient, axis = (1, 2))
         
         gradients_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
-        scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
-                np.exp (-1 * step / self.config_.noise_scale_decay)
+        # scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
+        #         np.exp (-1 * step / self.config_.noise_scale_decay)
+        scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
 
         for i in range(self.config_.particle_num):
             if random_prob is not None:
@@ -93,22 +94,26 @@ class LearnerSM:
             new_particle_losses.append(losses)
 
         eliminate = 0
-        to_keeps = []
         #if smarter:
         gradient = gradients[data_idx: data_idx + 1, ...]
         new_center = self.current_mean_ - self.config_.lr * gradient
         val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient))
-        scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
-                np.exp (-1 * step / self.config_.noise_scale_decay)
+        # scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
+        #         np.exp (-1 * step / self.config_.noise_scale_decay)
+        scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
         gradient_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
         for i in range(self.config_.particle_num):
             val_target_temp = val_target - 2 * self.config_.lr * (prev_loss[data_idx] - new_particle_losses[i][data_idx])
             val_cmps = gradient_cache - 2 * self.config_.lr * (prev_loss - new_particle_losses[i])
+            count = 0
             for j in range(data_pool.shape[0]):
                 if j != data_idx and val_cmps[j] < val_target_temp:
+                    count += 1
+                if count == self.config_.replace_count:
                     noise = np.random.normal(scale = scale,
                                              size = [1, self.config_.num_classes, self.config_.data_dim + 1])
                     self.particles_[i: i + 1, ...] = new_center + noise
+                    eliminate += 1
                     break
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)

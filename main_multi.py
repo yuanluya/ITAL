@@ -20,12 +20,12 @@ def main():
     sess = tf.Session(config = tfconfig)
     np.random.seed(400)
 
-    mode_idx = 0
+    mode_idx = 1
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
 
-    lr = 1e-3
-    num_classes = 4
+    lr = 3e-4
+    num_classes = 10
     dd = int(sys.argv[1])
     dps = 3 * dd
     num_particles = 1000
@@ -35,8 +35,8 @@ def main():
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                       'transform': mode == 'imit', 'num_classes': num_classes})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr,
-                       'num_classes': num_classes, 'noise_scale_min': 0, 'noise_scale_max': 0.1,
-                       'noise_scale_decay': 500, 'replace_count': 5})
+                       'num_classes': num_classes, 'noise_scale_min': 0.01, 'noise_scale_max': 0.1,
+                       'noise_scale_decay': 2500, 'replace_count': 5})
     print(config_LS, config_T)
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
@@ -66,14 +66,9 @@ def main():
         data_choices3.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         if mode == 'omni':
-            if i < 500:
-                w, eliminate = learnerM.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i)
-            else:
-                w, eliminate = learnerM.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i)
+            w, eliminate = learnerM.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i)
         else:
             w, eliminate = learnerM.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i)
-        if i == 3500:
-            print(np.mean(np.std(learnerM.particles_, 0)))
         eliminates.append(eliminate)
         dists3.append(np.sum(np.square(w - teacher.gt_w_)))
         ws.append(w)
@@ -153,14 +148,8 @@ def main():
             data_idx = teacher.choose_sur(gradients_tea, losses, config_LS.lr)
         data_choices2.append(data_idx)
         data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
-        if True:#i < 3500:
-            w, _ = learnerM.learn(teacher.data_pool_, teacher.gt_y_, data_idx,
-                                gradients, i, random_prob = random_ratio)
-        else:
-            w, _ = learnerM.learn(teacher.data_pool_, teacher.gt_y_, data_idx,
-                                gradients, i, random_prob = random_ratio)
-        if i == 3500:
-            print(np.mean(np.std(learnerM.particles_, 0)))
+        w, _ = learnerM.learn(teacher.data_pool_, teacher.gt_y_, data_idx,
+                              gradients, i, random_prob = random_ratio)
         ws0.append(w)
         dists2.append(np.sum(np.square(w - teacher.gt_w_)))
     line0, = plt.plot(dists2, label = 'zero')
@@ -192,8 +181,8 @@ def main():
     plt.legend([line0, line1, line2, line3],#, line3S],
                ['zero', 'one', 'compare',
                 'pragmatic, %f' % (config_LS.lr)], prop={'size': 12})
-    plt.title('%s class: %d: dim:%d_data:%d/%d_particle:%d_noise: %f, %f, %d' %\
-              (mode, num_classes, dd, config_T.sample_size, dps, num_particles,
+    plt.title('%s class: %d: dim:%d_data:%d/%d/%d_particle:%d_noise: %f, %f, %d' %\
+              (mode, num_classes, dd, config_LS.replace_count, config_T.sample_size, dps, num_particles,
                config_LS.noise_scale_min, config_LS.noise_scale_max, config_LS.noise_scale_decay))
     plt.show()
     #plt.savefig('figure_%s.png' % learnerM.loss_type_)
