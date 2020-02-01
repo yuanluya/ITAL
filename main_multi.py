@@ -31,9 +31,12 @@ def main():
     num_particles = 1000
     train_iter_smart = 20000 #2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
+    
+    dx = np.load("/home/Datasets/MNIST/mnist_train_features_logit.npy")#[:20000]
+    dy = np.load("/home/Datasets/MNIST/mnist_train_labels_logit.npy")#[:20000]
 
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
-                      'transform': mode == 'imit', 'num_classes': num_classes})
+                      'transform': mode == 'imit', 'num_classes': num_classes, 'data_x': None, 'data_y':None})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr,
                        'num_classes': num_classes, 'noise_scale_min': 0, 'noise_scale_max': 0.1,
                        'noise_scale_decay': 500, 'replace_count': 5})
