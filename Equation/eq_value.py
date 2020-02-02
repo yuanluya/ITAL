@@ -13,13 +13,6 @@ class EqValue:
         self.config_ = config
         self.init_w_ = init_w
         self.sess_ = sess
-        self.chars_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y', 'z', 'w'] + [' '] 
-        #self.eqt_num_ = self.config_.eqt_num
-        #def string_to_idx(s):
-            #elems = np.array(list(s))
-            #index = tf.expand_dims(tf.map_fn(lambda x: self.chars_.index(x), elems, dtype=tf.int32), -1)
-            #index = np.random.randint(config.num_character + 1, size = [9, 1])
-            #return index
 
         
         self.lower_eqs_idx_ = tf.placeholder(tf.int32, shape = [None, None, 1])
@@ -54,23 +47,40 @@ class EqValue:
 
         self.loss_ = 0.5 * tf.reduce_sum(tf.square(self.weight_)) +\
             self.config_.C * tf.reduce_sum(tf.maximum(1 - self.diff_vals_, 0))
+        #learning_rate = tf.train.exponential_decay(self.config_.lr, 5000, 5000, 0.1, staircase=True)
         self.opt_ = tf.train.AdamOptimizer(learning_rate = self.config_.lr)
         self.train_op_ = self.opt_.minimize(self.loss_)
 
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 15, 'C': 1, 'lr': 1e-4, 'num_character': 20})
+    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 5e-5, 'num_character': 20})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
     eqv = EqValue(eqv_config, init_w, sess)
 
-    train_iter = 10000
+    train_iter = 20000
     init = tf.global_variables_initializer()
     sess.run(init)
 
     data = np.load('../Data/equations_encoded.npy', allow_pickle=True)
-    batch_size = 10
-    data_size = 10000
+    batch_size = 100
+    data_size = 100000
     dists0 = []
+    accuracy = []
+    accuracy_test = []
+    test_sets = np.take(data, np.random.choice(data_size, batch_size))
+    lower_tests = []
+    higher_tests = []
+    for hist in test_sets:
+        index = np.sort(np.random.choice(len(hist), 2))
+        lower_tests.append(hist[index[0]])
+        higher_tests.append(hist[index[1]])
+    M00 = max(len(a) for a in lower_tests)
+    M11 = max(len(a) for a in higher_tests)
+    M = max(M00,M11)
+    lower_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in lower_tests])
+    higher_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_tests])
+    lower_tests_idx = np.expand_dims(lower_tests, axis=-1)
+    higher_tests_idx = np.expand_dims(higher_tests, axis=-1)
     for _ in tqdm(range(train_iter)):
         lower_equations = []
         higher_equations = []
@@ -87,13 +97,22 @@ def main():
         higher_equations = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_equations])
         lower_eqs_idx = np.expand_dims(lower_equations, axis=-1)
         higher_eqs_idx = np.expand_dims(higher_equations, axis=-1)
-        _, w, loss = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_], {eqv.lower_eqs_idx_: lower_eqs_idx, \
+        _, w, loss, lower_vals, higher_vals = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_eqs_idx, \
                                                     eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
         dists0.append(loss)
-
+        accuracy_batch = np.count_nonzero(lower_vals < higher_vals)/100
+        accuracy.append(accuracy_batch)
+        print(accuracy_batch)
+        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx,\
+                                                    eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
+        accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/100)
     plt.figure()
-    plt.plot(dists0)
-    plt.savefig('value func.png')
+    plt.plot(accuracy, label="accuracy by batch")
+    plt.plot(accuracy_test, label="accuracy on test set")
+    plt.xlabel("iteration")
+    plt.ylabel("accuracy")
+    plt.legend()
+    plt.savefig('value accurary_batch_100_constant_learning_rate_1e-5.png')
     return
 
 if __name__ == '__main__':
