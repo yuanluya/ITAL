@@ -20,11 +20,11 @@ def main():
     sess = tf.Session(config = tfconfig)
     np.random.seed(400)
 
-    mode_idx = 1
+    mode_idx = 0
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
 
-    lr = 3e-4
+    lr = 1e-3
     num_classes = 10
     dd = int(sys.argv[1])
     dps = 3 * dd
@@ -32,14 +32,14 @@ def main():
     train_iter_smart = 20000 #2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
     
-    dx = np.load("/home/Datasets/MNIST/mnist_train_features_logit.npy")#[:20000]
-    dy = np.load("/home/Datasets/MNIST/mnist_train_labels_logit.npy")#[:20000]
+    dx = np.load("MNIST/mnist_train_features.npy")#[:20000]
+    dy = np.load("MNIST/mnist_train_labels.npy")#[:20000]
 
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
-                      'transform': mode == 'imit', 'num_classes': num_classes, 'data_x': None, 'data_y':None})
+                      'transform': mode == 'imit', 'num_classes': num_classes, 'data_x': dx, 'data_y': dy})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr,
-                       'num_classes': num_classes, 'noise_scale_min': 0.01, 'noise_scale_max': 0.1,
-                       'noise_scale_decay': 2500, 'replace_count': 5})
+                       'num_classes': num_classes, 'noise_scale_min': 0.02, 'noise_scale_max': 0.1,
+                       'noise_scale_decay': 2500, 'replace_count': 10})
     print(config_LS, config_T)
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)

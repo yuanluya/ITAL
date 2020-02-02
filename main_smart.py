@@ -190,9 +190,33 @@ def main():
         dists2.append(np.sum(np.square(w - teacher.gt_w_)))
     line2_1, = plt.plot(dists2, label = 'one')
 
-    plt.legend([line_neg1, line0, line1, line2, line2_1, line3, line3S],
+    learnerS.reset(init_ws)
+    w = learnerS.current_mean_
+    dists2 = [np.sum(np.square(w - teacher.gt_w_))]
+    data_choices2 = []
+    random_ratio = 0
+    for i in tqdm(range(train_iter_smart)):
+        teacher.sample()
+        gradients, losses = learnerS.get_grads(teacher.data_pool_, teacher.gt_y_)
+        if mode == 'omni':
+            data_idx = teacher.choose(gradients, w, config_LS.lr)
+            #data_idx = np.random.randint(config_T.data_pool_size)
+        elif mode == 'surr':
+            data_idx = teacher.choose_sur(gradients, losses, config_LS.lr)
+        else:
+            stu2tea = np.concatenate([np.matmul(w[:, 0: -1], teacher.t_mat_.T), w[0, -1] * np.ones([1, 1])], 1)
+            gradients_tea, _ = learnerS.get_grads(teacher.data_pool_tea_, teacher.gt_y_, stu2tea)
+            data_idx = teacher.choose_sur(gradients_tea, losses, config_LS.lr)
+        data_choices2.append(data_idx)
+        data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
+        w, _ = learnerS.learn(teacher.data_pool_, teacher.gt_y_, data_idx,
+                              gradients, random_prob = random_ratio)
+        dists2.append(np.sum(np.square(w - teacher.gt_w_)))
+    line2_0, = plt.plot(dists2, label = 'zero')
+
+    plt.legend([line_neg1, line0, line1, line2, line2_0, line2_1, line3, line3S],
                ['batch', 'sgd', 'machine teaching: %d, %f' % (np.unique(data_choices1).shape[0], config_L.lr),\
-                'compare', 'compare_1', 'pragmatic, %f' % (config_LS.lr), 'pragmatic_full'], prop={'size': 12})
+                'compare', 'compare_0,', 'compare_1', 'pragmatic, %f' % (config_LS.lr), 'pragmatic_full'], prop={'size': 12})
     plt.title('%s: %s_dim:%d_data:%d_particle:%d' % (mode, learnerS.loss_type_, dd, dps, num_particles))
     plt.show()
     #plt.savefig('figure_%s.png' % learnerS.loss_type_)

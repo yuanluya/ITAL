@@ -44,9 +44,9 @@ class LearnerSM:
                             2 * self.config_.lr * np.sum((self.current_mean_ - self.particles_) * gradient, axis = (1, 2))
         
         gradients_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
-        # scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
-        #         np.exp (-1 * step / self.config_.noise_scale_decay)
-        scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
+        scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
+                np.exp (-1 * step / self.config_.noise_scale_decay)
+        #scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
 
         for i in range(self.config_.particle_num):
             if random_prob is not None:
@@ -98,9 +98,9 @@ class LearnerSM:
         gradient = gradients[data_idx: data_idx + 1, ...]
         new_center = self.current_mean_ - self.config_.lr * gradient
         val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient))
-        # scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
-        #         np.exp (-1 * step / self.config_.noise_scale_decay)
-        scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
+        scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
+                np.exp (-1 * step / self.config_.noise_scale_decay)
+        #scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
         gradient_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
         for i in range(self.config_.particle_num):
             val_target_temp = val_target - 2 * self.config_.lr * (prev_loss[data_idx] - new_particle_losses[i][data_idx])

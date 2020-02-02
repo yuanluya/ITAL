@@ -64,7 +64,6 @@ instance/
 .webassets-cache
 
 # vs code
-
 *.vscode
 
 # Scrapy stuff:
@@ -120,3 +119,6 @@ sftp*
 
 #Data
 Data/*
+
+#npy
+*.npy
