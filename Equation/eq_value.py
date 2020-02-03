@@ -52,7 +52,7 @@ class EqValue:
         self.train_op_ = self.opt_.minimize(self.loss_)
 
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 5e-5, 'num_character': 20})
+    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 2.5e-5, 'num_character': 20})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
     eqv = EqValue(eqv_config, init_w, sess)
@@ -70,24 +70,40 @@ def main():
     test_sets = np.take(data, np.random.choice(data_size, batch_size))
     lower_tests = []
     higher_tests = []
+    not_good_examples = []
+    good_examples = []
     for hist in test_sets:
-        index = np.sort(np.random.choice(len(hist), 2))
+        while True:
+            index = np.random.choice(len(hist), 2)
+            if index[0] != index[1]:
+                break
+        index = np.sort(index)
         lower_tests.append(hist[index[0]])
         higher_tests.append(hist[index[1]])
     M00 = max(len(a) for a in lower_tests)
     M11 = max(len(a) for a in higher_tests)
     M = max(M00,M11)
+    weights = []
     lower_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in lower_tests])
     higher_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_tests])
     lower_tests_idx = np.expand_dims(lower_tests, axis=-1)
     higher_tests_idx = np.expand_dims(higher_tests, axis=-1)
+
+    np.save('lower_tests.npy', lower_tests)
+    np.save('higher_tests.npy', higher_tests)
+    f = open('test_results.txt', 'w')
+                                                                            
     for _ in tqdm(range(train_iter)):
         lower_equations = []
         higher_equations = []
         idx = np.random.choice(data_size, batch_size)
         hists = np.take(data, idx)
         for hist in hists:
-            index = np.sort(np.random.choice(len(hist), 2))
+            while True:
+                index = np.random.choice(len(hist), 2)
+                if index[0] != index[1]:
+                    break
+            index = np.sort(index)
             lower_equations.append(hist[index[0]])
             higher_equations.append(hist[index[1]])
         M0 = max(len(a) for a in lower_equations)
@@ -102,17 +118,27 @@ def main():
         dists0.append(loss)
         accuracy_batch = np.count_nonzero(lower_vals < higher_vals)/100
         accuracy.append(accuracy_batch)
-        print(accuracy_batch)
+        #print(accuracy_batch)
         test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx,\
                                                     eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
         accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/100)
+        index_l = ''
+        for j in range(100):
+            if test_lower_vals_[j] >= test_higher_vals_[j]:
+                index_l += str(j)
+                index_l += ','
+        #print(index_l)
+        f.write(index_l)
+        f.write('\n')
+
+    f.close()
     plt.figure()
     plt.plot(accuracy, label="accuracy by batch")
     plt.plot(accuracy_test, label="accuracy on test set")
     plt.xlabel("iteration")
     plt.ylabel("accuracy")
     plt.legend()
-    plt.savefig('value accurary_batch_100_constant_learning_rate_1e-5.png')
+    plt.savefig('value_accurary_batch_100_constant_learning_rate_2.5e-5_rnn_20.png')
     return
 
 if __name__ == '__main__':
