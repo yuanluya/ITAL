@@ -1,4 +1,4 @@
-from functools import cmp_to_key
+rom functools import cmp_to_key
 from collections import defaultdict
 import numpy as np
 from scipy.special import comb
@@ -145,7 +145,7 @@ class Equation:
         if g == 1:
             return seq_tuple, False
         else:
-            seq_tuple[1][pos] = '%d/%d' % (nominator, denominator)
+            seq_tuple[1][pos] = '%d/%d' % (nominator/g, denominator/g)
             return seq_tuple, True
         
 
