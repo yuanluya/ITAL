@@ -1,4 +1,4 @@
-rom functools import cmp_to_key
+from functools import cmp_to_key
 from collections import defaultdict
 import numpy as np
 from scipy.special import comb
