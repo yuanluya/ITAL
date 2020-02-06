@@ -16,6 +16,7 @@ class TeacherM:
             mean = np.random.uniform(low = -1, high = 1, size = self.config_.data_dim)
             self.means_.append(mean)
         if self.config_.data_x is not None:
+            print('<External data and label>')
             self.data_pool_full_ = np.concatenate([self.config_.data_x,
                                              np.ones([self.config_.data_x.shape[0], 1])], 1)
             self.gt_y_full_ = self.config_.data_y
@@ -37,9 +38,13 @@ class TeacherM:
                                              np.ones([self.config_.data_pool_size_class * self.config_.num_classes, 1])], 1)
             self.gt_y_full_ = np.concatenate(self.gt_y_full_)
             self.gt_y_label_full_ = np.concatenate(self.gt_y_label_full_)
-        self.clf_ = LogisticRegression(random_state = 0, fit_intercept = False, max_iter = 5000, solver = 'sag')
-        self.clf_.fit(self.data_pool_full_, self.gt_y_label_full_)
-        self.gt_w_ = self.clf_.coef_
+        if self.config_.gt_w is None:
+            self.clf_ = LogisticRegression(random_state = 0, fit_intercept = False, max_iter = 5000, solver = 'sag')
+            self.clf_.fit(self.data_pool_full_, self.gt_y_label_full_)
+            self.gt_w_ = self.clf_.coef_
+        else:
+            print('<External gt weights (included bias)>')
+            self.gt_w_ = self.config_.gt_w
         self.linear_vals_ = np.matmul(self.data_pool_full_, self.gt_w_.T)
         softmax = np.exp(self.linear_vals_)
         self.softmax_ = softmax / np.sum(softmax, 1, keepdims = True)
