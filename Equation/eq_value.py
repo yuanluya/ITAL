@@ -80,6 +80,7 @@ def main():
     init = tf.global_variables_initializer()
     sess.run(init)
 
+    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_20'
     data = np.load('../Data/equations_encoded.npy', allow_pickle=True)
     batch_size = 100
     data_size = 100000
@@ -112,7 +113,7 @@ def main():
     np.save('higher_tests.npy', higher_tests)
     f = open('test_results.txt', 'w')
                                                                             
-    for _ in tqdm(range(train_iter)):
+    for itr in tqdm(range(train_iter)):
         lower_equations = []
         higher_equations = []
         idx = np.random.choice(data_size, batch_size)
@@ -149,7 +150,9 @@ def main():
         #print(index_l)
         f.write(index_l)
         f.write('\n')
-
+        if (itr + 1) % 1000 == 0:
+            p1_policy.save_ckpt(ckpt_dir, itr + 1)
+            p2_policy.save_ckpt(ckpt_dir, itr + 1)
     f.close()
     plt.figure()
     plt.plot(accuracy, label="accuracy by batch")
