@@ -25,18 +25,24 @@ def main():
     mode = modes[mode_idx]
 
     lr = 1e-3
-    num_classes = 10
     dd = int(sys.argv[1])
+    num_classes = 10 if dd == 24 or dd == 30 else 4
     dps = 3 * dd
     num_particles = 1000
     train_iter_smart = 20000 #2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
     
-    dx = np.load("MNIST/mnist_train_features.npy")#[:20000]
-    dy = np.load("MNIST/mnist_train_labels.npy")#[:20000]
+    if dd == 24:
+        dx = np.load("MNIST/mnist_train_features.npy")#[:20000]
+        dy = np.load("MNIST/mnist_train_labels.npy")#[:20000]
+        gt_w = np.load("MNIST/mnist_tf_gt_weights.npy")
+    else:
+        dx = None
+        dy = None
+        gt_w = None
 
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
-                      'transform': mode == 'imit', 'num_classes': num_classes, 'data_x': dx, 'data_y': dy})
+                      'transform': mode == 'imit', 'num_classes': num_classes, 'data_x': dx, 'data_y': dy, 'gt_w': gt_w})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr,
                        'num_classes': num_classes, 'noise_scale_min': 0.02, 'noise_scale_max': 0.1,
                        'noise_scale_decay': 2500, 'replace_count': 10})
