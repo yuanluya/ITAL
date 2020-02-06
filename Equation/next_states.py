@@ -1,5 +1,7 @@
 import numpy as np
 from equation import Equation
+from eq_value import EqValue
+
 from copy import deepcopy
 
 def scale(seq_tuple, pos, scale):
@@ -149,38 +151,43 @@ def constant_multiply(seq_tuple):
 def next_states(seq_tuple):
     length = len(seq_tuple[0])
     states = []
-    
+    count = 0
     for pos in range(length):
         for s in range(10):
             if s > 1:
                 seq_t, valid = scale(seq_tuple, pos, s)
                 if valid:
                     states.extend([seq_t[:]])
-                    #print('call scale', pos)
-                    #print(equation_str(seq_tuple))
+                    count += 1
+                    print('call scale', pos)
+                    print(equation_str(seq_t))
         seq_t, valid = reduction(seq_tuple, pos)
         if valid:
             states.extend([seq_t[:]])
-            #print('call reduction', pos)
-            #print(equation_str(seq_tuple))
+            count += 1
+            print('call reduction', pos)
+            print(equation_str(seq_t))
         for pos2 in range(length):
             seq_t, valid = move(seq_tuple, pos, pos2)
             if valid:
+                count += 1
                 states.extend([seq_t[:]])
-                print('call move', pos)
-                print(equation_str(seq_tuple))
+                print('call move', pos, pos2)
+                print(equation_str(seq_t))
         for pos2 in range(length)[pos+1:]:
             seq_t, valid = merge(seq_tuple, pos, pos2)
             if valid:
+                count += 1
                 states.extend([seq_t[:]])
-                #print('call merge', pos)
-                #print(equation_str(seq_tuple))
+                print('call merge', pos, pos2)
+                print(equation_str(seq_t))
     seq_t, valid = constant_multiply(seq_tuple)
     if valid:
+        count += 1
         states.extend([seq_t[:]])
         print('call constant_multiply')                                                                                                                                       
-        print(equation_str(seq_tuple))
-    return states
+        print(equation_str(seq_t))
+    return states, count
         
 def equation_str(seq_tuple):
     equation = ''
@@ -191,24 +198,28 @@ def equation_str(seq_tuple):
     
 def main():
     eq = Equation(4, 3, 20, 5)
-    '''
+    count_all = 0
+    
     for i in range(100):
         equation = eq.generate()
         #equation = [['-', '', '-', '-'], ['2/10', '', '34/2', '17'], ['x^3', '=', 'x^1z^1w^1', 'x^1z^1w^1']]
-        print('equation is')
-        print(equation_str(equation))
+        #print('equation is')
+        #print(equation_str(equation))
         #print(equation)
     
-        states = next_states(equation)
+        states, count = next_states(equation)
+        count_all += count
+    print(count_all/100)
     '''
     equation = eq.generate()
     print('equation is')                                                                                                                                                                   
     print(equation_str(equation))
-    states = next_states(equation)
+    states, count = next_states(equation)
     print('next states are')
     for state in states:
         print(equation_str(state))
         print()
-    
+    '''
+    #
 if __name__ == '__main__':
     main()

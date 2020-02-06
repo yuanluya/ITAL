@@ -51,13 +51,32 @@ class EqValue:
         self.opt_ = tf.train.AdamOptimizer(learning_rate = self.config_.lr)
         self.train_op_ = self.opt_.minimize(self.loss_)
 
+    def save_ckpt(self, ckpt_dir, iteration):
+        if not os.path.exists(ckpt_dir):
+            os.makedirs(ckpt_dir)
+        if not os.path.exists(os.path.join(ckpt_dir, self.name_)):
+            os.makedirs(os.path.join(ckpt_dir, self.name_))
+
+        self.total_saver_.save(self.sess, os.path.join(ckpt_dir, self.name_, 'checkpoint'), global_step = iteration+1)
+        print('Saved %s ckpt <%d> to %s' % (self.name_, iteration+1, ckpt_dir))
+
+    def restore_ckpt(self, ckpt_dir):
+        ckpt_status = tf.train.get_checkpoint_state(os.path.join(ckpt_dir, self.name_))
+        if ckpt_status:
+            self.total_loader_.restore(self.sess, ckpt_status.model_checkpoint_path)
+        if ckpt_status:
+            print('%s Load model from %s' % (self.name_, ckpt_status.model_checkpoint_path))
+            return True
+        print('Fail to load model from Checkpoint Directory')
+        return False
+    
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 2.5e-5, 'num_character': 20})
+    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 5e-5, 'num_character': 20})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
     eqv = EqValue(eqv_config, init_w, sess)
 
-    train_iter = 20000
+    train_iter = 10000
     init = tf.global_variables_initializer()
     sess.run(init)
 
@@ -67,7 +86,7 @@ def main():
     dists0 = []
     accuracy = []
     accuracy_test = []
-    test_sets = np.take(data, np.random.choice(data_size, batch_size))
+    test_sets = np.take(data, np.random.choice(data_size, 1000))
     lower_tests = []
     higher_tests = []
     not_good_examples = []
@@ -120,10 +139,10 @@ def main():
         accuracy.append(accuracy_batch)
         #print(accuracy_batch)
         test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx,\
-                                                    eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
-        accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/100)
+                                                    eqv.initial_states_: np.zeros([1000, eqv.config_.rnn_dim])})
+        accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/1000)
         index_l = ''
-        for j in range(100):
+        for j in range(1000):
             if test_lower_vals_[j] >= test_higher_vals_[j]:
                 index_l += str(j)
                 index_l += ','
@@ -138,7 +157,7 @@ def main():
     plt.xlabel("iteration")
     plt.ylabel("accuracy")
     plt.legend()
-    plt.savefig('value_accurary_batch_100_constant_learning_rate_2.5e-5_rnn_20.png')
+    plt.savefig('value_accurary_batch_100_constant_learning_rate_5e-5_rnn_20_10000.png')
     return
 
 if __name__ == '__main__':
