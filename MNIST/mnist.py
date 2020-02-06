@@ -3,8 +3,10 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
+import pdb
+
 class multiclass_cn:
-    def __init__(self, input_shape, label_shape, config, lr):
+    def __init__(self, input_shape, label_shape, feat_dim, config, lr):
         self.inputs_ = tf.placeholder(tf.float32, [None, input_shape, input_shape, 1])
         self.labels_ = tf.placeholder(tf.float32, [None, label_shape])
 
@@ -16,8 +18,11 @@ class multiclass_cn:
                 out = tf.nn.max_pool(out, [1, 2, 2, 1], [1, 2, 2, 1], padding = 'SAME')
             self.layers_.append(out)
         
-        self.features_ = tf.layers.dense(tf.layers.flatten(self.layers_[-1]), units = 24, activation = tf.nn.leaky_relu)
-        self.logits_ = tf.layers.dense(self.features_, units = 10, activation = None)
+        self.features_ = tf.layers.dense(tf.layers.flatten(self.layers_[-1]), units = feat_dim, activation = tf.nn.leaky_relu)
+        self.logits_ = tf.layers.dense(self.features_, units = 10, activation = None, name = 'logit')
+
+        self.params_ = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)\
+                                     if v.name.startswith('logit')]
         self.true_ = tf.equal(tf.argmax(self.logits_,1), tf.argmax(self.labels_,1))
         self.loss_ = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels = self.labels_, logits = self.logits_))
         self.accuracy_ = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.logits_,1), tf.argmax(self.labels_,1)), tf.float32))
@@ -32,15 +37,15 @@ def train_mnist():
 
     input_shape = 28
     label_shape = 10
+    feat_dim = 24
     epochs = 500
     batch_size = 128
     config = [(64, 3, 1, True), (32, 3, 1, True), (32, 3, 1, False)]
     initial_lr = 1e-3
     accuracy = []
     loss = []
-    train_features = np.ndarray((1, 10))
-    train_labels = np.ndarray((1, 10))
-    cf = multiclass_cn(input_shape, label_shape, config, initial_lr)
+    train_features = np.ndarray((0, feat_dim))
+    cf = multiclass_cn(input_shape, label_shape, feat_dim, config, initial_lr)
     sess = tf.Session(config = configuration)
     init = tf.global_variables_initializer()
     sess.run(init)
@@ -50,19 +55,16 @@ def train_mnist():
         batch_xs, batch_ys = mnist.train.next_batch(batch_size)
         batch_xs = np.reshape(batch_xs, (batch_size, input_shape, input_shape, 1))
         batch_ys = np.reshape(batch_ys, (batch_size, label_shape))
-        _, l, acc, feat, logit, t = sess.run([cf.optimizer_, cf.loss_, cf.accuracy_, cf.features_, cf.logits_, cf.true_], feed_dict={cf.inputs_: batch_xs, cf.labels_: batch_ys})
+        _, l, acc, feat, logit, t = sess.run([cf.optimizer_, cf.loss_, cf.accuracy_, cf.features_, cf.logits_, cf.true_],
+                                             feed_dict={cf.inputs_: batch_xs, cf.labels_: batch_ys})
         accuracy.append(acc)
         loss.append(l)
-        train_features = np.concatenate((train_features, logit))
-        train_labels = np.concatenate((train_labels, batch_ys))
         if i % 100 == 0:
-            print(feat[0])
-            print(logit[0])
-            print(batch_ys[0])
-            print(t[0])
+            # print(feat[0])
+            # print(logit[0])
+            # print(batch_ys[0])
+            # print(t[0])
             print("Iteration %d loss: %f accuracy: %f\n" % (i, l, acc))
-    train_features = train_features[1:]
-    train_labels = train_labels[1:]
 
     print("Start Testing.")
     test_xs = np.reshape(mnist.test.images, (-1, input_shape, input_shape, 1))
@@ -70,11 +72,26 @@ def train_mnist():
     test_features, test_loss, test_acc = sess.run([cf.features_, cf.loss_,  cf.accuracy_], feed_dict={cf.inputs_: test_xs, cf.labels_: test_ys})
     print("Test loss: %f accuracy: %f" % (test_loss, test_acc))
 
+    print('getting training image features')
+    all_xs = mnist.train.images
+    all_ys = mnist.train.labels
+    all_xs = np.reshape(all_xs, (all_xs.shape[0], input_shape, input_shape, 1))
+    all_ys = np.reshape(all_ys, (all_xs.shape[0], label_shape))
+    current_img_idx = 0
+    while current_img_idx < all_xs.shape[0]:
+        batch_xs = all_xs[current_img_idx: current_img_idx + batch_size, ...]
+        feat = sess.run(cf.features_, feed_dict={cf.inputs_: batch_xs})
+        train_features = np.concatenate((train_features, feat))
+        current_img_idx += batch_size
+    
+    gt_weights, gt_bias = sess.run(cf.params_)
+    gt_weights = np.concatenate([gt_weights, np.expand_dims(gt_bias, 0)], 0).T
 
-    np.save("mnist_train_features_logit.npy", train_features)
-    np.save("mnist_test_features_logit.npy", test_features)
-    np.save("mnist_train_labels_logit.npy", train_labels)
-    np.save("mnist_test_labels_logit.npy", test_ys)
+    np.save("mnist_train_features.npy", train_features)
+    np.save("mnist_test_features.npy", test_features)
+    np.save("mnist_train_labels.npy", all_ys)
+    np.save("mnist_test_labels.npy", test_ys)
+    np.save("mnist_tf_gt_weights.npy", gt_weights)
 
     plt.plot(loss, 'b', label = "Train Loss")
     # plt.plot(test_loss, 'r', label = "Test Loss")

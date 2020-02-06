@@ -119,6 +119,7 @@ sftp*
 
 #Data
 Data/*
+*.gz
 
 #npy
 *.npy
