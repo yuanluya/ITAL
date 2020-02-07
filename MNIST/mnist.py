@@ -18,13 +18,15 @@ class multiclass_cn:
                 out = tf.nn.max_pool(out, [1, 2, 2, 1], [1, 2, 2, 1], padding = 'SAME')
             self.layers_.append(out)
         
-        self.features_ = tf.layers.dense(tf.layers.flatten(self.layers_[-1]), units = feat_dim, activation = tf.nn.leaky_relu)
+        self.features_ = tf.layers.dense(tf.layers.flatten(self.layers_[-1]), units = feat_dim, activation = tf.nn.tanh)
         self.logits_ = tf.layers.dense(self.features_, units = 10, activation = None, name = 'logit')
 
         self.params_ = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)\
                                      if v.name.startswith('logit')]
         self.true_ = tf.equal(tf.argmax(self.logits_,1), tf.argmax(self.labels_,1))
         self.loss_ = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels = self.labels_, logits = self.logits_))
+        self.reg_loss_ = tf.add_n([tf.nn.l2_loss(v) for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if 'bias' not in v.name])
+        self.loss_ += 0 * self.reg_loss_
         self.accuracy_ = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.logits_,1), tf.argmax(self.labels_,1)), tf.float32))
 
         self.optimizer_ = tf.train.AdamOptimizer(learning_rate = lr, beta1 = 0.7, beta2 = 0.95).minimize(self.loss_)

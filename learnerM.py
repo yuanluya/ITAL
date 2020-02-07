@@ -35,11 +35,11 @@ class LearnerSM:
                                                         self.W_: self.particles_,
                                                         self.y_: data_y[data_idx: data_idx + 1, :]})
         self.particles_ -= self.config_.lr * gradient_tf[0]
-
+        move_dists = np.sum(np.square(gradient_tf[0]), axis = (1, 2))
         eliminate = 0
         #if smarter:
         gradient = gradients[data_idx: data_idx + 1, ...]
-        new_center = self.current_mean_ - self.config_.lr * gradient
+        target_center = self.current_mean_ - self.config_.lr * gradient
         val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient)) -\
                             2 * self.config_.lr * np.sum((self.current_mean_ - self.particles_) * gradient, axis = (1, 2))
         
@@ -48,14 +48,12 @@ class LearnerSM:
                 np.exp (-1 * step / self.config_.noise_scale_decay)
         #scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
 
+        to_be_replaced = []
         for i in range(self.config_.particle_num):
             if random_prob is not None:
                 rd = np.random.choice(2, p = [1 - random_prob, random_prob])
                 if rd == 1:
-                    if random_prob != 1:
-                        noise = np.random.normal(scale = scale,
-                                                 size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-                    self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
+                    to_be_replaced.append(i)
                     eliminate += 1
                 continue
             particle_cache = self.current_mean_ - self.particles_[i: i + 1, ...]
@@ -64,20 +62,27 @@ class LearnerSM:
                 if j != data_idx:
                     val_cmp = gradients_cache[j] - 2 * self.config_.lr * np.sum(particle_cache * gradients[j: j + 1, ...])
                     if val_cmp < val_target[i]:
-                        # rd = np.random.choice(2, p = [0.5, 0.5])
-                        # if rd == 1:
                         count += 1
                     if count == self.config_.replace_count:
-                        noise = np.random.normal(scale = scale,
-                                                    size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-                        # noise = t.rvs(df = 5, scale = scale,
-                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-                        self.particles_[i: i + 1, ...] = new_center + noise
+                        to_be_replaced.append(i)
                         eliminate += 1
                         break
         #pdb.set_trace()
-        self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
+        to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
+        if len(to_be_replaced) > 0:
+            if len(to_be_kept) > 0:
+                min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])]
+            new_center = target_center if len(to_be_replaced) == self.config_.particle_num or step < 10\
+                         else self.config_.target_ratio * target_center + self.config_.new_ratio * self.particles_[min_idx: min_idx + 1, ...]
+            #scale = 1.1 * abs(new_center - self.current_mean_)
+        for i in to_be_replaced:
+            noise = np.random.normal(scale = scale,
+                                     size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                        # noise = t.rvs(df = 5, scale = scale,
+                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+            self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
 
+        self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
         return self.current_mean_, eliminate
 
     def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss, step):
@@ -87,6 +92,7 @@ class LearnerSM:
                                                         self.y_: data_y[data_idx: data_idx + 1, :]})
         
         self.particles_ -= self.config_.lr * gradient_tf[0]
+        move_dists = np.sum(np.square(gradient_tf[0]), axis = (1, 2))
         for i in range(self.config_.particle_num):
             losses = self.sess_.run(self.losses_, {self.X_: data_pool,
                                                     self.W_: self.particles_[i: i + 1, ...],
@@ -96,11 +102,12 @@ class LearnerSM:
         eliminate = 0
         #if smarter:
         gradient = gradients[data_idx: data_idx + 1, ...]
-        new_center = self.current_mean_ - self.config_.lr * gradient
+        target_center = self.current_mean_ - self.config_.lr * gradient
         val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient))
         scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
                 np.exp (-1 * step / self.config_.noise_scale_decay)
         #scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
+        to_be_replaced = []
         gradient_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
         for i in range(self.config_.particle_num):
             val_target_temp = val_target - 2 * self.config_.lr * (prev_loss[data_idx] - new_particle_losses[i][data_idx])
@@ -110,11 +117,23 @@ class LearnerSM:
                 if j != data_idx and val_cmps[j] < val_target_temp:
                     count += 1
                 if count == self.config_.replace_count:
-                    noise = np.random.normal(scale = scale,
-                                             size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-                    self.particles_[i: i + 1, ...] = new_center + noise
+                    to_be_replaced.append(i)
                     eliminate += 1
                     break
+        
+        to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
+        if len(to_be_replaced) > 0:
+            if len(to_be_kept) > 0:
+                min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])]
+            new_center = target_center if len(to_be_replaced) == self.config_.particle_num or step < 10\
+                         else self.config_.target_ratio * target_center + self.config_.new_ratio * self.particles_[min_idx: min_idx + 1, ...]
+            #scale = 1 * abs(new_center - self.current_mean_)
+        for i in to_be_replaced:
+            noise = np.random.normal(scale = scale,
+                                     size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                        # noise = t.rvs(df = 5, scale = scale,
+                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+            self.particles_[i: i + 1, ...] = new_center + noise
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 

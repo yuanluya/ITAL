@@ -20,7 +20,7 @@ def main():
     sess = tf.Session(config = tfconfig)
     np.random.seed(1000)
 
-    mode_idx = 1
+    mode_idx = 0
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
 
@@ -29,8 +29,8 @@ def main():
     dd = 20 if lt != 0 else 50
     dps = 2 * dd# + 150 * (lt == 2)
     num_particles = 1000
-    train_iter_simple = 1000
-    train_iter_smart = 1000 #2500 + 2500 * (lt == 0)
+    train_iter_simple = 4000
+    train_iter_smart = 4000 #2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
 
     config_T = edict({'data_pool_size': dps, 'data_dim': dd, 'loss_type': lt, 'lr': 0.1 * lr, 'transform': mode == 'imit', 'sample_size': 20})
