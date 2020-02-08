@@ -5,6 +5,7 @@ from tqdm import tqdm
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import os
 
 import pdb
 
@@ -51,19 +52,22 @@ class EqValue:
         self.opt_ = tf.train.AdamOptimizer(learning_rate = self.config_.lr)
         self.train_op_ = self.opt_.minimize(self.loss_)
 
+        self.loader_ = tf.train.Saver([v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)])
+        self.saver_ = tf.train.Saver([v for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)],max_to_keep=None)
+        
     def save_ckpt(self, ckpt_dir, iteration):
         if not os.path.exists(ckpt_dir):
             os.makedirs(ckpt_dir)
         if not os.path.exists(os.path.join(ckpt_dir)):
             os.makedirs(os.path.join(ckpt_dir))
 
-        self.total_saver_.save(self.sess, os.path.join(ckpt_dir, 'checkpoint'), global_step = iteration+1)
+        self.saver_.save(self.sess_, os.path.join(ckpt_dir, 'checkpoint'), global_step = iteration+1)
         print('Saved ckpt <%d> to %s' % (iteration+1, ckpt_dir))
 
     def restore_ckpt(self, ckpt_dir):
         ckpt_status = tf.train.get_checkpoint_state(os.path.join(ckpt_dir))
         if ckpt_status:
-            self.total_loader_.restore(self.sess, ckpt_status.model_checkpoint_path)
+            self.loader_.restore(self.sess_, ckpt_status.model_checkpoint_path)
         if ckpt_status:
             print('Load model from %s' % (ckpt_status.model_checkpoint_path))
             return True
@@ -148,7 +152,7 @@ def main():
 
         test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, \
                                                     eqv.higher_eqs_idx_:higher_tests_idx, eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim])})
-                
+        print(test_lower_vals_.shape)
         accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
         index_l = ''
         for j in range(test_size):
@@ -159,7 +163,7 @@ def main():
         f.write(index_l)
         f.write('\n')
         if (itr + 1) % 1000 == 0:
-            eqv.save_ckpt(ckpt_dir, itr + 1)
+            eqv.save_ckpt(ckpt_dir, itr)
     print(encoding_max)
     print(encoding_min)
     f.close()
