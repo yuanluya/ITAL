@@ -54,18 +54,18 @@ class EqValue:
     def save_ckpt(self, ckpt_dir, iteration):
         if not os.path.exists(ckpt_dir):
             os.makedirs(ckpt_dir)
-        if not os.path.exists(os.path.join(ckpt_dir, self.name_)):
-            os.makedirs(os.path.join(ckpt_dir, self.name_))
+        if not os.path.exists(os.path.join(ckpt_dir)):
+            os.makedirs(os.path.join(ckpt_dir))
 
-        self.total_saver_.save(self.sess, os.path.join(ckpt_dir, self.name_, 'checkpoint'), global_step = iteration+1)
-        print('Saved %s ckpt <%d> to %s' % (self.name_, iteration+1, ckpt_dir))
+        self.total_saver_.save(self.sess, os.path.join(ckpt_dir, 'checkpoint'), global_step = iteration+1)
+        print('Saved ckpt <%d> to %s' % (iteration+1, ckpt_dir))
 
     def restore_ckpt(self, ckpt_dir):
-        ckpt_status = tf.train.get_checkpoint_state(os.path.join(ckpt_dir, self.name_))
+        ckpt_status = tf.train.get_checkpoint_state(os.path.join(ckpt_dir))
         if ckpt_status:
             self.total_loader_.restore(self.sess, ckpt_status.model_checkpoint_path)
         if ckpt_status:
-            print('%s Load model from %s' % (self.name_, ckpt_status.model_checkpoint_path))
+            print('Load model from %s' % (ckpt_status.model_checkpoint_path))
             return True
         print('Fail to load model from Checkpoint Directory')
         return False
@@ -151,8 +151,8 @@ def main():
         f.write(index_l)
         f.write('\n')
         if (itr + 1) % 1000 == 0:
-            p1_policy.save_ckpt(ckpt_dir, itr + 1)
-            p2_policy.save_ckpt(ckpt_dir, itr + 1)
+            eqv.save_ckpt(ckpt_dir, itr + 1)
+
     f.close()
     plt.figure()
     plt.plot(accuracy, label="accuracy by batch")
