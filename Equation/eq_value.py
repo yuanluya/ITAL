@@ -84,10 +84,11 @@ def main():
     data = np.load('../Data/equations_encoded.npy', allow_pickle=True)
     batch_size = 100
     data_size = 100000
+    test_size = 1000
     dists0 = []
     accuracy = []
     accuracy_test = []
-    test_sets = np.take(data, np.random.choice(data_size, 1000))
+    test_sets = np.take(data, range(test_size))
     lower_tests = []
     higher_tests = []
     not_good_examples = []
@@ -112,11 +113,12 @@ def main():
     np.save('lower_tests.npy', lower_tests)
     np.save('higher_tests.npy', higher_tests)
     f = open('test_results.txt', 'w')
-                                                                            
+
+    training_range = np.arange(data_size)[test_size:]
     for itr in tqdm(range(train_iter)):
         lower_equations = []
         higher_equations = []
-        idx = np.random.choice(data_size, batch_size)
+        idx = np.random.choice(training_range, batch_size)
         hists = np.take(data, idx)
         for hist in hists:
             while True:
@@ -140,10 +142,10 @@ def main():
         accuracy.append(accuracy_batch)
         #print(accuracy_batch)
         test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx,\
-                                                    eqv.initial_states_: np.zeros([1000, eqv.config_.rnn_dim])})
-        accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/1000)
+                                                    eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim])})
+        accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
         index_l = ''
-        for j in range(1000):
+        for j in range(test_size):
             if test_lower_vals_[j] >= test_higher_vals_[j]:
                 index_l += str(j)
                 index_l += ','
