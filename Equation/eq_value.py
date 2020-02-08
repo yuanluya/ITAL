@@ -115,6 +115,8 @@ def main():
     f = open('test_results.txt', 'w')
 
     training_range = np.arange(data_size)[test_size:]
+    encoding_max = -10
+    encoding_min = 10
     for itr in tqdm(range(train_iter)):
         lower_equations = []
         higher_equations = []
@@ -135,14 +137,18 @@ def main():
         higher_equations = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_equations])
         lower_eqs_idx = np.expand_dims(lower_equations, axis=-1)
         higher_eqs_idx = np.expand_dims(higher_equations, axis=-1)
-        _, w, loss, lower_vals, higher_vals = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_eqs_idx, \
-                                                    eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
+        _, w, loss, lower_vals, higher_vals, lower_eq_encodings_2_, higher_eq_encodings_2_ = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, eqv.higher_eq_encodings_2_], {eqv.lower_eqs_idx_: lower_eqs_idx, eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
+
+        encoding_max = max(encoding_max, np.amax(lower_eq_encodings_2_), np.amax(higher_eq_encodings_2_))
+        encoding_min = min(encoding_min, np.amin(lower_eq_encodings_2_), np.amin(higher_eq_encodings_2_))
         dists0.append(loss)
         accuracy_batch = np.count_nonzero(lower_vals < higher_vals)/100
         accuracy.append(accuracy_batch)
         #print(accuracy_batch)
-        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx,\
-                                                    eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim])})
+
+        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, \
+                                                    eqv.higher_eqs_idx_:higher_tests_idx, eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim])})
+                
         accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
         index_l = ''
         for j in range(test_size):
@@ -154,7 +160,8 @@ def main():
         f.write('\n')
         if (itr + 1) % 1000 == 0:
             eqv.save_ckpt(ckpt_dir, itr + 1)
-
+    print(encoding_max)
+    print(encoding_min)
     f.close()
     plt.figure()
     plt.plot(accuracy, label="accuracy by batch")
