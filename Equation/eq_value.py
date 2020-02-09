@@ -5,6 +5,7 @@ from tqdm import tqdm
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import os
 
 import pdb
 
@@ -51,21 +52,24 @@ class EqValue:
         self.opt_ = tf.train.AdamOptimizer(learning_rate = self.config_.lr)
         self.train_op_ = self.opt_.minimize(self.loss_)
 
+        self.loader_ = tf.train.Saver([v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)])
+        self.saver_ = tf.train.Saver([v for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)],max_to_keep=None)
+        
     def save_ckpt(self, ckpt_dir, iteration):
         if not os.path.exists(ckpt_dir):
             os.makedirs(ckpt_dir)
-        if not os.path.exists(os.path.join(ckpt_dir, self.name_)):
-            os.makedirs(os.path.join(ckpt_dir, self.name_))
+        if not os.path.exists(os.path.join(ckpt_dir)):
+            os.makedirs(os.path.join(ckpt_dir))
 
-        self.total_saver_.save(self.sess, os.path.join(ckpt_dir, self.name_, 'checkpoint'), global_step = iteration+1)
-        print('Saved %s ckpt <%d> to %s' % (self.name_, iteration+1, ckpt_dir))
+        self.saver_.save(self.sess_, os.path.join(ckpt_dir, 'checkpoint'), global_step = iteration+1)
+        print('Saved ckpt <%d> to %s' % (iteration+1, ckpt_dir))
 
     def restore_ckpt(self, ckpt_dir):
-        ckpt_status = tf.train.get_checkpoint_state(os.path.join(ckpt_dir, self.name_))
+        ckpt_status = tf.train.get_checkpoint_state(os.path.join(ckpt_dir))
         if ckpt_status:
-            self.total_loader_.restore(self.sess, ckpt_status.model_checkpoint_path)
+            self.loader_.restore(self.sess_, ckpt_status.model_checkpoint_path)
         if ckpt_status:
-            print('%s Load model from %s' % (self.name_, ckpt_status.model_checkpoint_path))
+            print('Load model from %s' % (ckpt_status.model_checkpoint_path))
             return True
         print('Fail to load model from Checkpoint Directory')
         return False
@@ -84,10 +88,11 @@ def main():
     data = np.load('../Data/equations_encoded.npy', allow_pickle=True)
     batch_size = 100
     data_size = 100000
+    test_size = 1000
     dists0 = []
     accuracy = []
     accuracy_test = []
-    test_sets = np.take(data, np.random.choice(data_size, 1000))
+    test_sets = np.take(data, range(test_size))
     lower_tests = []
     higher_tests = []
     not_good_examples = []
@@ -112,11 +117,14 @@ def main():
     np.save('lower_tests.npy', lower_tests)
     np.save('higher_tests.npy', higher_tests)
     f = open('test_results.txt', 'w')
-                                                                            
+
+    training_range = np.arange(data_size)[test_size:]
+    encoding_max = -10
+    encoding_min = 10
     for itr in tqdm(range(train_iter)):
         lower_equations = []
         higher_equations = []
-        idx = np.random.choice(data_size, batch_size)
+        idx = np.random.choice(training_range, batch_size)
         hists = np.take(data, idx)
         for hist in hists:
             while True:
@@ -133,17 +141,21 @@ def main():
         higher_equations = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_equations])
         lower_eqs_idx = np.expand_dims(lower_equations, axis=-1)
         higher_eqs_idx = np.expand_dims(higher_equations, axis=-1)
-        _, w, loss, lower_vals, higher_vals = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_eqs_idx, \
-                                                    eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
+        _, w, loss, lower_vals, higher_vals, lower_eq_encodings_2_, higher_eq_encodings_2_ = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, eqv.higher_eq_encodings_2_], {eqv.lower_eqs_idx_: lower_eqs_idx, eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
+
+        encoding_max = max(encoding_max, np.amax(lower_eq_encodings_2_), np.amax(higher_eq_encodings_2_))
+        encoding_min = min(encoding_min, np.amin(lower_eq_encodings_2_), np.amin(higher_eq_encodings_2_))
         dists0.append(loss)
         accuracy_batch = np.count_nonzero(lower_vals < higher_vals)/100
         accuracy.append(accuracy_batch)
         #print(accuracy_batch)
-        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx,\
-                                                    eqv.initial_states_: np.zeros([1000, eqv.config_.rnn_dim])})
-        accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/1000)
+
+        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, \
+                                                    eqv.higher_eqs_idx_:higher_tests_idx, eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim])})
+        print(test_lower_vals_.shape)
+        accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
         index_l = ''
-        for j in range(1000):
+        for j in range(test_size):
             if test_lower_vals_[j] >= test_higher_vals_[j]:
                 index_l += str(j)
                 index_l += ','
@@ -151,8 +163,9 @@ def main():
         f.write(index_l)
         f.write('\n')
         if (itr + 1) % 1000 == 0:
-            p1_policy.save_ckpt(ckpt_dir, itr + 1)
-            p2_policy.save_ckpt(ckpt_dir, itr + 1)
+            eqv.save_ckpt(ckpt_dir, itr)
+    print(encoding_max)
+    print(encoding_min)
     f.close()
     plt.figure()
     plt.plot(accuracy, label="accuracy by batch")
