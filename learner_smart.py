@@ -76,10 +76,11 @@ class LearnerS:
                         break
         to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
         if len(to_be_replaced) > 0:
-            if len(to_be_kept) > 0:
-                min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])]
-            new_center = target_center if len(to_be_replaced) == self.config_.particle_num or step < 10\
-                         else 0.0 * target_center + 1 * self.particles_[min_idx: min_idx + 1, ...]
+            if len(to_be_kept) > 0 and step > 10:
+                new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
+                             np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
+            else:
+                new_center = target_center
         for i in to_be_replaced:
             noise = np.random.normal(scale = self.config_.noise_scale, size = [1, self.config_.data_dim + 1])
             self.particles_[i: i + 1, :] = new_center + noise
@@ -129,10 +130,11 @@ class LearnerS:
 
         to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
         if len(to_be_replaced) > 0:
-            if len(to_be_kept) > 0:
-                min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])]
-            new_center = target_center if len(to_be_replaced) == self.config_.particle_num or step < 10\
-                         else 0.0 * target_center + 1 * self.particles_[min_idx: min_idx + 1, ...]
+            if len(to_be_kept) > 0 and step > 10:
+                new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
+                             np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
+            else:
+                new_center = target_center
         for i in to_be_replaced:
             noise = np.random.normal(scale = self.config_.noise_scale, size = [1, self.config_.data_dim + 1])
             self.particles_[i: i + 1, :] = new_center + noise

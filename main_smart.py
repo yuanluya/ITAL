@@ -20,12 +20,12 @@ def main():
     sess = tf.Session(config = tfconfig)
     np.random.seed(1000)
 
-    mode_idx = 0
+    mode_idx = int(sys.argv[1])
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
 
     lr = 1e-3
-    lt = int(sys.argv[1])
+    lt = 0
     dd = 20 if lt != 0 else 50
     dps = 2 * dd# + 150 * (lt == 2)
     num_particles = 1000
@@ -35,7 +35,8 @@ def main():
 
     config_T = edict({'data_pool_size': dps, 'data_dim': dd, 'loss_type': lt, 'lr': 0.1 * lr, 'transform': mode == 'imit', 'sample_size': 20})
     config_L = edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': lt})
-    config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': lt, 'noise_scale': 0.02})
+    config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': lt, 'noise_scale': 0.1,
+                       'target_ratio': 0, 'new_ratio': 1})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, dd]),
                               np.zeros([config_LS.particle_num, 1])], 1)
     init_w = np.mean(init_ws, 0, keepdims = True)
@@ -217,7 +218,7 @@ def main():
     plt.legend([line_neg1, line0, line1, line2, line2_0, line2_1, line3],
                ['batch', 'sgd', 'machine teaching: %d, %f' % (np.unique(data_choices1).shape[0], config_L.lr),\
                 'compare', 'compare_0,', 'compare_1', 'pragmatic, %f' % (config_LS.lr)], prop={'size': 12})
-    plt.title('%s: %s_dim:%d_data:%d_particle:%d' % (mode, learnerS.loss_type_, dd, dps, num_particles))
+    plt.title('%s: %s_dim:%d_data:%d_particle:%d_noise: %f' % (mode, learnerS.loss_type_, dd, dps, num_particles, config_LS.noise_scale))
     plt.show()
     #plt.savefig('figure_%s.png' % learnerS.loss_type_)
     pdb.set_trace()

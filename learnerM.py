@@ -54,7 +54,6 @@ class LearnerSM:
                 rd = np.random.choice(2, p = [1 - random_prob, random_prob])
                 if rd == 1:
                     to_be_replaced.append(i)
-                    eliminate += 1
                 continue
             particle_cache = self.current_mean_ - self.particles_[i: i + 1, ...]
             count = 0
@@ -65,22 +64,28 @@ class LearnerSM:
                         count += 1
                     if count == self.config_.replace_count:
                         to_be_replaced.append(i)
-                        eliminate += 1
                         break
         #pdb.set_trace()
         to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
         if len(to_be_replaced) > 0:
-            if len(to_be_kept) > 0:
-                min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])]
-            new_center = target_center if len(to_be_replaced) == self.config_.particle_num or step < 10\
-                         else self.config_.target_ratio * target_center + self.config_.new_ratio * self.particles_[min_idx: min_idx + 1, ...]
+            if len(to_be_kept) > 0 and step > 10:
+                new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
+                             np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
+            else:
+                new_center = target_center
+
             #scale = 1.1 * abs(new_center - self.current_mean_)
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
                         # noise = t.rvs(df = 5, scale = scale,
                         #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-            self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
+            rd = np.random.choice(2, p = [0.5, 0.5])
+            if rd == 0:
+                self.particles_[i: i + 1, ...] += 0#(noise if random_prob != 1 else 0)
+            else:
+                self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
+            eliminate += 1
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
         return self.current_mean_, eliminate
@@ -123,11 +128,11 @@ class LearnerSM:
         
         to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
         if len(to_be_replaced) > 0:
-            if len(to_be_kept) > 0:
-                min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])]
-            new_center = target_center if len(to_be_replaced) == self.config_.particle_num or step < 10\
-                         else self.config_.target_ratio * target_center + self.config_.new_ratio * self.particles_[min_idx: min_idx + 1, ...]
-            #scale = 1 * abs(new_center - self.current_mean_)
+            if len(to_be_kept) > 0 and step > 10:
+                new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
+                             np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
+            else:
+                new_center = target_center
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
