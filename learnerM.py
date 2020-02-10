@@ -66,7 +66,7 @@ class LearnerSM:
                         to_be_replaced.append(i)
                         break
         #pdb.set_trace()
-        to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
+        to_be_kept = list(set(range(self.config_.particle_num)) - set(to_be_replaced))
         if len(to_be_replaced) > 0:
             if len(to_be_kept) > 0 and step > 10:
                 new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
@@ -80,9 +80,10 @@ class LearnerSM:
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
                         # noise = t.rvs(df = 5, scale = scale,
                         #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-            rd = np.random.choice(2, p = [0.5, 0.5])
+            #rd = np.random.choice(2, p = [1 - replace_ratio, replace_ratio])
+            rd = np.random.choice(2, p = [0, 1])
             if rd == 0:
-                self.particles_[i: i + 1, ...] += 0#(noise if random_prob != 1 else 0)
+                self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
             else:
                 self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
             eliminate += 1
@@ -133,6 +134,7 @@ class LearnerSM:
                              np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
             else:
                 new_center = target_center
+        
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
@@ -147,20 +149,24 @@ class LearnerSM:
     def get_grads(self, data_pool, data_y, w_param = None):
         gradients = []
         gradient_tfs = []
+        gradient_lvs = []
         losses = []
         if w_param is None:
             w_param = self.current_mean_
         for i in range(data_pool.shape[0]):
-            gradient_tf, loss = self.sess_.run([self.gradient_w_, self.loss_], {self.X_: data_pool[i: i + 1, ...],
-                                                            self.y_: data_y[i: i + 1, :],
-                                                            self.W_: w_param})
+            gradient_tf, gradient_lv, loss = self.sess_.run([self.gradient_w_, self.gradient_lv_, self.loss_],
+                                                            {self.X_: data_pool[i: i + 1, ...],
+                                                             self.y_: data_y[i: i + 1, :],
+                                                             self.W_: w_param})
             gradient_tfs.append(gradient_tf[0])
+            gradient_lvs.append(gradient_lv[0])
             losses.append(loss)
 
         gradient_tf = np.concatenate(gradient_tfs, 0)
+        gradient_lv = np.concatenate(gradient_lvs, 0)
 
         # losses = self.sess_.run(self.losses_, {self.X_: data_pool, self.W_: self.current_mean_, self.y_: np.expand_dims(data_y, 1)})
-        return gradient_tf, np.array(losses)
+        return gradient_tf, gradient_lv, np.array(losses)
         
 
 def main():

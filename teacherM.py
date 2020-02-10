@@ -17,14 +17,19 @@ class TeacherM:
             self.means_.append(mean)
         if self.config_.data_x is not None:
             print('<External data and label>')
-            self.data_pool_full_ = np.concatenate([self.config_.data_x,
-                                             np.ones([self.config_.data_x.shape[0], 1])], 1)
+            self.data_pool_full_ = np.concatenate([self.config_.data_x, np.ones([self.config_.data_x.shape[0], 1])], 1)
             self.gt_y_full_ = self.config_.data_y
             self.gt_y_label_full_ = np.argmax(self.config_.data_y, 1)
+
+            self.data_pool_full_test_ = np.concatenate([self.config_.test_x, np.ones([self.config_.test_x.shape[0], 1])], 1)
+            self.gt_y_full_test_ = self.config_.test_y
+            self.gt_y_label_full_test_ = np.argmax(self.config_.test_y, 1)
         else:
             self.data_pool_full_ = []
+            self.data_pool_full_test_ = []
             self.gt_y_full_ = []
             self.gt_y_label_full_ = []
+            self.gt_y_label_full_test_ = []
             for i in range(self.config_.num_classes):
                 data_points = np.random.normal(loc = self.means_[i], scale = 0.5,
                                                size = [self.config_.data_pool_size_class, self.config_.data_dim])
@@ -33,11 +38,18 @@ class TeacherM:
                 labels[:, i] = np.ones(self.config_.data_pool_size_class)
                 self.gt_y_full_.append(labels)
                 self.gt_y_label_full_.append(i * np.ones(self.config_.data_pool_size_class))
+                test_points = np.random.normal(loc = self.means_[i], scale = 0.5,
+                                               size = [self.config_.data_pool_size_class, self.config_.data_dim])
+                self.data_pool_full_test_.append(test_points)
+                self.gt_y_label_full_test_.append(i * np.ones(self.config_.data_pool_size_class))
 
             self.data_pool_full_ = np.concatenate([np.concatenate(self.data_pool_full_, 0),
                                              np.ones([self.config_.data_pool_size_class * self.config_.num_classes, 1])], 1)
             self.gt_y_full_ = np.concatenate(self.gt_y_full_)
             self.gt_y_label_full_ = np.concatenate(self.gt_y_label_full_)
+            self.data_pool_full_test_ = np.concatenate([np.concatenate(self.data_pool_full_test_, 0),
+                                             np.ones([self.config_.data_pool_size_class * self.config_.num_classes, 1])], 1)
+            self.gt_y_label_full_test_ = np.concatenate(self.gt_y_label_full_test_)
         if self.config_.gt_w is None:
             self.clf_ = LogisticRegression(random_state = 0, fit_intercept = False, max_iter = 5000, solver = 'sag')
             self.clf_.fit(self.data_pool_full_, self.gt_y_label_full_)
@@ -50,11 +62,22 @@ class TeacherM:
         self.softmax_ = softmax / np.sum(softmax, 1, keepdims = True)
         self.gt_loss_full_ = -1 * np.sum(self.gt_y_full_ * np.log(self.softmax_ + 1e-6), 1)
         if self.config_.transform:
-            self.t_mat_ = rvs(self.config_.data_dim)
-            self.data_pool_full_tea_ = np.matmul(self.data_pool_full_[:, 0: -1], self.t_mat_.T)
-            self.data_pool_full_tea_ = np.concatenate([self.data_pool_full_tea_, np.ones([self.data_pool_full_tea_.shape[0], 1])], 1)
-            self.gt_w_tea_ = np.concatenate([np.matmul(self.gt_w_[:, 0: -1], self.t_mat_.T),
-                                            self.gt_w_[:, -1:] * np.ones([self.config_.num_classes, 1])], 1)
+            if self.config_.data_x_tea is None:
+                self.t_mat_ = rvs(self.config_.data_dim)
+                self.data_pool_full_tea_ = np.matmul(self.data_pool_full_[:, 0: -1], self.t_mat_.T)
+                self.data_pool_full_tea_ = np.concatenate([self.data_pool_full_tea_, np.ones([self.data_pool_full_tea_.shape[0], 1])], 1)
+                self.gt_w_tea_ = np.concatenate([np.matmul(self.gt_w_[:, 0: -1], self.t_mat_.T),
+                                                self.gt_w_[:, -1:] * np.ones([self.config_.num_classes, 1])], 1)
+            else:
+                self.data_pool_full_tea_ = np.concatenate([self.config_.data_x_tea, np.ones([self.config_.data_x_tea.shape[0], 1])], 1)
+                self.gt_y_full_tea_ = self.config_.data_y_tea
+                self.gt_y_label_full_tea_ = np.argmax(self.config_.data_y_tea, 1)
+
+                self.data_pool_full_test_tea_ = np.concatenate([self.config_.test_x_tea, np.ones([self.config_.test_x_tea.shape[0], 1])], 1)
+                self.gt_y_full_test_tea_ = self.config_.test_y_tea
+                self.gt_y_label_full_test_tea_ = np.argmax(self.config_.test_y_tea, 1)
+                self.gt_w_tea_ = self.config_.gt_w_tea
+
             self.data_pool_tea_ = None
         self.data_pool_ = None
         self.gt_y_ = None
