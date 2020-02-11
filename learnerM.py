@@ -15,12 +15,16 @@ class LearnerSM:
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
         self.X_ = tf.placeholder(dtype = tf.float32, shape = [None, self.config_.data_dim + 1])
-        self.y_ = tf.placeholder(dtype = tf.int32, shape = [None, self.config_.num_classes])
         self.W_ = tf.placeholder(dtype = tf.float32, shape = [None, self.config_.num_classes, self.config_.data_dim + 1])
 
         self.linear_val_ = tf.reduce_sum(tf.expand_dims(self.X_, 1) * self.W_, 2)
-        self.probs_ = tf.nn.softmax(self.linear_val_)
-        self.losses_ = tf.compat.v1.nn.softmax_cross_entropy_with_logits_v2(self.y_, self.linear_val_)
+        if self.config_.task == 'classification':
+            self.y_ = tf.placeholder(dtype = tf.int32, shape = [None, self.config_.num_classes])
+            self.probs_ = tf.nn.softmax(self.linear_val_)
+            self.losses_ = tf.compat.v1.nn.softmax_cross_entropy_with_logits_v2(self.y_, self.linear_val_)
+        else:
+            self.y_ = tf.placeholder(dtype = tf.float32, shape = [None, self.config_.num_classes])
+            self.losses_ = 0.5 * tf.reduce_sum(tf.square(self.linear_val_ - self.y_), axis = 1)
         self.loss_ = tf.reduce_sum(self.losses_ + 0.5 * self.config_.reg_coef * tf.reduce_sum(tf.square(self.W_[:, :, 0: -1]), axis = (1, 2)))
         
         self.gradient_w_ = tf.gradients(self.loss_, [self.W_])

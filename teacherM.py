@@ -19,12 +19,13 @@ class TeacherM:
             print('<External data and label>')
             self.data_pool_full_ = np.concatenate([self.config_.data_x, np.ones([self.config_.data_x.shape[0], 1])], 1)
             self.gt_y_full_ = self.config_.data_y
-            self.gt_y_label_full_ = np.argmax(self.config_.data_y, 1)
 
             self.data_pool_full_test_ = np.concatenate([self.config_.test_x, np.ones([self.config_.test_x.shape[0], 1])], 1)
             self.gt_y_full_test_ = self.config_.test_y
-            self.gt_y_label_full_test_ = np.argmax(self.config_.test_y, 1)
-        else:
+            if self.config_.task == 'classification':
+                self.gt_y_label_full_ = np.argmax(self.config_.data_y, 1)
+                self.gt_y_label_full_test_ = np.argmax(self.config_.test_y, 1)
+        elif self.config_.task == 'classification':
             self.data_pool_full_ = []
             self.data_pool_full_test_ = []
             self.gt_y_full_ = []
@@ -50,17 +51,35 @@ class TeacherM:
             self.data_pool_full_test_ = np.concatenate([np.concatenate(self.data_pool_full_test_, 0),
                                              np.ones([self.config_.data_pool_size_class * self.config_.num_classes, 1])], 1)
             self.gt_y_label_full_test_ = np.concatenate(self.gt_y_label_full_test_)
+        else:
+            self.gt_w_ = np.random.uniform(low = -2, high = 2,
+                                       size = [self.config_.num_classes, self.config_.data_dim + 1])
+            self.data_pool_full_ = np.random.uniform(low = -1, high = 1,
+                                    size = [self.config_.data_pool_size_class * self.config_.num_classes, self.config_.data_dim])
+            self.data_pool_full_ = np.concatenate([self.data_pool_full_, np.ones([self.data_pool_full_.shape[0], 1])], 1)
+            self.gt_y_full_ = np.matmul(self.data_pool_full_, self.gt_w_.T)
+            
+            train_size = int(0.5 * self.data_pool_full_.shape[0])
+            self.data_pool_full_test_ = self.data_pool_full_[train_size:, ...]
+            self.gt_y_full_test_ = self.gt_y_full_[train_size:, ...]
+            self.data_pool_full_ = self.data_pool_full_[0: train_size, ...]
+            self.gt_y_full_ = self.gt_y_full_[0: train_size, ...]
+
         if self.config_.gt_w is None:
-            self.clf_ = LogisticRegression(random_state = 0, fit_intercept = False, max_iter = 5000, solver = 'sag')
-            self.clf_.fit(self.data_pool_full_, self.gt_y_label_full_)
-            self.gt_w_ = self.clf_.coef_
+            if self.config_.task == 'classification':
+                self.clf_ = LogisticRegression(random_state = 0, fit_intercept = False, max_iter = 5000, solver = 'sag')
+                self.clf_.fit(self.data_pool_full_, self.gt_y_label_full_)
+                self.gt_w_ = self.clf_.coef_
         else:
             print('<External gt weights (included bias)>')
             self.gt_w_ = self.config_.gt_w
         self.linear_vals_ = np.matmul(self.data_pool_full_, self.gt_w_.T)
-        softmax = np.exp(self.linear_vals_)
-        self.softmax_ = softmax / np.sum(softmax, 1, keepdims = True)
-        self.gt_loss_full_ = -1 * np.sum(self.gt_y_full_ * np.log(self.softmax_ + 1e-6), 1)
+        if self.config_.task == 'classification':
+            softmax = np.exp(self.linear_vals_)
+            self.softmax_ = softmax / np.sum(softmax, 1, keepdims = True)
+            self.gt_loss_full_ = -1 * np.sum(self.gt_y_full_ * np.log(self.softmax_ + 1e-6), 1)
+        else:
+            self.gt_loss_full_ = np.zeros(self.data_pool_full_.shape[0])
         if self.config_.transform:
             if self.config_.data_x_tea is None:
                 self.t_mat_ = rvs(self.config_.data_dim)

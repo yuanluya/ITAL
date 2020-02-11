@@ -23,13 +23,16 @@ def main():
     mode_idx = int(sys.argv[2])
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
+    task = 'classification' if len(sys.argv) == 3 else 'regression'
 
     lr = 1e-3
     dd = int(sys.argv[1])
     num_classes = 10 if dd == 24 or dd == 30 else 4
+    if task == 'regression':
+        num_classes = 60
     dps = 3 * dd
     num_particles = 1000
-    train_iter_smart = 2000 #2500 + 2500 * (lt == 0)
+    train_iter_smart = 500 #2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
     
     if dd == 24:
@@ -57,12 +60,12 @@ def main():
         ty_tea = None
 
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
-                      'transform': mode == 'imit', 'num_classes': num_classes,
+                      'transform': mode == 'imit', 'num_classes': num_classes, 'task': task, 
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w,
                       'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
-    config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr,
-                       'num_classes': num_classes, 'noise_scale_min': 0.01, 'noise_scale_max': 0.1,
-                       'noise_scale_decay': 300, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1})
+    config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task, 
+                       'num_classes': num_classes, 'noise_scale_min': 0.2, 'noise_scale_max': 0.8,
+                       'noise_scale_decay': 500, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1})
     print(config_LS, config_T)
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
@@ -104,19 +107,23 @@ def main():
             w, eliminate = learnerM.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i)
         else:
             w, eliminate = learnerM.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i)
-        particle_hist.append(copy.deepcopy(learnerM.particles_))
+        #particle_hist.append(copy.deepcopy(learnerM.particles_))
         eliminates.append(eliminate)
         dists3.append(np.sum(np.square(w - teacher.gt_w_)))
         dists3_.append(np.mean(np.sqrt(np.sum(np.square(learnerM.particles_ - teacher.gt_w_), axis = (1, 2)))))
         ws.append(w)
-        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+        if task == 'classification':
+            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+        else:
+            accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w[0, ...].T) - teacher.gt_y_full_test_), axis = 1))
         accuracies.append(accuracy)
     #line3, = plt.plot(dists3, label = 'smarter')
     line3, = plt.plot(accuracies, label = 'smarter')
     
-    learned_w = copy.deepcopy(w[0, ...])
-    accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
-    print('test accuracy: %f' % accuracy)
+    if task == 'classification':
+        learned_w = copy.deepcopy(w[0, ...])
+        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
+        print('test accuracy: %f' % accuracy)
     
     # learnerM.reset(init_ws)
     # w = learnerM.current_mean_
@@ -176,13 +183,17 @@ def main():
                               gradients, i, random_prob = random_ratio)
         dists2.append(np.sum(np.square(w - teacher.gt_w_)))
         dists2_.append(np.mean(np.sqrt(np.sum(np.square(learnerM.particles_ - teacher.gt_w_), axis = (1, 2)))))
-        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+        if task == 'classification':
+            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+        else:
+            accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w[0, ...].T) - teacher.gt_y_full_test_), axis = 1))
         accuracies.append(accuracy)
     #line2, = plt.plot(dists2, label = 'smart')
     line2, = plt.plot(accuracies, label = 'smart')
-    learned_w = copy.deepcopy(w[0, ...])
-    accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
-    print('test accuracy: %f' % accuracy)
+    if task == 'classification':
+        learned_w = copy.deepcopy(w[0, ...])
+        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
+        print('test accuracy: %f' % accuracy)
 
     learnerM.reset(init_ws)
     w = learnerM.current_mean_
@@ -219,14 +230,18 @@ def main():
         ws0.append(w)
         dists0.append(np.sum(np.square(w - teacher.gt_w_)))
         dists0_.append(np.mean(np.sqrt(np.sum(np.square(learnerM.particles_ - teacher.gt_w_), axis = (1, 2)))))
-        particle_hist_0.append(copy.deepcopy(learnerM.particles_))
-        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+        #particle_hist_0.append(copy.deepcopy(learnerM.particles_))
+        if task == 'classification':
+            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+        else:
+            accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w[0, ...].T) - teacher.gt_y_full_test_), axis = 1))
         accuracies.append(accuracy)
     #line0, = plt.plot(dists0, label = 'zero')
     line0, = plt.plot(accuracies, label = 'zero')
-    learned_w = copy.deepcopy(w[0, ...])
-    accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
-    print('test accuracy: %f' % accuracy)
+    if task == 'classification':
+        learned_w = copy.deepcopy(w[0, ...])
+        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
+        print('test accuracy: %f' % accuracy)
 
     learnerM.reset(init_ws)
     w = learnerM.current_mean_
@@ -260,12 +275,16 @@ def main():
                               gradients, i, random_prob = random_ratio)
         dists1.append(np.sum(np.square(w - teacher.gt_w_)))
         dists1_.append(np.mean(np.sqrt(np.sum(np.square(learnerM.particles_ - teacher.gt_w_), axis = (1, 2)))))
-        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+        if task == 'classification':
+            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+        else:
+            accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w[0, ...].T) - teacher.gt_y_full_test_), axis = 1))
         accuracies.append(accuracy)
     line1, = plt.plot(accuracies, label = 'one')
-    learned_w = copy.deepcopy(w[0, ...])
-    accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
-    print('test accuracy: %f' % accuracy)
+    if task == 'classification':
+        learned_w = copy.deepcopy(w[0, ...])
+        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
+        print('test accuracy: %f' % accuracy)
 
     plt.legend([line0, line1, line2, line3],#, line3S],
                ['zero', 'one', 'compare',

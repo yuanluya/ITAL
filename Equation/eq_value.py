@@ -36,7 +36,7 @@ class EqValue:
         self.lower_eq_encodings_ = self.bi_encoder_(self.lower_eqs_)
         self.higher_eq_encodings_ = self.bi_encoder_(self.higher_eqs_)
         self.gru_2_ = tf.keras.layers.GRU(self.config_.rnn_dim, stateful = False,
-                                        return_sequences = False, return_state = False)
+                                        return_sequences = True, return_state = False)
         self.lower_eq_encodings_2_ = self.gru_2_(self.lower_eq_encodings_, self.initial_states_)
         self.higher_eq_encodings_2_ = self.gru_2_(self.higher_eq_encodings_, self.initial_states_)
 
