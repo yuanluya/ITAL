@@ -39,7 +39,7 @@ def train_mnist():
 
     input_shape = 28
     label_shape = 10
-    feat_dim = 24
+    feat_dim = 32
     epochs = 500
     batch_size = 128
     config = [(64, 3, 1, True), (32, 3, 1, True), (32, 3, 1, False)]
@@ -89,11 +89,11 @@ def train_mnist():
     gt_weights, gt_bias = sess.run(cf.params_)
     gt_weights = np.concatenate([gt_weights, np.expand_dims(gt_bias, 0)], 0).T
 
-    np.save("mnist_train_features.npy", train_features)
-    np.save("mnist_test_features.npy", test_features)
-    np.save("mnist_train_labels.npy", all_ys)
-    np.save("mnist_test_labels.npy", test_ys)
-    np.save("mnist_tf_gt_weights.npy", gt_weights)
+    np.save("mnist_train_features_tea.npy", train_features)
+    np.save("mnist_test_features_tea.npy", test_features)
+    np.save("mnist_train_labels_tea.npy", all_ys)
+    np.save("mnist_test_labels_tea.npy", test_ys)
+    np.save("mnist_tf_gt_weights_tea.npy", gt_weights)
 
     plt.plot(loss, 'b', label = "Train Loss")
     # plt.plot(test_loss, 'r', label = "Test Loss")
