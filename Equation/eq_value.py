@@ -28,18 +28,24 @@ class EqValue:
         self.codebook_0_ = tf.concat([self.codebook_, tf.zeros(shape = [1, self.config_.encoding_dims])], 0)
         self.lower_eqs_ = tf.squeeze(tf.nn.embedding_lookup(self.codebook_0_, self.lower_eqs_idx_), 2)
         self.higher_eqs_ = tf.squeeze(tf.nn.embedding_lookup(self.codebook_0_, self.higher_eqs_idx_), 2)
-        
+
+        self.lower_encoding_idx_ = tf.placeholder(tf.int32, shape = [None, 2])
+        self.higher_encoding_idx_ = tf.placeholder(tf.int32, shape = [None, 2])
+ 
         self.gru_1_ = tf.keras.layers.GRU(self.config_.rnn_dim, stateful = False,
-                                        return_sequences = True, return_state = False)
+                                          return_sequences = True, return_state = False, use_bias = False)
         self.bi_encoder_ = tf.keras.layers.Bidirectional(self.gru_1_)
 
         self.lower_eq_encodings_ = self.bi_encoder_(self.lower_eqs_)
         self.higher_eq_encodings_ = self.bi_encoder_(self.higher_eqs_)
         self.gru_2_ = tf.keras.layers.GRU(self.config_.rnn_dim, stateful = False,
-                                        return_sequences = False, return_state = False)
+                                        return_sequences = True, return_state = False)
         self.lower_eq_encodings_2_ = self.gru_2_(self.lower_eq_encodings_, self.initial_states_)
         self.higher_eq_encodings_2_ = self.gru_2_(self.higher_eq_encodings_, self.initial_states_)
-
+        self.lower_eq_encodings_2_ = tf.gather_nd(self.lower_eq_encodings_2_, self.lower_encoding_idx_)
+        self.higher_eq_encodings_2_ =  tf.gather_nd(self.higher_eq_encodings_2_, self.higher_encoding_idx_)
+        pdb.set_trace()
+         
         self.weight_ = tf.Variable(initial_value = self.init_w_, name = 'weight', dtype = tf.float32)
         self.lower_vals_ = tf.reduce_sum(self.lower_eq_encodings_2_ * self.weight_, 1)
         self.higher_vals_ = tf.reduce_sum(self.higher_eq_encodings_2_* self.weight_, 1)
@@ -84,7 +90,7 @@ def main():
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_20'
+    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_20_sequence'
     data = np.load('../Data/equations_encoded.npy', allow_pickle=True)
     batch_size = 100
     data_size = 100000
@@ -134,6 +140,16 @@ def main():
             index = np.sort(index)
             lower_equations.append(hist[index[0]])
             higher_equations.append(hist[index[1]])
+
+        lower_encoding_idx = []
+        for i in range(len(lower_equations)):
+            lower_encoding_idx.append([i, len(lower_equations[i])-1])
+        higher_encoding_idx = []
+        for i in range(len(higher_equations)):
+            higher_encoding_idx.append([i, len(higher_equations[i])-1])
+        lower_encoding_idx = np.array(lower_encoding_idx)
+        higher_encoding_idx = np.array(higher_encoding_idx)
+        
         M0 = max(len(a) for a in lower_equations)
         M1 = max(len(a) for a in higher_equations)
         M = max(M0,M1)
@@ -141,7 +157,10 @@ def main():
         higher_equations = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_equations])
         lower_eqs_idx = np.expand_dims(lower_equations, axis=-1)
         higher_eqs_idx = np.expand_dims(higher_equations, axis=-1)
-        _, w, loss, lower_vals, higher_vals, lower_eq_encodings_2_, higher_eq_encodings_2_ = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, eqv.higher_eq_encodings_2_], {eqv.lower_eqs_idx_: lower_eqs_idx, eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
+        _, w, loss, lower_vals, higher_vals, lower_eq_encodings_2_, higher_eq_encodings_2_ = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, \
+                            eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, eqv.higher_eq_encodings_2_], {eqv.lower_encoding_idx_: lower_encoding_idx, \
+                                            eqv.higher_encoding_idx_: higher_encoding_idx, eqv.lower_eqs_idx_: lower_eqs_idx, eqv.higher_eqs_idx_: higher_eqs_idx, \
+                                                                            eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
 
         encoding_max = max(encoding_max, np.amax(lower_eq_encodings_2_), np.amax(higher_eq_encodings_2_))
         encoding_min = min(encoding_min, np.amin(lower_eq_encodings_2_), np.amin(higher_eq_encodings_2_))
