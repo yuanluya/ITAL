@@ -29,6 +29,7 @@ class TeacherM:
             self.data_pool_full_ = []
             self.data_pool_full_test_ = []
             self.gt_y_full_ = []
+            self.gt_y_full_test_ = []
             self.gt_y_label_full_ = []
             self.gt_y_label_full_test_ = []
             for i in range(self.config_.num_classes):
@@ -42,17 +43,19 @@ class TeacherM:
                 test_points = np.random.normal(loc = self.means_[i], scale = 0.5,
                                                size = [self.config_.data_pool_size_class, self.config_.data_dim])
                 self.data_pool_full_test_.append(test_points)
+                self.gt_y_full_test_.append(labels)
                 self.gt_y_label_full_test_.append(i * np.ones(self.config_.data_pool_size_class))
 
             self.data_pool_full_ = np.concatenate([np.concatenate(self.data_pool_full_, 0),
                                              np.ones([self.config_.data_pool_size_class * self.config_.num_classes, 1])], 1)
             self.gt_y_full_ = np.concatenate(self.gt_y_full_)
+            self.gt_y_full_test_ = np.concatenate(self.gt_y_full_test_)
             self.gt_y_label_full_ = np.concatenate(self.gt_y_label_full_)
             self.data_pool_full_test_ = np.concatenate([np.concatenate(self.data_pool_full_test_, 0),
                                              np.ones([self.config_.data_pool_size_class * self.config_.num_classes, 1])], 1)
             self.gt_y_label_full_test_ = np.concatenate(self.gt_y_label_full_test_)
         else:
-            self.gt_w_ = np.random.uniform(low = -2, high = 2,
+            self.gt_w_ = np.random.uniform(low = -1, high = 1,
                                        size = [self.config_.num_classes, self.config_.data_dim + 1])
             self.data_pool_full_ = np.random.uniform(low = -1, high = 1,
                                     size = [self.config_.data_pool_size_class * self.config_.num_classes, self.config_.data_dim])

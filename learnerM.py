@@ -71,10 +71,13 @@ class LearnerSM:
                         break
         #pdb.set_trace()
         to_be_kept = list(set(range(self.config_.particle_num)) - set(to_be_replaced))
+        #min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])] if len(to_be_kept) > 0 else None
         if len(to_be_replaced) > 0:
             if len(to_be_kept) > 0 and step > 10:
                 new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
                              np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
+                # new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
+                #              self.particles_[min_idx: min_idx + 1, ...]
             else:
                 new_center = target_center
 
