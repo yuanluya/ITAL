@@ -28,9 +28,12 @@ class EqValue:
         self.codebook_0_ = tf.concat([self.codebook_, tf.zeros(shape = [1, self.config_.encoding_dims])], 0)
         self.lower_eqs_ = tf.squeeze(tf.nn.embedding_lookup(self.codebook_0_, self.lower_eqs_idx_), 2)
         self.higher_eqs_ = tf.squeeze(tf.nn.embedding_lookup(self.codebook_0_, self.higher_eqs_idx_), 2)
-        
+
+        self.lower_encoding_idx_ = tf.placeholder(tf.int32, shape = [None, 2])
+        self.higher_encoding_idx_ = tf.placeholder(tf.int32, shape = [None, 2])
+ 
         self.gru_1_ = tf.keras.layers.GRU(self.config_.rnn_dim, stateful = False,
-                                        return_sequences = True, return_state = False)
+                                          return_sequences = True, return_state = False, use_bias = False)
         self.bi_encoder_ = tf.keras.layers.Bidirectional(self.gru_1_)
 
         self.lower_eq_encodings_ = self.bi_encoder_(self.lower_eqs_)
@@ -39,7 +42,9 @@ class EqValue:
                                         return_sequences = True, return_state = False)
         self.lower_eq_encodings_2_ = self.gru_2_(self.lower_eq_encodings_, self.initial_states_)
         self.higher_eq_encodings_2_ = self.gru_2_(self.higher_eq_encodings_, self.initial_states_)
-
+        self.lower_eq_encodings_2_ = tf.gather_nd(self.lower_eq_encodings_2_, self.lower_encoding_idx_)
+        self.higher_eq_encodings_2_ =  tf.gather_nd(self.higher_eq_encodings_2_, self.higher_encoding_idx_)
+         
         self.weight_ = tf.Variable(initial_value = self.init_w_, name = 'weight', dtype = tf.float32)
         self.lower_vals_ = tf.reduce_sum(self.lower_eq_encodings_2_ * self.weight_, 1)
         self.higher_vals_ = tf.reduce_sum(self.higher_eq_encodings_2_* self.weight_, 1)
@@ -75,7 +80,7 @@ class EqValue:
         return False
     
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 5e-5, 'num_character': 20})
+    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 5e-5, 'num_character': 20, 'bacth_size': 100})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
     eqv = EqValue(eqv_config, init_w, sess)
@@ -84,7 +89,7 @@ def main():
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_20'
+    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_20_sequence'
     data = np.load('../Data/equations_encoded.npy', allow_pickle=True)
     batch_size = 100
     data_size = 100000
@@ -105,6 +110,16 @@ def main():
         index = np.sort(index)
         lower_tests.append(hist[index[0]])
         higher_tests.append(hist[index[1]])
+
+    test_lower_encoding_idx = []
+    for i in range(len(lower_tests)):
+        test_lower_encoding_idx.append([i, len(lower_tests[i])-1])
+    test_higher_encoding_idx = []
+    for i in range(len(higher_tests)):
+        test_higher_encoding_idx.append([i, len(higher_tests[i])-1])
+    test_lower_encoding_idx = np.array(test_lower_encoding_idx)
+    test_higher_encoding_idx = np.array(test_higher_encoding_idx)
+    
     M00 = max(len(a) for a in lower_tests)
     M11 = max(len(a) for a in higher_tests)
     M = max(M00,M11)
@@ -134,6 +149,16 @@ def main():
             index = np.sort(index)
             lower_equations.append(hist[index[0]])
             higher_equations.append(hist[index[1]])
+
+        lower_encoding_idx = []
+        for i in range(len(lower_equations)):
+            lower_encoding_idx.append([i, len(lower_equations[i])-1])
+        higher_encoding_idx = []
+        for i in range(len(higher_equations)):
+            higher_encoding_idx.append([i, len(higher_equations[i])-1])
+        lower_encoding_idx = np.array(lower_encoding_idx)
+        higher_encoding_idx = np.array(higher_encoding_idx)
+
         M0 = max(len(a) for a in lower_equations)
         M1 = max(len(a) for a in higher_equations)
         M = max(M0,M1)
@@ -141,31 +166,33 @@ def main():
         higher_equations = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_equations])
         lower_eqs_idx = np.expand_dims(lower_equations, axis=-1)
         higher_eqs_idx = np.expand_dims(higher_equations, axis=-1)
-        _, w, loss, lower_vals, higher_vals, lower_eq_encodings_2_, higher_eq_encodings_2_ = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, eqv.higher_eq_encodings_2_], {eqv.lower_eqs_idx_: lower_eqs_idx, eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim])})
 
-        encoding_max = max(encoding_max, np.amax(lower_eq_encodings_2_), np.amax(higher_eq_encodings_2_))
-        encoding_min = min(encoding_min, np.amin(lower_eq_encodings_2_), np.amin(higher_eq_encodings_2_))
+        _, w, loss, lower_vals, higher_vals = eqv.sess_.run([eqv.train_op_, eqv.weight_, eqv.loss_, eqv.lower_vals_, eqv.higher_vals_], \
+                                    {eqv.lower_eqs_idx_: lower_eqs_idx, eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim]), \
+                                     eqv.lower_encoding_idx_: lower_encoding_idx, eqv.higher_encoding_idx_: higher_encoding_idx})
+
+        #encoding_max = max(encoding_max, np.amax(lower_eq_encodings_2_), np.amax(higher_eq_encodings_2_))
+        #encoding_min = min(encoding_min, np.amin(lower_eq_encodings_2_), np.amin(higher_eq_encodings_2_))
         dists0.append(loss)
         accuracy_batch = np.count_nonzero(lower_vals < higher_vals)/100
         accuracy.append(accuracy_batch)
         #print(accuracy_batch)
 
-        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, \
-                                                    eqv.higher_eqs_idx_:higher_tests_idx, eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim])})
-        print(test_lower_vals_.shape)
+        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx, \
+                    eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: test_lower_encoding_idx, eqv.higher_encoding_idx_: test_higher_encoding_idx})
+     
         accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
         index_l = ''
         for j in range(test_size):
             if test_lower_vals_[j] >= test_higher_vals_[j]:
                 index_l += str(j)
                 index_l += ','
-        #print(index_l)
         f.write(index_l)
         f.write('\n')
         if (itr + 1) % 1000 == 0:
             eqv.save_ckpt(ckpt_dir, itr)
-    print(encoding_max)
-    print(encoding_min)
+    #print(encoding_max)
+    #print(encoding_min)
     f.close()
     plt.figure()
     plt.plot(accuracy, label="accuracy by batch")
