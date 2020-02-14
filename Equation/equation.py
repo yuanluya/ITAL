@@ -364,11 +364,10 @@ class Equation:
 
 def main():
     data_size = 100000
-    file_name = '../Data/equations.txt'
-    
+    file_name = '../Data/sorted_equations.txt'
     eq = Equation(4, 9, 20, 10)
-    
     f = open(file_name, 'w')
+    
     for i in range(data_size):
         equation = eq.generate()
         history = eq.simplify(equation)
@@ -389,7 +388,6 @@ def main():
     #seq_encodes = np.expand_dims(seq_encodes, axis=-1)
     np.save('../Data/equations_encoded.npy', seq_encodes)
     
-
 if __name__ == '__main__':
     main()
 

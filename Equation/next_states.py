@@ -1,8 +1,12 @@
+from functools import cmp_to_key
 import numpy as np
 from equation import Equation
 from eq_value import EqValue
+import tensorflow as tf
 
+from easydict import EasyDict as edict
 from copy import deepcopy
+import pdb
 
 def scale(seq_tuple, pos, scale):
     seq_tuple = deepcopy(seq_tuple)
@@ -50,6 +54,8 @@ def move(seq_tuple, pos1, pos2):
     seq_tuple = deepcopy(seq_tuple)
     if seq_tuple[2][pos1] == '=' or pos1 == pos2:
         return seq_tuple, False
+    if seq_tuple[2][pos1] == '0':
+        return seq_tuple, False
     eqs_pos1 = seq_tuple[2].index('=')
     seq_tuple[0].insert(pos2, seq_tuple[0].pop(pos1))
     seq_tuple[1].insert(pos2, seq_tuple[1].pop(pos1))
@@ -74,15 +80,29 @@ def merge(seq_tuple, pos1, pos2):
     denominator = 1
     if dp1 != -1 and dp2 != -1:
         denominator1 = int(seq_tuple[1][pos1][dp1 + 1:])
-        denominator2 = int(seq_tuple[1][pos2][dp2 + 1:])
+        try:
+            denominator2 = int(seq_tuple[1][pos2][dp2 + 1:])
+        except ValueError:
+            print('the error equation is', seq_tuple)
+            print(pos1, pos2)
+            exit()
         if denominator1 != denominator2:
             return seq_tuple, False
         denominator = denominator1
     elif dp1 == -1:
-        denominator = int(seq_tuple[1][pos2][dp2 + 1:])
+        try:
+            denominator = int(seq_tuple[1][pos2][dp2 + 1:])
+        except ValueError:
+            print('the error equation is', seq_tuple)
+            print(pos1, pos2)
+            exit()
     elif dp2 == -1:
-        denominator = int(seq_tuple[1][pos1][dp1 + 1:])
-
+        try:
+            denominator = int(seq_tuple[1][pos1][dp1 + 1:])
+        except ValueError:
+            print('the error equation is', seq_tuple)
+            print(pos1, pos2)
+            exit()
     small_pos = min(pos1, pos2)
     big_pos = max(pos1, pos2)
     if small_pos == pos1:
@@ -148,6 +168,20 @@ def constant_multiply(seq_tuple):
             i += 1
     return seq_tuple, True
 
+def sort_var(seq_tuple, eq):
+    seq_tuple = deepcopy(seq_tuple)
+    variables = [term for term in seq_tuple[2] if term != '=' and term != '0']
+    variables.sort(key = cmp_to_key(eq.cmp_), reverse = True)
+    i = 0
+    history= []
+    while i < len(variables):
+        pos = seq_tuple[2].index(variables[i])
+        if eq.move(seq_tuple, pos, i)[1]:
+            history.append(deepcopy(seq_tuple))
+        i += 1
+    return history
+
+
 def next_states(seq_tuple):
     length = len(seq_tuple[0])
     states = []
@@ -159,35 +193,36 @@ def next_states(seq_tuple):
                 if valid:
                     states.extend([seq_t[:]])
                     count += 1
-                    print('call scale', pos)
-                    print(equation_str(seq_t))
+                    #print('call scale', pos)
+                    #print(equation_str(seq_t))
         seq_t, valid = reduction(seq_tuple, pos)
         if valid:
             states.extend([seq_t[:]])
             count += 1
-            print('call reduction', pos)
-            print(equation_str(seq_t))
+            #print('call reduction', pos)
+            #print(equation_str(seq_t))
         for pos2 in range(length):
             seq_t, valid = move(seq_tuple, pos, pos2)
             if valid:
                 count += 1
                 states.extend([seq_t[:]])
-                print('call move', pos, pos2)
-                print(equation_str(seq_t))
+                #print('call move', pos, pos2)
+                #print(equation_str(seq_t))
         for pos2 in range(length)[pos+1:]:
             seq_t, valid = merge(seq_tuple, pos, pos2)
             if valid:
                 count += 1
                 states.extend([seq_t[:]])
-                print('call merge', pos, pos2)
-                print(equation_str(seq_t))
+                #print('call merge', pos, pos2)
+                #print(equation_str(seq_t))
     seq_t, valid = constant_multiply(seq_tuple)
     if valid:
         count += 1
         states.extend([seq_t[:]])
-        print('call constant_multiply')                                                                                                                                       
-        print(equation_str(seq_t))
-    return states, count
+        #print('call constant_multiply')                                                                                                                                       
+        #print(equation_str(seq_t))
+
+    return states
         
 def equation_str(seq_tuple):
     equation = ''
@@ -195,11 +230,198 @@ def equation_str(seq_tuple):
         for j in range(3):
             equation += seq_tuple[j][i]
     return equation
+
+def tuple2str(seq_tuple):
+    merge_seq = list(zip(*seq_tuple))
+    return ' '.join([''.join(tup) for tup in merge_seq])
     
+def encode(string):
+    codebook_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y', 'z', 'w'] + [' ']
+    digits = [codebook_.index(s) for s in string]
+    return digits
+
+
+def greedy_search(seq_tuple, eqv):
+    states = next_states(seq_tuple)
+    states = states[:] + [seq_tuple]
+    encoded_states = [encode(tuple2str(tup)) for tup in states]
+    #print(len(encoded_states))
+
+    encoding_idx = []
+    for i in range(len(encoded_states)):
+        encoding_idx.append([i, len(encoded_states[i])-1])
+    encoding_idx = np.array(encoding_idx)
+    
+    M = max(len(s) for s in encoded_states)
+    equations = np.array([s + [eqv.config_.num_character] * (M - len(s)) for s in encoded_states])
+    eqs_idx = np.expand_dims(equations, axis=-1)
+    
+    states_vals_ = eqv.sess_.run([eqv.lower_vals_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([len(encoded_states), eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
+    states_vals_ = states_vals_[0]
+    max_val = np.amax(states_vals_)
+    print('equation is', equation_str(seq_tuple))
+    print('current state value is', states_vals_[-1])
+    print('max state value is', max_val)
+    print()
+    if states_vals_[-1] == max_val:
+        return seq_tuple
+    index = np.where(states_vals_ == max_val)[0]
+    next_index = np.random.choice(index, 1)[0]
+    return greedy_search(states[next_index], eqv)
+
+def beam_search_(current_states, width, eqv):
+    states = deepcopy(current_states)
+    for s in current_states:
+        print('current equation', equation_str(s))
+        for ss in next_states(s):
+            if ss not in states:
+                states.append(ss)
+
+    encoded_states = [encode(tuple2str(tup)) for tup in states]
+    encoding_idx = []
+    for i in range(len(encoded_states)):
+        encoding_idx.append([i, len(encoded_states[i])-1])
+    encoding_idx = np.array(encoding_idx)
+    
+    M = max(len(s) for s in encoded_states)
+    equations = np.array([s + [eqv.config_.num_character] * (M - len(s)) for s in encoded_states])
+    eqs_idx = np.expand_dims(equations, axis=-1)
+
+    states_vals_ = eqv.sess_.run([eqv.lower_vals_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([len(encoded_states), eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
+    states_vals_ = states_vals_[0]
+    max_val = np.amax(states_vals_)
+    
+    print('current state values', states_vals_[0:width])
+    print('max state value is', max_val)
+    print()
+    
+    for i in range(width):
+        if states_vals_[i] == max_val:
+            return current_states[i]
+
+    indices = np.argsort(states_vals_)
+    index = len(indices) - 1
+    next_states_ = []
+    for i in range(width):
+        next_states_.append(states[indices[index-i]])
+    return beam_search_(next_states_, width ,eqv)
+
+def beam_search(seq_tuple, width, eqv):
+    '''
+    states, _ = next_states(seq_tuple)
+    states = states[:] + [seq_tuple]
+    encoded_states = [encode(tuple2str(tup)) for tup in states]
+    #print(len(encoded_states))
+
+    encoding_idx = []
+    for i in range(len(encoded_states)):
+        encoding_idx.append([i, len(encoded_states[i])-1])
+    encoding_idx = np.array(encoding_idx)
+    
+    M = max(len(s) for s in encoded_states)
+    equations = np.array([s + [eqv.config_.num_character] * (M - len(s)) for s in encoded_states])
+    eqs_idx = np.expand_dims(equations, axis=-1)
+
+    states_vals_ = eqv.sess_.run([eqv.lower_vals_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([len(encoded_states), eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
+    states_vals_ = states_vals_[0]
+    
+    indices = np.argsort(states_vals_)
+    index = len(indices) - 1
+    next_states_ = []
+    for i in range(width):
+        next_states_.append(states[index-i])
+    '''
+    current_states = []
+    for i in range(width):
+        current_states.append(deepcopy(seq_tuple))
+    return beam_search_(current_states, width, eqv)
+
 def main():
-    eq = Equation(4, 3, 20, 5)
-    count_all = 0
+    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 5e-5, 'num_character': 20})
+    init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
+    sess = tf.Session()
+    eqv = EqValue(eqv_config, init_w, sess)
     
+    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_20_sequence_15000_consecutive_samples'
+    #eqv.restore_ckpt(ckpt_dir)
+    init = tf.global_variables_initializer()
+    sess.run(init)
+
+    lower_strings = []
+    higher_strings = []
+    lower_tests = []
+    higher_tests = []
+    test_size = 1000
+    eq = Equation(4, 5, 20, 5)
+    for i in range(test_size):
+        equation = eq.generate()
+        sorted_e = sort_var(equation,eq)
+        if len(sorted_e) == 1:
+            lower_tests.append(encode(tuple2str(equation)))
+            higher_tests.append(encode(tuple2str(sorted_e[-1])))
+        else:
+            index = np.random.choice(len(sorted_e) - 1, 1)
+            index = index[0]
+            lower_tests.append(encode(tuple2str(sorted_e[index])))
+            higher_tests.append(encode(tuple2str(sorted_e[index+1])))
+    test_lower_encoding_idx = []
+    for i in range(len(lower_tests)):
+        test_lower_encoding_idx.append([i, len(lower_tests[i])-1])
+    test_higher_encoding_idx = []
+    for i in range(len(higher_tests)):
+        test_higher_encoding_idx.append([i, len(higher_tests[i])-1])
+    test_lower_encoding_idx = np.array(test_lower_encoding_idx)
+    test_higher_encoding_idx = np.array(test_higher_encoding_idx)
+    M00 = max(len(a) for a in lower_tests)
+    M11 = max(len(a) for a in higher_tests)
+    M = max(M00,M11)
+    lower_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in lower_tests])
+    higher_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_tests])
+    lower_tests_idx = np.expand_dims(lower_tests, axis=-1)
+    higher_tests_idx = np.expand_dims(higher_tests, axis=-1)
+    test_lower_vals_, test_higher_vals_, test_lower_encoding_, test_higher_encoding, weight_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, \
+                                                    eqv.higher_eq_encodings_2_, eqv.weight_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx, \
+                    eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: test_lower_encoding_idx, eqv.higher_encoding_idx_: test_higher_encoding_idx})
+    max_entry_diff_l = []
+    for j in range(test_size):
+        if test_lower_vals_[j] >= test_higher_vals_[j]:
+            print(test_lower_encoding_[j])
+            print(test_higher_encoding[j])
+            max_entry_diff = np.amax(np.absolute(test_lower_encoding_[j] - test_higher_vals_[j]))
+            print(max_entry_diff)
+            max_entry_diff_l.append(max_entry_diff)
+            print()
+    print(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
+    print(np.mean(np.array(max_entry_diff_l)))
+    
+    '''
+    width = 6
+    eq = Equation(4, 9, 20, 10) 
+    equation = eq.generate() 
+    #print(equation_str(beam_search(equation, 6, eqv)))
+    
+    greed_search_equation = equation_str(greedy_search(equation,eqv))
+    history = eq.simplify(equation)
+    print(greed_search_equation)
+    print('rule based simpification', history[-1])
+
+    encoded_equation = encode(history[-1]) 
+    encoded_equation_e = encode(history[-1]) + [eqv_config.num_character] * 10
+    eqs_idx = np.expand_dims(np.array([encoded_equation]), axis=-1)
+    eqs_idx_e = np.expand_dims(np.array([encoded_equation_e]), axis=-1)
+
+    encoding_idx = np.array([[0, len(encoded_equation) - 1]]) 
+    
+    states_vals_, encoding1 = eqv.sess_.run([eqv.lower_vals_, eqv.lower_eq_encodings_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([1, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
+
+    states_vals_e, encoding1 = eqv.sess_.run([eqv.lower_vals_, eqv.lower_eq_encodings_], {eqv.lower_eqs_idx_: eqs_idx_e, eqv.initial_states_: np.zeros([1, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
+    
+    #for e in encoding1[0]:
+        #print(e)
+    print(states_vals_)
+    print(states_vals_e)
+    '''
+    '''
     for i in range(100):
         equation = eq.generate()
         #equation = [['-', '', '-', '-'], ['2/10', '', '34/2', '17'], ['x^3', '=', 'x^1z^1w^1', 'x^1z^1w^1']]
@@ -211,6 +433,7 @@ def main():
         count_all += count
     print(count_all/100)
     '''
+    '''
     equation = eq.generate()
     print('equation is')                                                                                                                                                                   
     print(equation_str(equation))
@@ -220,6 +443,6 @@ def main():
         print(equation_str(state))
         print()
     '''
-    #
+    
 if __name__ == '__main__':
     main()

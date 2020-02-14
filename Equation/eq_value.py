@@ -6,7 +6,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
-
+from equation import Equation
 import pdb
 
 class EqValue:
@@ -80,17 +80,18 @@ class EqValue:
         return False
     
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 5e-5, 'num_character': 20, 'bacth_size': 100})
+    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 30, 'C': 1, 'lr': 5e-5, 'num_character': 20, 'bacth_size': 100})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
     eqv = EqValue(eqv_config, init_w, sess)
-
+    eq = Equation(4, 9, 20, 1)
+    
     train_iter = 10000
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_20_sequence'
-    data = np.load('../Data/equations_encoded.npy', allow_pickle=True)
+    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_30_sequence_15000_consecutive_samples_2_4'
+    data = np.load('../Data/equations_encoded_2_4.npy', allow_pickle=True)
     batch_size = 100
     data_size = 100000
     test_size = 1000
@@ -103,6 +104,7 @@ def main():
     not_good_examples = []
     good_examples = []
     for hist in test_sets:
+        '''
         while True:
             index = np.random.choice(len(hist), 2)
             if index[0] != index[1]:
@@ -110,7 +112,11 @@ def main():
         index = np.sort(index)
         lower_tests.append(hist[index[0]])
         higher_tests.append(hist[index[1]])
-
+        '''
+        index = np.random.choice(len(hist)-1, 1)
+        index = index[0]
+        lower_tests.append(hist[index])
+        higher_tests.append(hist[index+1])
     test_lower_encoding_idx = []
     for i in range(len(lower_tests)):
         test_lower_encoding_idx.append([i, len(lower_tests[i])-1])
@@ -136,12 +142,14 @@ def main():
     training_range = np.arange(data_size)[test_size:]
     encoding_max = -10
     encoding_min = 10
+
     for itr in tqdm(range(train_iter)):
         lower_equations = []
         higher_equations = []
         idx = np.random.choice(training_range, batch_size)
         hists = np.take(data, idx)
         for hist in hists:
+            '''
             while True:
                 index = np.random.choice(len(hist), 2)
                 if index[0] != index[1]:
@@ -149,7 +157,11 @@ def main():
             index = np.sort(index)
             lower_equations.append(hist[index[0]])
             higher_equations.append(hist[index[1]])
-
+            '''
+            index = np.random.choice(len(hist)-1, 1)
+            index = index[0]
+            lower_equations.append(hist[index])
+            higher_equations.append(hist[index+1])
         lower_encoding_idx = []
         for i in range(len(lower_equations)):
             lower_encoding_idx.append([i, len(lower_equations[i])-1])
@@ -178,13 +190,19 @@ def main():
         accuracy.append(accuracy_batch)
         #print(accuracy_batch)
 
-        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx, \
+        test_lower_vals_, test_higher_vals_, test_lower_encoding_, test_higher_encoding, weight_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, \
+                                                    eqv.higher_eq_encodings_2_, eqv.weight_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx, \
                     eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: test_lower_encoding_idx, eqv.higher_encoding_idx_: test_higher_encoding_idx})
      
         accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
+        print(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
         index_l = ''
         for j in range(test_size):
             if test_lower_vals_[j] >= test_higher_vals_[j]:
+                #print(test_lower_encoding_[j])
+                #print(test_higher_encoding[j])
+                #print(weight_)
+                #print()
                 index_l += str(j)
                 index_l += ','
         f.write(index_l)
@@ -200,7 +218,7 @@ def main():
     plt.xlabel("iteration")
     plt.ylabel("accuracy")
     plt.legend()
-    plt.savefig('value_accurary_batch_100_constant_learning_rate_5e-5_rnn_20_10000.png')
+    plt.savefig('value_accurary_batch_100_constant_learning_rate_5e-5_rnn_30_15000_consecutive_samples_2_4.png')
     return
 
 if __name__ == '__main__':
