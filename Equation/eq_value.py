@@ -80,18 +80,19 @@ class EqValue:
         return False
     
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 30, 'C': 1, 'lr': 5e-5, 'num_character': 20, 'bacth_size': 100})
+    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 30, 'C': 1, 'lr': 5e-5, 'num_character': 18, 'bacth_size': 100})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
     eqv = EqValue(eqv_config, init_w, sess)
-    eq = Equation(4, 9, 20, 1)
     
-    train_iter = 10000
+    train_iter = 15000
     init = tf.global_variables_initializer()
     sess.run(init)
-
-    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_30_sequence_15000_consecutive_samples_2_4'
-    data = np.load('../Data/equations_encoded_2_4.npy', allow_pickle=True)
+    
+    ckpt_dir = 'CKPT_rnn_dim_30_lr_5e-5_encoding_dims_20_sequence_15000_consecutive_samples_2_4'
+    #eqv.restore_ckpt(ckpt_dir)
+        
+    data = np.load('../Data/equations_encoded_2_4_20_5.npy', allow_pickle=True)
     batch_size = 100
     data_size = 100000
     test_size = 1000
@@ -140,8 +141,6 @@ def main():
     f = open('test_results.txt', 'w')
 
     training_range = np.arange(data_size)[test_size:]
-    encoding_max = -10
-    encoding_min = 10
 
     for itr in tqdm(range(train_iter)):
         lower_equations = []
@@ -149,15 +148,6 @@ def main():
         idx = np.random.choice(training_range, batch_size)
         hists = np.take(data, idx)
         for hist in hists:
-            '''
-            while True:
-                index = np.random.choice(len(hist), 2)
-                if index[0] != index[1]:
-                    break
-            index = np.sort(index)
-            lower_equations.append(hist[index[0]])
-            higher_equations.append(hist[index[1]])
-            '''
             index = np.random.choice(len(hist)-1, 1)
             index = index[0]
             lower_equations.append(hist[index])

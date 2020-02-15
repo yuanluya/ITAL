@@ -291,6 +291,7 @@ class Equation:
                 if f1 != 1:
                     if self.scale(seq_tuple, poses[-1], f1)[1]:
                         history.append(self.tuple2str(seq_tuple))
+                        #pass
                 if f2 != 1:
                     if self.scale(seq_tuple, poses[-2], f2)[1]:
                         history.append(self.tuple2str(seq_tuple))
@@ -364,13 +365,14 @@ class Equation:
 
 def main():
     data_size = 100000
-    file_name = '../Data/sorted_equations.txt'
-    eq = Equation(4, 9, 20, 10)
+    file_name = '../Data/equations_2_4_20_5.txt'
+    eq = Equation(2, 4, 20, 5)
     f = open(file_name, 'w')
     
     for i in range(data_size):
         equation = eq.generate()
         history = eq.simplify(equation)
+        print(history)
         for h in history:
             f.write(h)
             f.write(';')
@@ -386,7 +388,7 @@ def main():
         seq_encodes.append(seq_encode)
     seq_encodes = np.array(seq_encodes)
     #seq_encodes = np.expand_dims(seq_encodes, axis=-1)
-    np.save('../Data/equations_encoded.npy', seq_encodes)
+    np.save('../Data/equations_encoded_2_4_20_5.npy', seq_encodes)
     
 if __name__ == '__main__':
     main()
