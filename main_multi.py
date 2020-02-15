@@ -50,8 +50,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
             else:
                 _, gradients_lv, _ = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
                 gradients_tea = []
-                for i in range(teacher.data_pool_tea_.shape[0]):
-                    gradients_tea.append(np.expand_dims(np.matmul(gradients_lv[i: i + 1, ...].T, teacher.data_pool_tea_[i: i + 1, ...]), 0))
+                for j in range(teacher.data_pool_tea_.shape[0]):
+                    gradients_tea.append(np.expand_dims(np.matmul(gradients_lv[j: j + 1, ...].T, teacher.data_pool_tea_[j: j + 1, ...]), 0))
                 gradients_tea = np.concatenate(gradients_tea, 0)
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr)
         data_choices.append(data_idx)
