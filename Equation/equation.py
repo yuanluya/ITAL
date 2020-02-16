@@ -117,7 +117,17 @@ class Equation:
         return ' '.join([''.join(tup) for tup in merge_seq])
     
     def encode(self, string):
-        digits = [self.codebook_.index(s) for s in string]
+        digits = [self.codebook_.index(s) for s in string[:-1]]
+        if string[-1] == 'e':
+            digits = digits + [21]
+        elif string[-1] == 's':
+            digits = digits + [22]
+        elif string[-1] == 'm':
+            digits = digits + [23]
+        elif string[-1] == 'c':
+            digits = digits + [24]
+        else:
+            digits = digits + [25]
         return digits
     
     def scale(self, seq_tuple, pos, scale):
@@ -144,6 +154,9 @@ class Equation:
         g = np.gcd(nominator, denominator)
         if g == 1:
             return seq_tuple, False
+        if g == denominator:
+            seq_tuple[1][pos] = '%d'  % (nominator/g)
+            return seq_tuple, True
         else:
             seq_tuple[1][pos] = '%d/%d' % (nominator/g, denominator/g)
             return seq_tuple, True
@@ -290,13 +303,13 @@ class Equation:
                 f2 = lcm / denoms[-2]
                 if f1 != 1:
                     if self.scale(seq_tuple, poses[-1], f1)[1]:
-                        history.append(self.tuple2str(seq_tuple))
+                        history.append(self.tuple2str(seq_tuple)+'s')
                         #pass
                 if f2 != 1:
                     if self.scale(seq_tuple, poses[-2], f2)[1]:
-                        history.append(self.tuple2str(seq_tuple))
+                        history.append(self.tuple2str(seq_tuple)+'s')
                 if self.merge(seq_tuple, poses[-1], poses[-2])[1]:
-                    history.append(self.tuple2str(seq_tuple))
+                    history.append(self.tuple2str(seq_tuple)+'m')
                 return history
             else:
                 Ud, Udc = np.unique(denoms, return_counts = True)
@@ -311,13 +324,13 @@ class Equation:
                     for i in range(biggest_idx - 1, -1, -1):
                         if denoms[i] == biggest_idx_denominator:
                             if self.merge(seq_tuple, poses[biggest_idx], poses[i])[1]:
-                                history.append(self.tuple2str(seq_tuple))
+                                history.append(self.tuple2str(seq_tuple)+'m')
                             return history
 
         return history
         
     def simplify(self, seq_tuple):
-        history = [self.tuple2str(seq_tuple)]
+        history = [self.tuple2str(seq_tuple)+'e']
         # 1. merge terms with same denominator
         while True:
             new_hist = self.merge_helper(seq_tuple, True)
@@ -350,7 +363,7 @@ class Equation:
             if seq_tuple[2][idx] != '=' and seq_tuple[2][idx] != '0':
                 seq_tuple[1][idx] = '%d' % (noms[i] * lcm / denoms[i])
                 i += 1
-        history.append(self.tuple2str(seq_tuple))
+        history.append(self.tuple2str(seq_tuple)+'c')
         # 4. sort by descending exp-degress
         variables = [term for term in seq_tuple[2] if term != '=' and term != '0']
         variables.sort(key = cmp_to_key(self.cmp_), reverse = True)
@@ -358,12 +371,19 @@ class Equation:
         while i < len(variables):
             pos = seq_tuple[2].index(variables[i])
             if self.move(seq_tuple, pos, i)[1]:
-                history.append(self.tuple2str(seq_tuple))
+                history.append(self.tuple2str(seq_tuple)+'o')
             i += 1
         return history
 
 
 def main():
+    '''
+    e = equation = 21
+    s = scale = 22
+    m = merge = 23
+    c = remove denominators = 24
+    o = sort = 25
+    '''
     data_size = 100000
     file_name = '../Data/equations_2_4_20_5.txt'
     eq = Equation(2, 4, 20, 5)
