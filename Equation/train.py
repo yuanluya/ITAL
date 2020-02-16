@@ -7,6 +7,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 import sys
+import json
 
 from equation import Equation
 from eq_value import EqValue
@@ -74,56 +75,17 @@ def main():
     '''
     generate test set
     '''
-    for hist in test_sets:
-        if test_mode == 'general':
-            index = np.random.choice(len(hist)-1, 1)
-            index = index[0]
-            lower_tests.append(hist[index][:-1])
-            higher_tests.append(hist[index+1][:-1])
-            operation = hist[index+1][-1]
-            if operation == 22:
-                s_index.append(test_index)
-            elif operation == 23:
-                m_index.append(test_index)
-            elif operation == 24:
-                c_index.append(test_index)
-            else:
-                o_index.append(test_index)
-            test_index = test_index + 1
-        else:
-            equation = eq.generate()
-            sorted_e = sort_var(equation,eq)
-            if len(sorted_e) == 1:
-                lower_tests.append(encode(tuple2str(equation)))
-                higher_tests.append(encode(tuple2str(sorted_e[-1])))
-            else:
-                index = np.random.choice(len(sorted_e) - 1, 1)
-                index = index[0]
-                lower_tests.append(encode(tuple2str(sorted_e[index])))
-                higher_tests.append(encode(tuple2str(sorted_e[index+1])))
-
-    test_lower_encoding_idx = []
-    for i in range(len(lower_tests)):
-        test_lower_encoding_idx.append([i, len(lower_tests[i])-1])
-    test_higher_encoding_idx = []
-    for i in range(len(higher_tests)):
-        test_higher_encoding_idx.append([i, len(higher_tests[i])-1])
-    test_lower_encoding_idx = np.array(test_lower_encoding_idx)
-    test_higher_encoding_idx = np.array(test_higher_encoding_idx)
+    f = open('test_results.txt', 'w')
+    lower_tests = np.load('lower_tests.npy', allow_pickle=True)
+    higher_tests = np.load('higher_tests.npy', allow_pickle=True)
+    test_lower_encoding_idx = np.load('test_lower_encoding_idx.npy', allow_pickle=True)
+    test_higher_encoding_idx =  np.load('test_higher_encoding_idx.npy', allow_pickle=True)
     
-    M00 = max(len(a) for a in lower_tests)
-    M11 = max(len(a) for a in higher_tests)
-    M = max(M00,M11)
-    weights = []
-    lower_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in lower_tests])
-    higher_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_tests])
     lower_tests_idx = np.expand_dims(lower_tests, axis=-1)
     higher_tests_idx = np.expand_dims(higher_tests, axis=-1)
 
-    np.save('lower_tests.npy', lower_tests)
-    np.save('higher_tests.npy', higher_tests)
-    f = open('test_results.txt', 'w')
-
+    with open('operation_index_dictionary.json') as js:
+        operation_index_dictionary = json.load(js)
     '''                                                                                                                                           
     training
     '''
@@ -176,7 +138,7 @@ def main():
                 index_l += str(j)
                 index_l += ','
 
-        if test_mode == 'general_1':
+        if test_mode == 'general':
             s_count = 0
             m_count = 0
             c_count = 0
@@ -191,17 +153,17 @@ def main():
                         c_count = c_count + 1
                     else:
                         o_count = o_count + 1
-            print('scale accuracy', (len(s_index)-s_count)/len(s_index))
-            print('test_size',len(s_index))
-            print('merge accuracy', (len(m_index)-m_count)/len(m_index))
-            print('test_size',len(m_index))
-            print('remove accuracy', (len(c_index)-c_count)/len(c_index))
-            print('test_size',len(c_index))
-            print('sort accuracy', (len(o_index)-o_count)/len(o_index))
-            print('test_size',len(o_index))
+            print('scale accuracy', (len(operation_index_dictionary['22'])-s_count)/len(operation_index_dictionary['22']))
+            print('test_size',len(operation_index_dictionary['22']))
+            print('merge accuracy', (len(operation_index_dictionary['23'])-m_count)/len(operation_index_dictionary['23']))
+            print('test_size',len(operation_index_dictionary['23']))
+            print('remove accuracy', (len(operation_index_dictionary['24'])-c_count)/len(operation_index_dictionary['24']))
+            print('test_size',len(operation_index_dictionary['24']))
+            print('sort accuracy', (len(operation_index_dictionary['25'])-o_count)/len(operation_index_dictionary['25']))
+            print('test_size',len(operation_index_dictionary['25']))
         f.write(index_l)
         f.write('\n')
-        if (itr + 1) % 5000 == 0:
+        if (itr + 1) % 1000 == 0:
             eqv.save_ckpt(ckpt_dir, itr)
 
     f.close()
