@@ -6,28 +6,6 @@ import json
 from functools import cmp_to_key
 from copy import deepcopy
 
-def tuple2str(seq_tuple):
-    merge_seq = list(zip(*seq_tuple))
-    return ' '.join([''.join(tup) for tup in merge_seq])
-
-def encode(string):
-    codebook_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y'] + [' ']
-    digits = [codebook_.index(s) for s in string]
-    return digits
-
-def sort_var(seq_tuple, eq):
-    seq_tuple = deepcopy(seq_tuple)
-    variables = [term for term in seq_tuple[2] if term != '=' and term != '0']
-    variables.sort(key = cmp_to_key(eq.cmp_), reverse = True)
-    i = 0
-    history= []
-    while i < len(variables):
-        pos = seq_tuple[2].index(variables[i])
-        if eq.move(seq_tuple, pos, i)[1]:
-            history.append(deepcopy(seq_tuple))
-        i += 1
-    return history
-
 def convert(o):
     if isinstance(o, np.int64): return int(o)  
     raise TypeError
