@@ -32,6 +32,9 @@ def reduction(seq_tuple, pos):
     g = np.gcd(nominator, denominator)
     if g == 1:
         return seq_tuple, False
+    if g == denominator:
+        seq_tuple[1][pos] = '%d' % (nominator/g)
+        return seq_tuple, True
     else:
         seq_tuple[1][pos] = '%d/%d' % (nominator/g, denominator/g)
         return seq_tuple, True
@@ -52,6 +55,9 @@ def check0(seq_tuple):
 
 def move(seq_tuple, pos1, pos2):
     seq_tuple = deepcopy(seq_tuple)
+    eqs_pos = seq_tuple[2].index('=')
+    if pos2 > eqs_pos:
+        return seq_tuple, False
     if seq_tuple[2][pos1] == '=' or pos1 == pos2:
         return seq_tuple, False
     if seq_tuple[2][pos1] == '0':
@@ -74,7 +80,9 @@ def merge(seq_tuple, pos1, pos2):
     #assert(seq_tuple[2][pos1] != '=')
     #assert(seq_tuple[2][pos2] != '=')
     if seq_tuple[2][pos1] == '=' or seq_tuple[2][pos2] == '=':
-        return seq_tuple, false
+        return seq_tuple, False
+    if seq_tuple[2][pos1] == '0' or seq_tuple[2][pos2] == '0':
+        return seq_tuple, False
     dp1 = seq_tuple[1][pos1].find('/')
     dp2 = seq_tuple[1][pos2].find('/')
     denominator = 1
@@ -89,6 +97,9 @@ def merge(seq_tuple, pos1, pos2):
         if denominator1 != denominator2:
             return seq_tuple, False
         denominator = denominator1
+        denominator = np.lcm(denominator1, denominator2)
+    elif dp1 == -1 and dp2 == -1:
+        denominator = 1
     elif dp1 == -1:
         try:
             denominator = int(seq_tuple[1][pos2][dp2 + 1:])
@@ -236,7 +247,7 @@ def tuple2str(seq_tuple):
     return ' '.join([''.join(tup) for tup in merge_seq])
     
 def encode(string):
-    codebook_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y', 'z', 'w'] + [' ']
+    codebook_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y'] + [' ']
     digits = [codebook_.index(s) for s in string]
     return digits
 
@@ -259,7 +270,7 @@ def greedy_search(seq_tuple, eqv):
     states_vals_ = eqv.sess_.run([eqv.lower_vals_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([len(encoded_states), eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
     states_vals_ = states_vals_[0]
     max_val = np.amax(states_vals_)
-    print('equation is', equation_str(seq_tuple))
+    print('equation is', tuple2str(seq_tuple))
     print('current state value is', states_vals_[-1])
     print('max state value is', max_val)
     print()
@@ -272,7 +283,7 @@ def greedy_search(seq_tuple, eqv):
 def beam_search_(current_states, width, eqv):
     states = deepcopy(current_states)
     for s in current_states:
-        print('current equation', equation_str(s))
+        print('current equation', tuple2str(s))
         for ss in next_states(s):
             if ss not in states:
                 states.append(ss)
@@ -307,106 +318,40 @@ def beam_search_(current_states, width, eqv):
     return beam_search_(next_states_, width ,eqv)
 
 def beam_search(seq_tuple, width, eqv):
-    '''
-    states, _ = next_states(seq_tuple)
-    states = states[:] + [seq_tuple]
-    encoded_states = [encode(tuple2str(tup)) for tup in states]
-    #print(len(encoded_states))
-
-    encoding_idx = []
-    for i in range(len(encoded_states)):
-        encoding_idx.append([i, len(encoded_states[i])-1])
-    encoding_idx = np.array(encoding_idx)
-    
-    M = max(len(s) for s in encoded_states)
-    equations = np.array([s + [eqv.config_.num_character] * (M - len(s)) for s in encoded_states])
-    eqs_idx = np.expand_dims(equations, axis=-1)
-
-    states_vals_ = eqv.sess_.run([eqv.lower_vals_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([len(encoded_states), eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
-    states_vals_ = states_vals_[0]
-    
-    indices = np.argsort(states_vals_)
-    index = len(indices) - 1
-    next_states_ = []
-    for i in range(width):
-        next_states_.append(states[index-i])
-    '''
     current_states = []
     for i in range(width):
         current_states.append(deepcopy(seq_tuple))
     return beam_search_(current_states, width, eqv)
 
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 20, 'C': 1, 'lr': 5e-5, 'num_character': 20})
+    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 30, 'C': 1, 'lr': 5e-5, 'num_character': 18, 'batch_size': 100})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
     eqv = EqValue(eqv_config, init_w, sess)
-    
-    ckpt_dir = 'CKPT_rnn_dim_20_lr_5e-5_encoding_dims_20_sequence_15000_consecutive_samples'
-    #eqv.restore_ckpt(ckpt_dir)
-    init = tf.global_variables_initializer()
-    sess.run(init)
+    init = tf.global_variables_initializer()                                                                                                                                        
+    sess.run(init)   
 
-    lower_strings = []
-    higher_strings = []
-    lower_tests = []
-    higher_tests = []
-    test_size = 1000
-    eq = Equation(4, 5, 20, 5)
-    for i in range(test_size):
+    ckpt_dir = 'CKPT_rnn_dim_30_lr_5e-5_encoding_dims_20_2_4'
+    eqv.restore_ckpt(ckpt_dir)
+    width = 6
+    eq = Equation(2, 4, 20, 5)
+    c = 0
+    
+    for i in range(1000):
         equation = eq.generate()
-        sorted_e = sort_var(equation,eq)
-        if len(sorted_e) == 1:
-            lower_tests.append(encode(tuple2str(equation)))
-            higher_tests.append(encode(tuple2str(sorted_e[-1])))
-        else:
-            index = np.random.choice(len(sorted_e) - 1, 1)
-            index = index[0]
-            lower_tests.append(encode(tuple2str(sorted_e[index])))
-            higher_tests.append(encode(tuple2str(sorted_e[index+1])))
-    test_lower_encoding_idx = []
-    for i in range(len(lower_tests)):
-        test_lower_encoding_idx.append([i, len(lower_tests[i])-1])
-    test_higher_encoding_idx = []
-    for i in range(len(higher_tests)):
-        test_higher_encoding_idx.append([i, len(higher_tests[i])-1])
-    test_lower_encoding_idx = np.array(test_lower_encoding_idx)
-    test_higher_encoding_idx = np.array(test_higher_encoding_idx)
-    M00 = max(len(a) for a in lower_tests)
-    M11 = max(len(a) for a in higher_tests)
-    M = max(M00,M11)
-    lower_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in lower_tests])
-    higher_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_tests])
-    lower_tests_idx = np.expand_dims(lower_tests, axis=-1)
-    higher_tests_idx = np.expand_dims(higher_tests, axis=-1)
-    test_lower_vals_, test_higher_vals_, test_lower_encoding_, test_higher_encoding, weight_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, \
-                                                    eqv.higher_eq_encodings_2_, eqv.weight_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx, \
-                    eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: test_lower_encoding_idx, eqv.higher_encoding_idx_: test_higher_encoding_idx})
-    max_entry_diff_l = []
-    for j in range(test_size):
-        if test_lower_vals_[j] >= test_higher_vals_[j]:
-            print(test_lower_encoding_[j])
-            print(test_higher_encoding[j])
-            max_entry_diff = np.amax(np.absolute(test_lower_encoding_[j] - test_higher_vals_[j]))
-            print(max_entry_diff)
-            max_entry_diff_l.append(max_entry_diff)
-            print()
-    print(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
-    print(np.mean(np.array(max_entry_diff_l)))
+        #print(equation_str(beam_search(equation, 6, eqv)))
+        #print(tuple2str(equation))
+        greed_search_equation = tuple2str(beam_search(equation,width,eqv))
+        history = eq.simplify(equation)
+        #print('rule based simpification', history[-1][:-1])
+        #print(greed_search_equation==history[-1][:-1])
+        if greed_search_equation==history[-1][:-1]:
+            c = c + 1
+    print(c/1000)
     
     '''
-    width = 6
-    eq = Equation(4, 9, 20, 10) 
-    equation = eq.generate() 
-    #print(equation_str(beam_search(equation, 6, eqv)))
-    
-    greed_search_equation = equation_str(greedy_search(equation,eqv))
-    history = eq.simplify(equation)
-    print(greed_search_equation)
-    print('rule based simpification', history[-1])
-
-    encoded_equation = encode(history[-1]) 
-    encoded_equation_e = encode(history[-1]) + [eqv_config.num_character] * 10
+    encoded_equation = encode(history[-1][:-1]) 
+    encoded_equation_e = encode(history[-1][:-1]) + [eqv_config.num_character] * 10
     eqs_idx = np.expand_dims(np.array([encoded_equation]), axis=-1)
     eqs_idx_e = np.expand_dims(np.array([encoded_equation_e]), axis=-1)
 
