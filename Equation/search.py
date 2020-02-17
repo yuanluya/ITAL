@@ -56,7 +56,7 @@ def check0(seq_tuple):
 def move(seq_tuple, pos1, pos2):
     seq_tuple = deepcopy(seq_tuple)
     eqs_pos = seq_tuple[2].index('=')
-    if pos2 >= eqs_pos:
+    if pos2 > eqs_pos:
         return seq_tuple, False
     if seq_tuple[2][pos1] == '=' or pos1 == pos2:
         return seq_tuple, False
@@ -336,7 +336,7 @@ def main():
     width = 6
     eq = Equation(2, 4, 20, 5)
     c = 0
-    '''
+    
     for i in range(1000):
         equation = eq.generate()
         #print(equation_str(beam_search(equation, 6, eqv)))

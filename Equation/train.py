@@ -25,7 +25,7 @@ def main():
     init = tf.global_variables_initializer()
     sess.run(init)
     ckpt_dir = 'CKPT_rnn_dim_%d_lr_5e-5_encoding_dims_%d_2_4' % (eqv_config.rnn_dim, eqv_config.encoding_dims)
-    eqv.restore_ckpt(ckpt_dir)
+    #eqv.restore_ckpt(ckpt_dir)
     #eq = Equation(2, 4, 20, 5)
     
     data = np.load('../Data/equations_encoded_2_4_20_5.npy', allow_pickle=True)
@@ -34,10 +34,10 @@ def main():
     batch_size = 100
     train_iter = 15000
     dists0 = []
-    accuracy = []
     
     test_size = 10000
     accuracy_test = []
+    neg_accuracy_test = []
     test_sets = np.take(data, range(test_size))
     lower_tests = []
     higher_tests = []
@@ -46,7 +46,9 @@ def main():
     '''
     generate test set
     '''
+    
     f = open('test_results.txt', 'w')
+
     lower_tests = np.load('lower_tests.npy', allow_pickle=True)
     higher_tests = np.load('higher_tests.npy', allow_pickle=True)
     test_lower_encoding_idx = np.load('test_lower_encoding_idx.npy', allow_pickle=True)
@@ -57,18 +59,28 @@ def main():
 
     with open('operation_index_dictionary.json') as js:
         operation_index_dictionary = json.load(js)
+
+    neg_lower_tests = np.load('neg_lower_tests.npy', allow_pickle=True)
+    neg_higher_tests = np.load('neg_higher_tests.npy', allow_pickle=True)
+    neg_test_lower_encoding_idx = np.load('neg_test_lower_encoding_idx.npy', allow_pickle=True)
+    neg_test_higher_encoding_idx =  np.load('neg_test_higher_encoding_idx.npy', allow_pickle=True)
+
+    neg_lower_tests_idx = np.expand_dims(neg_lower_tests, axis=-1)
+    neg_higher_tests_idx = np.expand_dims(neg_higher_tests, axis=-1)
+
+    
     '''                                                                                                                                           
     training
     '''
     training_range = np.arange(data_size)[test_size:]
 
     for itr in tqdm(range(train_iter)):
+        accuracy = []
         lower_equations = []
         higher_equations = []
         idx = np.random.choice(training_range, batch_size)
         hists = np.take(data, idx)
-        idx_neg = idx - test_size
-        neg_samples = np.take(neg_examples, idx_neg)
+        neg_samples = np.take(neg_examples, idx-10000)
         for hist in hists:
             index = np.random.choice(len(hist)-1, 1)
             index = index[0]
@@ -79,6 +91,7 @@ def main():
             index = index[0]
             lower_equations.append(neg_sample[index][0])
             higher_equations.append(neg_sample[index][1])
+
         lower_encoding_idx = []
         for i in range(len(lower_equations)):
             lower_encoding_idx.append([i, len(lower_equations[i])-1])
@@ -107,15 +120,16 @@ def main():
         test_lower_vals_, test_higher_vals_, test_lower_encoding_, test_higher_encoding, weight_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, \
                                                     eqv.higher_eq_encodings_2_, eqv.weight_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx, \
                     eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: test_lower_encoding_idx, eqv.higher_encoding_idx_: test_higher_encoding_idx})
-     
-        accuracy_test.append(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
-        print(np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size)
+
+        test_accuracy = np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size
+        accuracy_test.append(test_accuracy)
+        print('test accuracy', test_accuracy)
         index_l = ''
         for j in range(test_size):
             if test_lower_vals_[j] >= test_higher_vals_[j]:
                 index_l += str(j)
                 index_l += ','
-
+        
         s_count = 0
         m_count = 0
         c_count = 0
@@ -138,6 +152,13 @@ def main():
         print('test_size',len(operation_index_dictionary['24']))
         print('sort accuracy', (len(operation_index_dictionary['25'])-o_count)/len(operation_index_dictionary['25']))
         print('test_size',len(operation_index_dictionary['25']))
+
+        neg_test_lower_vals_, neg_test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: neg_lower_tests_idx, eqv.higher_eqs_idx_:neg_higher_tests_idx, \
+                    eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: neg_test_lower_encoding_idx, eqv.higher_encoding_idx_: neg_test_higher_encoding_idx})
+        neg_test_accuracy = np.count_nonzero(neg_test_lower_vals_ < neg_test_higher_vals_)/test_size
+        neg_accuracy_test.append(neg_test_accuracy)
+        print('neg test accuracy', neg_test_accuracy)
+        
         f.write(index_l)
         f.write('\n')
         if (itr + 1) % 1000 == 0:
