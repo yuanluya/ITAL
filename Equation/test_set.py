@@ -6,7 +6,6 @@ import json
 from functools import cmp_to_key
 from copy import deepcopy
 
-
 def tuple2str(seq_tuple):
     merge_seq = list(zip(*seq_tuple))
     return ' '.join([''.join(tup) for tup in merge_seq])

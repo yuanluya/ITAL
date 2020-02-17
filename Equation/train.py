@@ -51,10 +51,11 @@ def main():
     init = tf.global_variables_initializer()
     sess.run(init)
     ckpt_dir = 'CKPT_rnn_dim_%d_lr_5e-5_encoding_dims_%d_2_4' % (eqv_config.rnn_dim, eqv_config.encoding_dims)
-    eqv.restore_ckpt(ckpt_dir)
+    #eqv.restore_ckpt(ckpt_dir)
     #eq = Equation(2, 4, 20, 5)
     
     data = np.load('../Data/equations_encoded_2_4_20_5.npy', allow_pickle=True)
+    neg_examples = np.load('../Data/neg_training_set_2_4_20_5.npy', allow_pickle=True)
     data_size = 100000
     batch_size = 100
     train_iter = 15000
@@ -96,11 +97,18 @@ def main():
         higher_equations = []
         idx = np.random.choice(training_range, batch_size)
         hists = np.take(data, idx)
+        idx_neg = idx - test_size
+        neg_samples = np.take(neg_examples, idx_neg)
         for hist in hists:
             index = np.random.choice(len(hist)-1, 1)
             index = index[0]
             lower_equations.append(hist[index])
             higher_equations.append(hist[index+1])
+        for neg_sample in neg_samples:
+            index = np.random.choice(len(neg_sample), 1)
+            index = index[0]
+            lower_equations.append(neg_sample[index][0])
+            higher_equations.append(neg_sample[index][1])
         lower_encoding_idx = []
         for i in range(len(lower_equations)):
             lower_encoding_idx.append([i, len(lower_equations[i])-1])
