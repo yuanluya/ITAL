@@ -17,10 +17,6 @@ from copy import deepcopy
 import pdb
 
 def main():
-    test_mode_idx = int(sys.argv[1])
-    test_modes = ['general', 'sort']
-    test_mode = test_modes[test_mode_idx]
-    
     eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 30, 'C': 1, 'lr': 5e-5, 'num_character': 18, 'bacth_size': 100})
     init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
     sess = tf.Session()
@@ -120,29 +116,28 @@ def main():
                 index_l += str(j)
                 index_l += ','
 
-        if test_mode == 'general':
-            s_count = 0
-            m_count = 0
-            c_count = 0
-            o_count = 0
-            for j in range(test_size):
-                if test_lower_vals_[j] >= test_higher_vals_[j]:
-                    if j in operation_index_dictionary['22']:
-                        s_count = s_count + 1
-                    elif j in operation_index_dictionary['23']:
-                        m_count = m_count + 1
-                    elif j in operation_index_dictionary['24']:
-                        c_count = c_count + 1
-                    else:
-                        o_count = o_count + 1
-            print('scale accuracy', (len(operation_index_dictionary['22'])-s_count)/len(operation_index_dictionary['22']))
-            print('test_size',len(operation_index_dictionary['22']))
-            print('merge accuracy', (len(operation_index_dictionary['23'])-m_count)/len(operation_index_dictionary['23']))
-            print('test_size',len(operation_index_dictionary['23']))
-            print('remove accuracy', (len(operation_index_dictionary['24'])-c_count)/len(operation_index_dictionary['24']))
-            print('test_size',len(operation_index_dictionary['24']))
-            print('sort accuracy', (len(operation_index_dictionary['25'])-o_count)/len(operation_index_dictionary['25']))
-            print('test_size',len(operation_index_dictionary['25']))
+        s_count = 0
+        m_count = 0
+        c_count = 0
+        o_count = 0
+        for j in range(test_size):
+            if test_lower_vals_[j] >= test_higher_vals_[j]:
+                if j in operation_index_dictionary['22']:
+                    s_count = s_count + 1
+                elif j in operation_index_dictionary['23']:
+                    m_count = m_count + 1
+                elif j in operation_index_dictionary['24']:
+                    c_count = c_count + 1
+                else:
+                    o_count = o_count + 1
+        print('scale accuracy', (len(operation_index_dictionary['22'])-s_count)/len(operation_index_dictionary['22']))
+        print('test_size',len(operation_index_dictionary['22']))
+        print('merge accuracy', (len(operation_index_dictionary['23'])-m_count)/len(operation_index_dictionary['23']))
+        print('test_size',len(operation_index_dictionary['23']))
+        print('remove accuracy', (len(operation_index_dictionary['24'])-c_count)/len(operation_index_dictionary['24']))
+        print('test_size',len(operation_index_dictionary['24']))
+        print('sort accuracy', (len(operation_index_dictionary['25'])-o_count)/len(operation_index_dictionary['25']))
+        print('test_size',len(operation_index_dictionary['25']))
         f.write(index_l)
         f.write('\n')
         if (itr + 1) % 1000 == 0:
