@@ -55,6 +55,9 @@ def check0(seq_tuple):
 
 def move(seq_tuple, pos1, pos2):
     seq_tuple = deepcopy(seq_tuple)
+    eqs_pos = seq_tuple[2].index('=')
+    if pos2 >= eqs_pos:
+        return seq_tuple, False
     if seq_tuple[2][pos1] == '=' or pos1 == pos2:
         return seq_tuple, False
     if seq_tuple[2][pos1] == '0':
@@ -77,7 +80,9 @@ def merge(seq_tuple, pos1, pos2):
     #assert(seq_tuple[2][pos1] != '=')
     #assert(seq_tuple[2][pos2] != '=')
     if seq_tuple[2][pos1] == '=' or seq_tuple[2][pos2] == '=':
-        return seq_tuple, false
+        return seq_tuple, False
+    if seq_tuple[2][pos1] == '0' or seq_tuple[2][pos2] == '0':
+        return seq_tuple, False
     dp1 = seq_tuple[1][pos1].find('/')
     dp2 = seq_tuple[1][pos2].find('/')
     denominator = 1
@@ -331,17 +336,19 @@ def main():
     width = 6
     eq = Equation(2, 4, 20, 5)
     c = 0
+    '''
     for i in range(1000):
         equation = eq.generate()
         #print(equation_str(beam_search(equation, 6, eqv)))
         #print(tuple2str(equation))
-        greed_search_equation = tuple2str(greedy_search(equation,eqv))
+        greed_search_equation = tuple2str(beam_search(equation,width,eqv))
         history = eq.simplify(equation)
         #print('rule based simpification', history[-1][:-1])
         #print(greed_search_equation==history[-1][:-1])
         if greed_search_equation==history[-1][:-1]:
             c = c + 1
     print(c/1000)
+    
     '''
     encoded_equation = encode(history[-1][:-1]) 
     encoded_equation_e = encode(history[-1][:-1]) + [eqv_config.num_character] * 10

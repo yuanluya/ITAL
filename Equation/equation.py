@@ -236,6 +236,8 @@ class Equation:
             if denominator1 != denominator2:
                 return seq_tuple, False
             denominator = denominator1
+        if dp1 == -1 and dp2 == -1:
+            denominator = 1
         elif dp1 == -1:
             denominator = int(seq_tuple[1][pos2][dp2 + 1:])
         elif dp2 == -1:

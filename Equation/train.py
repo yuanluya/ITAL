@@ -16,28 +16,6 @@ from functools import cmp_to_key
 from copy import deepcopy
 import pdb
 
-def tuple2str(seq_tuple):
-    merge_seq = list(zip(*seq_tuple))
-    return ' '.join([''.join(tup) for tup in merge_seq])
-
-def encode(string):
-    codebook_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y'] + [' ']
-    digits = [codebook_.index(s) for s in string]
-    return digits
-
-def sort_var(seq_tuple, eq):
-    seq_tuple = deepcopy(seq_tuple)
-    variables = [term for term in seq_tuple[2] if term != '=' and term != '0']
-    variables.sort(key = cmp_to_key(eq.cmp_), reverse = True)
-    i = 0
-    history= []
-    while i < len(variables):
-        pos = seq_tuple[2].index(variables[i])
-        if eq.move(seq_tuple, pos, i)[1]:
-            history.append(deepcopy(seq_tuple))
-        i += 1
-    return history
-
 def main():
     test_mode_idx = int(sys.argv[1])
     test_modes = ['general', 'sort']
@@ -51,7 +29,7 @@ def main():
     init = tf.global_variables_initializer()
     sess.run(init)
     ckpt_dir = 'CKPT_rnn_dim_%d_lr_5e-5_encoding_dims_%d_2_4' % (eqv_config.rnn_dim, eqv_config.encoding_dims)
-    #eqv.restore_ckpt(ckpt_dir)
+    eqv.restore_ckpt(ckpt_dir)
     #eq = Equation(2, 4, 20, 5)
     
     data = np.load('../Data/equations_encoded_2_4_20_5.npy', allow_pickle=True)
@@ -67,10 +45,6 @@ def main():
     test_sets = np.take(data, range(test_size))
     lower_tests = []
     higher_tests = []
-    s_index = []
-    m_index = []
-    c_index = []
-    o_index = []
     test_index = 0
     
     '''
@@ -153,11 +127,11 @@ def main():
             o_count = 0
             for j in range(test_size):
                 if test_lower_vals_[j] >= test_higher_vals_[j]:
-                    if j in s_index:
+                    if j in operation_index_dictionary['22']:
                         s_count = s_count + 1
-                    elif j in m_index:
+                    elif j in operation_index_dictionary['23']:
                         m_count = m_count + 1
-                    elif j in c_index:
+                    elif j in operation_index_dictionary['24']:
                         c_count = c_count + 1
                     else:
                         o_count = o_count + 1
