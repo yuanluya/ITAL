@@ -109,8 +109,8 @@ def main():
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w,
                       'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task, 
-                       'num_classes': num_classes, 'noise_scale_min': 0.0, 'noise_scale_max': 0.07,
-                       'noise_scale_decay':80, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1})
+                       'num_classes': num_classes, 'noise_scale_min': 0.02, 'noise_scale_max': 0.1,
+                       'noise_scale_decay':500, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1})
     print(config_LS, config_T)
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
