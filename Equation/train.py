@@ -24,7 +24,7 @@ def main():
     
     init = tf.global_variables_initializer()
     sess.run(init)
-    ckpt_dir = 'CKPT_rnn_dim_%d_lr_5e-5_encoding_dims_%d_2_4' % (eqv_config.rnn_dim, eqv_config.encoding_dims)
+    ckpt_dir = 'CKPT_rnn_dim_%d_lr_5e-5_encoding_dims_%d_2_4_neg' % (eqv_config.rnn_dim, eqv_config.encoding_dims)
     #eqv.restore_ckpt(ckpt_dir)
     #eq = Equation(2, 4, 20, 5)
     
@@ -80,12 +80,13 @@ def main():
         higher_equations = []
         idx = np.random.choice(training_range, batch_size)
         hists = np.take(data, idx)
-        neg_samples = np.take(neg_examples, idx-10000)
+        idx_neg =  np.random.choice(training_range, batch_size*2)
+        neg_samples = np.take(neg_examples, idx_neg)
         for hist in hists:
             index = np.random.choice(len(hist)-1, 1)
             index = index[0]
-            lower_equations.append(hist[index])
-            higher_equations.append(hist[index+1])
+            lower_equations.append(hist[index][:-1])
+            higher_equations.append(hist[index+1][:-1])
         for neg_sample in neg_samples:
             index = np.random.choice(len(neg_sample), 1)
             index = index[0]
@@ -171,7 +172,7 @@ def main():
     plt.xlabel("iteration")
     plt.ylabel("accuracy")
     plt.legend()
-    plt.savefig('accurary_batch_100_constant_learning_rate_5e-5_rnn_%d_2_4.png' % (eqv_config.rnn_dim))
+    plt.savefig('accurary_batch_100_constant_learning_rate_5e-5_rnn_%d_2_4_neg.png' % (eqv_config.rnn_dim))
     return
 
 if __name__ == '__main__':
