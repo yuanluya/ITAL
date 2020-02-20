@@ -38,6 +38,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         dists.append(np.sum(np.square(w - teacher.gt_w_)))
         dists_.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
     return dists, dists_, accuracies, logpdf
+
 def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
     learner.reset(init_ws)
     w = learner.current_mean_
