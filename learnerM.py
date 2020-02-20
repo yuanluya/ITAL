@@ -26,7 +26,7 @@ class LearnerSM:
             self.y_ = tf.placeholder(dtype = tf.float32, shape = [None, self.config_.num_classes])
             self.losses_ = 0.5 * tf.reduce_sum(tf.square(self.linear_val_ - self.y_), axis = 1)
         self.loss_ = tf.reduce_sum(self.losses_ + 0.5 * self.config_.reg_coef * tf.reduce_sum(tf.square(self.W_[:, :, 0: -1]), axis = (1, 2)))
-        
+
         self.gradient_w_ = tf.gradients(self.loss_, [self.W_])
         self.gradient_lv_ = tf.gradients(self.loss_, [self.linear_val_])
 
@@ -46,7 +46,7 @@ class LearnerSM:
         target_center = self.current_mean_ - self.config_.lr * gradient
         val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient)) -\
                             2 * self.config_.lr * np.sum((self.current_mean_ - self.particles_) * gradient, axis = (1, 2))
-        
+
         gradients_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
         scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
                 np.exp (-1 * step / self.config_.noise_scale_decay)
@@ -64,7 +64,7 @@ class LearnerSM:
             for j in range(data_pool.shape[0]):
                 if j != data_idx:
                     val_cmp = gradients_cache[j] - 2 * self.config_.lr * np.sum(particle_cache * gradients[j: j + 1, ...])
-                    if val_cmp < val_target[i]:
+                    if val_target[i] - val_cmp > 1e-8:
                         count += 1
                     if count == self.config_.replace_count:
                         to_be_replaced.append(i)
@@ -103,7 +103,7 @@ class LearnerSM:
         gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
                                                         self.W_: self.particles_,
                                                         self.y_: data_y[data_idx: data_idx + 1, :]})
-        
+
         self.particles_ -= self.config_.lr * gradient_tf[0]
         move_dists = np.sum(np.square(gradient_tf[0]), axis = (1, 2))
         for i in range(self.config_.particle_num):
@@ -127,13 +127,13 @@ class LearnerSM:
             val_cmps = gradient_cache - 2 * self.config_.lr * (prev_loss - new_particle_losses[i])
             count = 0
             for j in range(data_pool.shape[0]):
-                if j != data_idx and val_cmps[j] < val_target_temp:
+                if j != data_idx and val_target_temp - val_cmps[j] > 1e-8:
                     count += 1
                 if count == self.config_.replace_count:
                     to_be_replaced.append(i)
                     eliminate += 1
                     break
-        
+
         to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
         if len(to_be_replaced) > 0:
             if len(to_be_kept) > 0 and step > 10:
@@ -141,7 +141,7 @@ class LearnerSM:
                              np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
             else:
                 new_center = target_center
-        
+
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
@@ -174,7 +174,7 @@ class LearnerSM:
 
         # losses = self.sess_.run(self.losses_, {self.X_: data_pool, self.W_: self.current_mean_, self.y_: np.expand_dims(data_y, 1)})
         return gradient_tf, gradient_lv, np.array(losses)
-        
+
 
 def main():
     return
