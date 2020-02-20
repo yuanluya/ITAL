@@ -14,6 +14,30 @@ from teacherM import TeacherM
 
 import pdb
 
+def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
+    sess.run(init)
+    [w] = sess.run([learner.w_])
+    dists = [np.sum(np.square(w - teacher.gt_w_))]
+    dists_ = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
+    accuracies = []
+    logpdf = []
+    for _ in tqdm(range(train_iter)):
+        if (_ % 20 == 0):
+            pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.1)
+            logpdf.append(np.log(pdf))
+        accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w.T) - teacher.gt_y_full_test_), axis = 1))
+        accuracies.append(accuracy)
+        teacher.sample()
+        if (sgd):
+            data_idx = np.random.randint(teacher.data_pool_.shape[0])
+            data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1].flatten()]
+        else:
+            data_point = [teacher.data_pool_, teacher.gt_y_.flatten()]
+        # print(data_point[0].shape, data_point[1].shape)
+        w = learner.learn(data_point)
+        dists.append(np.sum(np.square(w - teacher.gt_w_)))
+        dists_.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
+    return dists, dists_, accuracies, logpdf
 def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
     learner.reset(init_ws)
     w = learner.current_mean_
@@ -91,8 +115,8 @@ def main():
         num_classes = 1
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 1000
-    train_iter_simple = 2500
-    train_iter_smart = 2500 #2500 + 2500 * (lt == 0)
+    train_iter_simple = 1000
+    train_iter_smart = 1000 #2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
@@ -122,45 +146,8 @@ def main():
     teacher = TeacherM(config_T)
     learnerM = LearnerSM(sess, config_LS)
     init = tf.global_variables_initializer()
-    sess.run(init)
-
-    [w] = sess.run([learner.w_])
-    dists_neg1_batch = [np.sum(np.square(w - teacher.gt_w_))]
-    dists_neg1_batch_ = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
-    accuracies_neg1_batch = []
-    logpdf_neg1_batch = []
-    for _ in tqdm(range(train_iter_simple)):
-        if (_ % 20 == 0):
-            pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.1)
-            logpdf_neg1_batch.append(np.log(pdf))
-        accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w.T) - teacher.gt_y_full_test_), axis = 1))
-        accuracies_neg1_batch.append(accuracy)
-        teacher.sample()
-        data_point = [teacher.data_pool_, teacher.gt_y_.flatten()]
-        # print(data_point[0].shape, data_point[1].shape)
-        w = learner.learn(data_point)
-        dists_neg1_batch.append(np.sum(np.square(w - teacher.gt_w_)))
-        dists_neg1_batch_.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
-
-    sess.run(init)
-    [w] = sess.run([learner.w_])
-    dists_neg1_sgd = [np.sum(np.square(w - teacher.gt_w_))]
-    dists_neg1_sgd_ = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
-    accuracies_neg1_sgd = []
-    logpdf_neg1_sgd = []
-    for _ in tqdm(range(train_iter_simple)):
-        if (_ % 20 == 0):
-            pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.1)
-            logpdf_neg1_sgd.append(np.log(pdf))
-        accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w.T) - teacher.gt_y_full_test_), axis = 1))
-        accuracies_neg1_sgd.append(accuracy)
-        teacher.sample()
-        data_idx = np.random.randint(teacher.data_pool_.shape[0])
-        data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1].flatten()]
-        w = learner.learn(data_point)
-        dists_neg1_sgd.append(np.sum(np.square(w - teacher.gt_w_)))
-        dists_neg1_sgd_.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
-
+    dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+    dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
     dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
     dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
     dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
