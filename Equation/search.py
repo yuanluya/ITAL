@@ -202,13 +202,13 @@ def next_states(seq_tuple):
             if s > 1:
                 seq_t, valid = scale(seq_tuple, pos, s)
                 if valid:
-                    states.extend([seq_t[:]])
+                    states.extend([(seq_t[:], 's')])
                     count += 1
                     #print('call scale', pos)
                     #print(equation_str(seq_t))
         seq_t, valid = reduction(seq_tuple, pos)
         if valid:
-            states.extend([seq_t[:]])
+            states.extend([(seq_t[:], 'r')])
             count += 1
             #print('call reduction', pos)
             #print(equation_str(seq_t))
@@ -216,20 +216,20 @@ def next_states(seq_tuple):
             seq_t, valid = move(seq_tuple, pos, pos2)
             if valid:
                 count += 1
-                states.extend([seq_t[:]])
+                states.extend([(seq_t[:], 'o')])
                 #print('call move', pos, pos2)
                 #print(equation_str(seq_t))
         for pos2 in range(length)[pos+1:]:
             seq_t, valid = merge(seq_tuple, pos, pos2)
             if valid:
                 count += 1
-                states.extend([seq_t[:]])
+                states.extend([(seq_t[:], 'm')])
                 #print('call merge', pos, pos2)
                 #print(equation_str(seq_t))
     seq_t, valid = constant_multiply(seq_tuple)
     if valid:
         count += 1
-        states.extend([seq_t[:]])
+        states.extend([(seq_t[:], 'c')])
         #print('call constant_multiply')                                                                                                                                       
         #print(equation_str(seq_t))
 
@@ -252,9 +252,9 @@ def encode(string):
     return digits
 
 
-def greedy_search(seq_tuple, eqv):
+def greedy_search(seq_tuple, eqv, c):
     states = next_states(seq_tuple)
-    states = states[:] + [seq_tuple]
+    states = [s[0] for s in states] + [seq_tuple]
     encoded_states = [encode(tuple2str(tup)) for tup in states]
     #print(len(encoded_states))
 
@@ -274,19 +274,21 @@ def greedy_search(seq_tuple, eqv):
     print('current state value is', states_vals_[-1])
     print('max state value is', max_val)
     print()
+
     if states_vals_[-1] == max_val:
-        return seq_tuple
+        return seq_tuple, c+1
     index = np.where(states_vals_ == max_val)[0]
     next_index = np.random.choice(index, 1)[0]
-    return greedy_search(states[next_index], eqv)
+    #next_index = np.random.choice(len(states), 1)[0]
+    return greedy_search(states[next_index], eqv, c+1)
 
 def beam_search_(current_states, width, eqv):
     states = deepcopy(current_states)
     for s in current_states:
         print('current equation', tuple2str(s))
         for ss in next_states(s):
-            if ss not in states:
-                states.append(ss)
+            if ss[0] not in states:
+                states.append(ss[0])
 
     encoded_states = [encode(tuple2str(tup)) for tup in states]
     encoding_idx = []
@@ -331,24 +333,27 @@ def main():
     init = tf.global_variables_initializer()                                                                                                                                        
     sess.run(init)   
 
-    ckpt_dir = 'CKPT_rnn_dim_30_lr_5e-5_encoding_dims_20_2_4'
+    ckpt_dir = 'CKPT_rnn_dim_30_lr_5e-5_encoding_dims_20_2_4_neg'
     eqv.restore_ckpt(ckpt_dir)
     width = 6
     eq = Equation(2, 4, 20, 5)
     c = 0
-    
+    steps = 0
     for i in range(1000):
         equation = eq.generate()
         #print(equation_str(beam_search(equation, 6, eqv)))
         #print(tuple2str(equation))
-        greed_search_equation = tuple2str(beam_search(equation,width,eqv))
+        greedy_search_equation, step = greedy_search(equation,eqv,0)
+        greedy_search_equation = tuple2str(greedy_search_equation)
+        #beam_search_equation = tuple2str(beam_search(equation,10,eqv))
         history = eq.simplify(equation)
         #print('rule based simpification', history[-1][:-1])
         #print(greed_search_equation==history[-1][:-1])
-        if greed_search_equation==history[-1][:-1]:
+        if greedy_search_equation==history[-1][:-1]:
             c = c + 1
+        steps = steps + step
     print(c/1000)
-    
+    print(steps/1000)
     '''
     encoded_equation = encode(history[-1][:-1]) 
     encoded_equation_e = encode(history[-1][:-1]) + [eqv_config.num_character] * 10

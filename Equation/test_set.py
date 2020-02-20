@@ -21,7 +21,7 @@ def main():
     higher_tests = []
     test_index = 0
     index_pair_dictionary = {}
-    operation_index_dictionary = {22:[], 23:[], 24:[], 25:[],}
+    operation_index_dictionary = {22:[], 23:[], 24:[], 25:[]}
 
     for hist in test_sets:
         index = np.random.choice(len(hist)-1, 1)
@@ -66,12 +66,20 @@ def main():
 
     neg_lower_tests = []
     neg_higher_tests = []
+    test_index = 0
+    neg_operation_index_dictionary = {22:[], 23:[], 24:[], 25:[]}
     neg_test_sets = np.take(neg_data, range(test_size))
     for neg_sample in neg_test_sets:
         index = np.random.choice(len(neg_sample), 1)
         index = index[0]
-        neg_lower_tests.append(neg_sample[index][0])
-        neg_higher_tests.append(neg_sample[index][1])
+        neg_lower_tests.append(neg_sample[index][0][:-1])
+        neg_higher_tests.append(neg_sample[index][1][:-1])
+
+        operation = neg_sample[index][0][-1]
+        print(operation)
+        neg_operation_index_dictionary[operation].append(test_index)
+        test_index = test_index + 1
+
 
     neg_test_lower_encoding_idx = []
     neg_test_higher_encoding_idx = []
@@ -95,5 +103,9 @@ def main():
     np.save('neg_test_lower_encoding_idx.npy', neg_test_lower_encoding_idx)
     np.save('neg_test_higher_encoding_idx.npy', neg_test_higher_encoding_idx)
 
+    with open('neg_operation_index_dictionary.json', 'w') as f:
+        json.dump(neg_operation_index_dictionary, f, default=convert)
+    for i in neg_operation_index_dictionary:
+        print(i,len(neg_operation_index_dictionary[i]))
 if __name__ == '__main__':
     main()

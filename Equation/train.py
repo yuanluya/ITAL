@@ -24,14 +24,15 @@ def main():
     
     init = tf.global_variables_initializer()
     sess.run(init)
-    ckpt_dir = 'CKPT_rnn_dim_%d_lr_5e-5_encoding_dims_%d_2_4_neg' % (eqv_config.rnn_dim, eqv_config.encoding_dims)
-    #eqv.restore_ckpt(ckpt_dir)
+    ckpt_dir = 'CKPT_rnn_dim_30_lr_5e-5_encoding_dims_20_2_4_neg'
+    eqv.restore_ckpt(ckpt_dir)
     #eq = Equation(2, 4, 20, 5)
     
     data = np.load('../Data/equations_encoded_2_4_20_5.npy', allow_pickle=True)
     neg_examples = np.load('../Data/neg_training_set_2_4_20_5.npy', allow_pickle=True)
     data_size = 100000
     batch_size = 100
+    neg_batch_size = 200
     train_iter = 15000
     dists0 = []
     
@@ -59,7 +60,11 @@ def main():
 
     with open('operation_index_dictionary.json') as js:
         operation_index_dictionary = json.load(js)
-
+    s_len = len(operation_index_dictionary['22'])
+    m_len = len(operation_index_dictionary['23'])
+    c_len = len(operation_index_dictionary['24'])
+    o_len = len(operation_index_dictionary['25'])
+    
     neg_lower_tests = np.load('neg_lower_tests.npy', allow_pickle=True)
     neg_higher_tests = np.load('neg_higher_tests.npy', allow_pickle=True)
     neg_test_lower_encoding_idx = np.load('neg_test_lower_encoding_idx.npy', allow_pickle=True)
@@ -68,7 +73,13 @@ def main():
     neg_lower_tests_idx = np.expand_dims(neg_lower_tests, axis=-1)
     neg_higher_tests_idx = np.expand_dims(neg_higher_tests, axis=-1)
 
-    
+    with open('neg_operation_index_dictionary.json') as js:
+        negative_operation_index_dictionary = json.load(js)
+    negative_s_len = len(negative_operation_index_dictionary['22'])
+    negative_m_len = len(negative_operation_index_dictionary['23'])
+    negative_c_len = len(negative_operation_index_dictionary['24'])
+    negative_o_len = len(negative_operation_index_dictionary['25'])
+
     '''                                                                                                                                           
     training
     '''
@@ -80,7 +91,7 @@ def main():
         higher_equations = []
         idx = np.random.choice(training_range, batch_size)
         hists = np.take(data, idx)
-        idx_neg =  np.random.choice(training_range, batch_size*2)
+        idx_neg =  np.random.choice(training_range, neg_batch_size)
         neg_samples = np.take(neg_examples, idx_neg)
         for hist in hists:
             index = np.random.choice(len(hist)-1, 1)
@@ -90,8 +101,8 @@ def main():
         for neg_sample in neg_samples:
             index = np.random.choice(len(neg_sample), 1)
             index = index[0]
-            lower_equations.append(neg_sample[index][0])
-            higher_equations.append(neg_sample[index][1])
+            lower_equations.append(neg_sample[index][0][:-1])
+            higher_equations.append(neg_sample[index][1][:-1])
 
         lower_encoding_idx = []
         for i in range(len(lower_equations)):
@@ -114,17 +125,20 @@ def main():
                                     {eqv.lower_eqs_idx_: lower_eqs_idx, eqv.higher_eqs_idx_: higher_eqs_idx, eqv.initial_states_: np.zeros([lower_eqs_idx.shape[0], eqv.config_.rnn_dim]), \
                                      eqv.lower_encoding_idx_: lower_encoding_idx, eqv.higher_encoding_idx_: higher_encoding_idx})
         dists0.append(loss)
-        accuracy_batch = np.count_nonzero(lower_vals < higher_vals)/100
+        accuracy_batch = np.count_nonzero(lower_vals < higher_vals)/(batch_size + neg_batch_size)
         accuracy.append(accuracy_batch)
         #print(accuracy_batch)
 
-        test_lower_vals_, test_higher_vals_, test_lower_encoding_, test_higher_encoding, weight_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_, eqv.lower_eq_encodings_2_, \
-                                                    eqv.higher_eq_encodings_2_, eqv.weight_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx, \
-                    eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: test_lower_encoding_idx, eqv.higher_encoding_idx_: test_higher_encoding_idx})
 
+        '''
+        test 
+        '''
+        test_lower_vals_, test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: lower_tests_idx, eqv.higher_eqs_idx_:higher_tests_idx, \
+                    eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: test_lower_encoding_idx, eqv.higher_encoding_idx_: test_higher_encoding_idx})
         test_accuracy = np.count_nonzero(test_lower_vals_ < test_higher_vals_)/test_size
         accuracy_test.append(test_accuracy)
         print('test accuracy', test_accuracy)
+
         index_l = ''
         for j in range(test_size):
             if test_lower_vals_[j] >= test_higher_vals_[j]:
@@ -137,29 +151,45 @@ def main():
         o_count = 0
         for j in range(test_size):
             if test_lower_vals_[j] >= test_higher_vals_[j]:
-                if j in operation_index_dictionary['22']:
-                    s_count = s_count + 1
-                elif j in operation_index_dictionary['23']:
-                    m_count = m_count + 1
-                elif j in operation_index_dictionary['24']:
-                    c_count = c_count + 1
-                else:
-                    o_count = o_count + 1
-        print('scale accuracy', (len(operation_index_dictionary['22'])-s_count)/len(operation_index_dictionary['22']))
-        print('test_size',len(operation_index_dictionary['22']))
-        print('merge accuracy', (len(operation_index_dictionary['23'])-m_count)/len(operation_index_dictionary['23']))
-        print('test_size',len(operation_index_dictionary['23']))
-        print('remove accuracy', (len(operation_index_dictionary['24'])-c_count)/len(operation_index_dictionary['24']))
-        print('test_size',len(operation_index_dictionary['24']))
-        print('sort accuracy', (len(operation_index_dictionary['25'])-o_count)/len(operation_index_dictionary['25']))
-        print('test_size',len(operation_index_dictionary['25']))
+                s_count = s_count + (j in operation_index_dictionary['22'])
+                m_count = m_count + (j in operation_index_dictionary['23'])
+                c_count = c_count + (j in operation_index_dictionary['24'])
+                o_count = o_count + (j in operation_index_dictionary['25'])
+        print('scale accuracy', (s_len - s_count)/s_len)
+        print('test_size', s_len)
+        print('merge accuracy', (m_len - m_count)/m_len)
+        print('test_size', m_len)
+        print('remove accuracy', (c_len - c_count)/c_len)
+        print('test_size', c_len)
+        print('sort accuracy', (o_len - o_count)/o_len)
+        print('test_size', o_len)
 
         neg_test_lower_vals_, neg_test_higher_vals_ = eqv.sess_.run([eqv.lower_vals_, eqv.higher_vals_], {eqv.lower_eqs_idx_: neg_lower_tests_idx, eqv.higher_eqs_idx_:neg_higher_tests_idx, \
                     eqv.initial_states_: np.zeros([test_size, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: neg_test_lower_encoding_idx, eqv.higher_encoding_idx_: neg_test_higher_encoding_idx})
         neg_test_accuracy = np.count_nonzero(neg_test_lower_vals_ < neg_test_higher_vals_)/test_size
         neg_accuracy_test.append(neg_test_accuracy)
         print('neg test accuracy', neg_test_accuracy)
-        
+
+        s_count = 0
+        m_count = 0
+        c_count = 0
+        o_count = 0
+        for j in range(test_size):
+            if neg_test_lower_vals_[j] >= neg_test_higher_vals_[j]:
+                s_count = s_count + (j in negative_operation_index_dictionary['22'])
+                m_count = m_count + (j in negative_operation_index_dictionary['23'])
+                c_count = c_count + (j in negative_operation_index_dictionary['24'])
+                o_count = o_count + (j in negative_operation_index_dictionary['25'])
+        print('scale accuracy', (negative_s_len - s_count)/negative_s_len)
+        print('test_size', negative_s_len)
+        print('merge accuracy', (negative_m_len - m_count)/negative_m_len)
+        print('test_size', negative_m_len)
+        print('remove accuracy', (negative_c_len - c_count)/negative_c_len)
+        print('test_size', negative_c_len)
+        print('sort accuracy', (negative_o_len - o_count)/negative_o_len)
+        print('test_size', negative_o_len)
+
+
         f.write(index_l)
         f.write('\n')
         if (itr + 1) % 1000 == 0:
@@ -169,10 +199,11 @@ def main():
     plt.figure()
     plt.plot(accuracy, label="accuracy by batch")
     plt.plot(accuracy_test, label="accuracy on test set")
+    plt.plot(neg_accuracy_test, label="accuracy on negative test set")
     plt.xlabel("iteration")
     plt.ylabel("accuracy")
     plt.legend()
-    plt.savefig('accurary_batch_100_constant_learning_rate_5e-5_rnn_%d_2_4_neg.png' % (eqv_config.rnn_dim))
+    plt.savefig('accurary_learning_rate_5e-5_rnn_30_2_4.png')
     return
 
 if __name__ == '__main__':

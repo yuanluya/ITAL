@@ -360,7 +360,15 @@ class Equation:
                 else:
                     noms.append(int(seq_tuple[1][idx][0:]))
         i = 0
-        lcm = np.lcm.reduce(denoms)
+        if denoms == []:
+            return history
+        try:
+            lcm = np.lcm.reduce(denoms)
+        except TypeError:
+            print(seq_tuple)
+            print(history)
+            print(denoms)
+            exit()
         for idx in range(len(seq_tuple[2])):
             if seq_tuple[2][idx] != '=' and seq_tuple[2][idx] != '0':
                 seq_tuple[1][idx] = '%d' % (noms[i] * lcm / denoms[i])
@@ -386,8 +394,8 @@ def main():
     c = remove denominators = 24
     o = sort = 25
     '''
-    data_size = 100000
-    file_name = '../Data/equations_2_4_20_5.txt'
+    data_size = 500000
+    file_name = '../../../Datasets/equation_500/equations_2_4_20_5.txt'
     eq = Equation(2, 4, 20, 5)
     f = open(file_name, 'w')
     
@@ -410,7 +418,7 @@ def main():
         seq_encodes.append(seq_encode)
     seq_encodes = np.array(seq_encodes)
     #seq_encodes = np.expand_dims(seq_encodes, axis=-1)
-    np.save('../Data/equations_encoded_2_4_20_5.npy', seq_encodes)
+    np.save('../../../Datasets/equation_500/equations_encoded_2_4_20_5.npy', seq_encodes)
     
 if __name__ == '__main__':
     main()
