@@ -9,7 +9,7 @@ from copy import deepcopy
 
 import search
 from search import next_states
-
+from config import config
 from equation import Equation
 
 def str_tuple(string):
@@ -45,8 +45,8 @@ def str_tuple(string):
 
 def main():
     eq = Equation(2, 4, 20, 5)
-    path = '../Data/'
-    data_size = 500000
+    path = config.dir_path
+    data_size = config.data_size
 
     file_name = path + 'equations_2_4_20_5.txt'
     f = open(file_name, 'w')

@@ -5,18 +5,17 @@ import os
 import json
 from functools import cmp_to_key
 from copy import deepcopy
+from config import config
 
 def convert(o):
     if isinstance(o, np.int64): return int(o)  
     raise TypeError
 
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 30, 'C': 1, 'lr': 5e-5, 'num_character': 18, 'bacth_size': 100})
-    data = np.load('../Data/equations_encoded_2_4_20_5.npy', allow_pickle=True)
-    neg_data = np.load('../Data/neg_training_set_2_4_20_5.npy', allow_pickle=True)
+    data = np.load(config.dir_path + 'equations_encoded_2_4_20_5.npy', allow_pickle=True)
+    neg_data = np.load(config.dir_path + 'neg_training_set_2_4_20_5.npy', allow_pickle=True)
     
-    test_size = 10000
-    test_sets = np.take(data, range(test_size))
+    test_sets = np.take(data, range(config.test_size))
     lower_tests = []
     higher_tests = []
     test_index = 0
@@ -68,7 +67,7 @@ def main():
     neg_higher_tests = []
     test_index = 0
     neg_operation_index_dictionary = {22:[], 23:[], 24:[], 25:[]}
-    neg_test_sets = np.take(neg_data, range(test_size))
+    neg_test_sets = np.take(neg_data, range(config.test_size))
     for neg_sample in neg_test_sets:
         index = np.random.choice(len(neg_sample), 1)
         index = index[0]
