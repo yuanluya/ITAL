@@ -88,8 +88,8 @@ class LearnerSM:
                         # noise = t.rvs(df = 5, scale = scale,
                         #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
             #rd = np.random.choice(2, p = [1 - replace_ratio, replace_ratio])
-            rd = np.random.choice(2, p = [0, 1])
-            if rd == 0:
+            rd = np.random.rand()
+            if rd < 1  - self.config_.prob:
                 self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
             else:
                 self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
@@ -147,7 +147,12 @@ class LearnerSM:
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
                         # noise = t.rvs(df = 5, scale = scale,
                         #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-            self.particles_[i: i + 1, ...] = new_center + noise
+            rd = np.random.rand()
+            if rd < 1 - self.config_.prob:
+                self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
+            else:
+                self.particles_[i: i + 1, ...] = new_center + noise
+            eliminate += 1
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
