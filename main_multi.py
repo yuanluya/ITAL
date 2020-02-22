@@ -23,20 +23,29 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     logpdf = []
     for _ in tqdm(range(train_iter)):
         if (_ % 20 == 0):
-            pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.1)
+            pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.5)
+            if (pdf == 0):
+                print(_)
             logpdf.append(np.log(pdf))
-        accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w.T) - teacher.gt_y_full_test_), axis = 1))
+        if teacher.config_.task == 'classification':
+            logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
+            probs = logits / np.sum(logits, axis = 1, keepdims = True)
+            accuracy = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
+        else:
+            accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w.T) - teacher.gt_y_full_test_), axis = 1))
         accuracies.append(accuracy)
         teacher.sample()
         if (sgd):
             data_idx = np.random.randint(teacher.data_pool_.shape[0])
-            data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1].flatten()]
+            data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
         else:
-            data_point = [teacher.data_pool_, teacher.gt_y_.flatten()]
-        # print(data_point[0].shape, data_point[1].shape)
+            data_point = [teacher.data_pool_, teacher.gt_y_]
         w = learner.learn(data_point)
         dists.append(np.sum(np.square(w - teacher.gt_w_)))
         dists_.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
+    if teacher.config_.task == 'classification':
+        accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, w.T), 1) == teacher.gt_y_label_full_)
+        print('test accuracy: %f' % accuracy)
     return dists, dists_, accuracies, logpdf
 
 def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
@@ -52,9 +61,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
     logpdfs = []
     for i in tqdm(range(train_iter)):
         if i % 20 == 0:
-            pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.1) for p in learner.particles_])
+            pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5) for p in learner.particles_])
             logpdfs.append(np.log(pdf))
-
         if teacher.config_.task == 'classification':
             #accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w[0, ...].T))
@@ -117,7 +125,7 @@ def main():
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 1000
     train_iter_simple = 1000
-    train_iter_smart = 1000 #2500 + 2500 * (lt == 0)
+    train_iter_smart = 1000#2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
@@ -136,10 +144,10 @@ def main():
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w,
                       'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
-                       'num_classes': num_classes, 'noise_scale_min': 0.1, 'noise_scale_max': 0.3,
-                       'noise_scale_decay':300, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1})
+                       'num_classes': num_classes, 'noise_scale_min': 0.02, 'noise_scale_max': 0.1,
+                       'noise_scale_decay':1000, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     print(config_LS, config_T)
-    config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0})
+    config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
     init_w = np.mean(init_ws, 0)
@@ -147,6 +155,8 @@ def main():
     teacher = TeacherM(config_T)
     learnerM = LearnerSM(sess, config_LS)
     init = tf.global_variables_initializer()
+
+
     dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
     dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
     dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
@@ -194,7 +204,6 @@ def main():
               (mode, num_classes, dd, config_LS.replace_count, config_T.sample_size, dps, num_particles,
                config_LS.noise_scale_min, config_LS.noise_scale_max, config_LS.noise_scale_decay,
                config_LS.target_ratio, config_LS.new_ratio))
-
     plt.show()
     #plt.savefig('figure_%s.png' % learnerM.loss_type_)
     pdb.set_trace()
