@@ -16,7 +16,12 @@ def scale(seq_tuple, pos, scale):
         return seq_tuple, False
     dash_pos = seq_tuple[1][pos].find('/')
     nominator = int(seq_tuple[1][pos][0: dash_pos])
-    denominator = int(seq_tuple[1][pos][dash_pos + 1:])
+    try:
+        denominator = int(seq_tuple[1][pos][dash_pos + 1:])
+    except ValueError:
+        print(tuple2str(seq_tuple))
+        print(seq_tuple)
+        exit()
     seq_tuple[1][pos] = '%d/%d' % (nominator * scale, denominator * scale)
     return seq_tuple, True
 
@@ -170,6 +175,8 @@ def constant_multiply(seq_tuple):
             else:
                 noms.append(int(seq_tuple[1][idx][0:]))
     i = 0
+    if denoms == []:
+        return seq_tuple, False
     lcm = np.lcm.reduce(denoms)
     if lcm == 1:
         return seq_tuple, False
@@ -343,15 +350,15 @@ def main():
         equation = eq.generate()
         #print(equation_str(beam_search(equation, 6, eqv)))
         #print(tuple2str(equation))
-        greedy_search_equation, step = greedy_search(equation,eqv,0)
-        greedy_search_equation = tuple2str(greedy_search_equation)
-        #beam_search_equation = tuple2str(beam_search(equation,10,eqv))
+        #greedy_search_equation, step = greedy_search(equation,eqv,0)
+        #greedy_search_equation = tuple2str(greedy_search_equation)
+        beam_search_equation = tuple2str(beam_search(equation,6,eqv))
         history = eq.simplify(equation)
         #print('rule based simpification', history[-1][:-1])
         #print(greed_search_equation==history[-1][:-1])
-        if greedy_search_equation==history[-1][:-1]:
+        if beam_search_equation==history[-1][:-1]:
             c = c + 1
-        steps = steps + step
+        #steps = steps + step
     print(c/1000)
     print(steps/1000)
     '''

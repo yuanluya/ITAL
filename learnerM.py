@@ -167,8 +167,6 @@ class LearnerSM:
                 self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
             else:
                 self.particles_[i: i + 1, ...] = new_center + noise
-            eliminate += 1
-
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
         return self.current_mean_, eliminate, kept_dist, replace_dist, cosine

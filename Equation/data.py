@@ -30,25 +30,30 @@ def str_tuple(string):
         else:
             xpos = t.find('x')
             ypos = t.find('y')
-            if xpos == -1 and ypos == -1:
+            zpos = t.find('z')
+            if xpos == -1 and ypos == -1 and zpos == -1:
                 var_list.append('')
                 vpos = len(t)
-            elif xpos == -1:
+            elif xpos != -1:
+                vpos = xpos
+                var_list.append(t[vpos:])
+            elif ypos != -1:
                 vpos = ypos
                 var_list.append(t[vpos:])
             else:
-                vpos = xpos
+                vpos = zpos
                 var_list.append(t[vpos:])
+
             sign_list.append(t[0])
             coef_list.append(t[1:vpos])
     return [sign_list, coef_list, var_list]
 
 def main():
-    eq = Equation(2, 4, 20, 5)
+    eq = Equation(3, 4, 20, 5)
     path = config.dir_path
     data_size = config.data_size
 
-    file_name = path + 'equations_2_4_20_5.txt'
+    file_name = path + 'equations_3_4_20_5.txt'
     f = open(file_name, 'w')
 
     '''
@@ -73,7 +78,7 @@ def main():
         seq_encodes.append(seq_encode)
     seq_encodes = np.array(seq_encodes)
     np.save(path + 'equations_encoded_2_4_20_5.npy', seq_encodes)
-    
+
     '''
     negative examples 
     '''

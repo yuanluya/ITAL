@@ -12,10 +12,9 @@ def convert(o):
     raise TypeError
 
 def main():
-    data = np.load(config.dir_path + 'equations_encoded_2_4_20_5.npy', allow_pickle=True)
-    neg_data = np.load(config.dir_path + 'neg_training_set_2_4_20_5.npy', allow_pickle=True)
+    test_sets = np.load(config.dir_path + 'equations_encoded_2_4_20_5.npy', allow_pickle=True)[config.train_size:config.train_size+config.test_size]
+    neg_test_sets = np.load(config.dir_path + 'neg_training_set_2_4_20_5.npy', allow_pickle=True)[config.train_size:config.train_size+config.test_size]
     
-    test_sets = np.take(data, range(config.test_size))
     lower_tests = []
     higher_tests = []
     test_index = 0
@@ -48,8 +47,8 @@ def main():
     M11 = max(len(a) for a in higher_tests)
     M = max(M00,M11)
  
-    lower_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in lower_tests])
-    higher_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in higher_tests])
+    lower_tests = np.array([a + [config.num_character] * (M - len(a)) for a in lower_tests])
+    higher_tests = np.array([a + [config.num_character] * (M - len(a)) for a in higher_tests])
     lower_tests_idx = np.expand_dims(lower_tests, axis=-1)
     higher_tests_idx = np.expand_dims(higher_tests, axis=-1)
 
@@ -67,7 +66,6 @@ def main():
     neg_higher_tests = []
     test_index = 0
     neg_operation_index_dictionary = {22:[], 23:[], 24:[], 25:[]}
-    neg_test_sets = np.take(neg_data, range(config.test_size))
     for neg_sample in neg_test_sets:
         index = np.random.choice(len(neg_sample), 1)
         index = index[0]
@@ -92,8 +90,8 @@ def main():
     M0 = max(len(a) for a in neg_lower_tests)
     M1 = max(len(a) for a in neg_higher_tests)
     M = max(M0,M1)
-    neg_lower_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in neg_lower_tests])
-    neg_higher_tests = np.array([a + [eqv_config.num_character] * (M - len(a)) for a in neg_higher_tests])
+    neg_lower_tests = np.array([a + [config.num_character] * (M - len(a)) for a in neg_lower_tests])
+    neg_higher_tests = np.array([a + [config.num_character] * (M - len(a)) for a in neg_higher_tests])
     neg_lower_tests_idx = np.expand_dims(neg_lower_tests, axis=-1)
     neg_higher_tests_idx = np.expand_dims(neg_higher_tests, axis=-1)
 
