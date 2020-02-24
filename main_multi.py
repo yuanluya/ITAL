@@ -59,9 +59,14 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
     data_choices = []
     eliminates = []
     logpdfs = []
+    kept_dists = []
+    replace_dists = []
+    angles = []
+    chosen_angles = []
     for i in tqdm(range(train_iter)):
         if i % 20 == 0:
-            pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5) for p in learner.particles_])
+            #pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5) for p in learner.particles_])
+            pdf = 0
             logpdfs.append(np.log(pdf))
         if teacher.config_.task == 'classification':
             #accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
@@ -90,9 +95,12 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr)
         data_choices.append(data_idx)
         if mode == 'omni' or random_prob is not None:
-            w, eliminate = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, random_prob = random_prob)
+            w, eliminate, kd, rpd, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
         else:
-            w, eliminate = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i)
+            w, eliminate, kd, rpd, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
+        kept_dists.append(kd)
+        replace_dists.append(rpd)
+        angles.append(angle)
         #particle_hist.append(copy.deepcopy(learner.particles_))
         eliminates.append(eliminate)
         dists.append(np.sum(np.square(w - teacher.gt_w_)))
@@ -103,6 +111,15 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
         learned_w = copy.deepcopy(w[0, ...])
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
         print('test accuracy: %f' % accuracy)
+    plt.plot(np.array(replace_dists) - np.array(kept_dists), 'bo')
+    plt.plot(np.zeros(train_iter), 'r-')
+    plt.title('bad: %d' % np.sum(np.array(kept_dists) > np.array(replace_dists)))
+    plt.show()
+    plt.plot(angles, 'bo')
+    plt.plot(np.zeros(train_iter), 'r-')
+    plt.title('bad: %d' % np.sum(np.array(angles) < 0))
+    plt.show()
+    pdb.set_trace()
     return dists, dists_, accuracies, logpdfs, eliminates
 
 def main():
@@ -123,9 +140,9 @@ def main():
     if task == 'regression':
         num_classes = 1
     dps = 3 * dd if task == 'classification' else 6 * dd
-    num_particles = 1000
+    num_particles = 3000
     train_iter_simple = 1000
-    train_iter_smart = 1000#2500 + 2500 * (lt == 0)
+    train_iter_smart = 2000#2500 + 2500 * (lt == 0)
     reg_coef = 0# if lt == 0 else 5e-5
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
@@ -139,13 +156,13 @@ def main():
     tx_tea = np.load("MNIST/mnist_test_features_tea.npy") if dd == 24 and mode == 'imit' else None
     ty_tea = np.load("MNIST/mnist_test_labels_tea.npy") if dd == 24 and mode == 'imit' else None
 
-    config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
+    config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 50,
                       'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w,
                       'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
                        'num_classes': num_classes, 'noise_scale_min': 0.02, 'noise_scale_max': 0.1,
-                       'noise_scale_decay':1000, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
+                       'noise_scale_decay': 500, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     print(config_LS, config_T)
     config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
@@ -157,8 +174,8 @@ def main():
     init = tf.global_variables_initializer()
 
 
-    dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-    dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+    #dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+    #dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
     dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
     dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
     dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
