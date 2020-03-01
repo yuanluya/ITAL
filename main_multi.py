@@ -49,7 +49,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         print('test accuracy: %f' % accuracy)
     return dists, dists_, accuracies, logpdf
 
-def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
+def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False):
     learner.reset(init_ws)
     w = learner.current_mean_
     ws = [w]
@@ -61,13 +61,10 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
     eliminates = []
     logpdfs = []
     kept_dists = []
-    replace_dists = []
     angles = []
-    chosen_angles = []
     for i in tqdm(range(train_iter)):
         if i % 20 == 0:
-            #pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5) for p in learner.particles_])
-            pdf = 0
+            pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5) for p in learner.particles_])
             logpdfs.append(np.log(pdf))
         if teacher.config_.task == 'classification':
             #accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
@@ -96,9 +93,9 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr)
         data_choices.append(data_idx)
         if mode == 'omni' or random_prob is not None:
-            w, eliminate, kd, rpd, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
+            w, eliminate, kd, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
         else:
-            w, eliminate, kd, rpd, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
+            w, eliminate, kd, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
         kept_dists.append(kd)
         replace_dists.append(rpd)
         angles.append(angle)
@@ -112,9 +109,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
         learned_w = copy.deepcopy(w[0, ...])
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
         print('test accuracy: %f' % accuracy)
-    # np.array(replace_dists) - np.array(kept_dists)
-    # angles
-    count = 0
+    
     if (teacher.config_.transform):
         mode = "imit"
     else:
@@ -123,25 +118,16 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None):
         teacher_dim = teacher.config_.data_x_tea.shape[1]
     else:
         teacher_dim = teacher.config_.data_dim
-    np.save("dists_" + mode + "_" + str(learner.config_.num_classes)+ ".npy", np.array(replace_dists) - np.array(kept_dists))
-    np.save("angles_" + mode + "_" + str(learner.config_.num_classes)+ ".npy", angles)
-    bad_dists = (np.array(replace_dists) - np.array(kept_dists)) < 0
-    bad_angles = np.array(angles) < 0
-    not_bad = np.sum((bad_angles + bad_dists) == 0)
-    print(not_bad/train_iter)
-    plt.plot(np.array(replace_dists) - np.array(kept_dists), 'bo', markersize=4)
-    plt.plot(np.zeros(train_iter), 'r-')
-    plt.title('Mode: %s, Student Dimension: %d, Teacher Dimension: %d, Classes: %d \n bad: %d, ratio of good: %f' % (mode, learner.config_.data_dim, teacher_dim, learner.config_.num_classes, np.sum(np.array(kept_dists) > np.array(replace_dists)), not_bad / train_iter))
-    plt.ylabel("Diff Distance")
-    plt.xlabel("Iterations")
-    plt.show()
-    plt.plot(angles, 'bo', markersize=4)
-    plt.plot(np.zeros(train_iter), 'r-')
-    plt.title('Mode: %s, Student Dimension: %d, Teacher_Dimension: %d, Classes: %d \n bad: %d, ratio of good: %f' % (mode, learner.config_.data_dim, teacher_dim, learner.config_.num_classes, np.sum(np.array(angles) < 0), not_bad / train_iter))
-    plt.ylabel("Projection Length")
-    plt.xlabel("Iterations")
-    plt.show()
-    pdb.set_trace()
+    if random_prob is None and plot_condition:
+        num_bad = np.sum(np.array(angles) < 0)
+        plt.plot(angles, 'bo', markersize=4)
+        plt.plot(np.zeros(train_iter), 'r-')
+        plt.title('Mode: %s, Student Dimension: %d, Teacher_Dimension: %d, Classes: %d \n bad: %d, ratio of good: %f' %
+                (mode, learner.config_.data_dim, teacher_dim, learner.config_.num_classes,
+                 num_bad, 1 - num_bad / train_iter))
+        plt.ylabel("Projection Length")
+        plt.xlabel("Iterations")
+        plt.show()
     return dists, dists_, accuracies, logpdfs, eliminates
 
 def main():
@@ -163,9 +149,9 @@ def main():
         num_classes = 1
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3000
-    train_iter_simple = 1000
-    train_iter_smart = 10#2500 + 2500 * (lt == 0)
-    reg_coef = 0# if lt == 0 else 5e-5
+    train_iter_simple = 2000
+    train_iter_smart = 2000
+    reg_coef = 0
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
     dy = None if dd != 24 else np.load("MNIST/mnist_train_labels.npy")
@@ -197,12 +183,12 @@ def main():
     init = tf.global_variables_initializer()
 
 
-    #dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-    #dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+    dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+    dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
     dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
-    #dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
-    #dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
-    #dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
+    dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
+    dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
+    dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
 
     fig, axs = plt.subplots(2, 2, constrained_layout=True)
     line_neg1_batch, = axs[0, 0].plot(dists_neg1_batch, label = 'batch')
