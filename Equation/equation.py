@@ -161,6 +161,20 @@ class Equation:
             seq_tuple[1][pos] = '%d/%d' % (nominator/g, denominator/g)
             return seq_tuple, True
         
+    def remove_gcd(self, seq_tuple):
+        int_coefs = []
+        for n in seq_tuple[1]:
+            if '/' in n:
+                return seq_tuple, False
+            if n != '':
+                int_coefs.append(int(n))
+        g = np.gcd.reduce(int_coefs)
+        if g == 1:
+            return seq_tuple, False
+        for i in range(len(seq_tuple[1])):
+            if seq_tuple[1][i] != '':
+                seq_tuple[1][i] = '%d'  % (int(seq_tuple[1][i]) / g)
+        return seq_tuple, True
 
     def check0(self, seq_tuple):
         if seq_tuple[2].index('=') == 0:
@@ -172,6 +186,21 @@ class Equation:
             seq_tuple[0].append('')
             seq_tuple[1].append('')
             seq_tuple[2].append('0')
+            return seq_tuple, True
+        if '0' in seq_tuple[2] and seq_tuple[2].index('0') == len(seq_tuple[2]) - 1 and seq_tuple[2].index('=') != len(seq_tuple[2]) - 2:
+            seq_tuple[0].pop()
+            seq_tuple[1].pop()
+            seq_tuple[2].pop()
+            return seq_tuple, True
+        if '0' in seq_tuple[2] and seq_tuple[2].index('0') == 0 and seq_tuple[2].index('=') != 1:
+            seq_tuple[0].pop(0)
+            seq_tuple[1].pop(0)
+            seq_tuple[2].pop(0)
+            return seq_tuple, True
+        if '0' in seq_tuple[2] and seq_tuple[2].index('0') != 0 and seq_tuple[2].index('0') != len(seq_tuple[2]) - 1:
+            seq_tuple[0].pop(seq_tuple[2].index('0'))
+            seq_tuple[1].pop(seq_tuple[2].index('0'))
+            seq_tuple[2].pop(seq_tuple[2].index('0'))
             return seq_tuple, True
         return seq_tuple, False
 
