@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 from collections import defaultdict
 from easydict import EasyDict as edict
 
@@ -13,7 +12,9 @@ class Map:
         self.actions_ = 'udlr'
         self.state_feats_ = np.identity(self.num_states_)
         if self.config_.shuffle_state_feat:
-            np.random.shuffle(self.state_feats_)
+            self.feat_idx_ = np.range(self.num_states_)
+            np.random.shuffle(self.feat_idx_)
+            self.state_feats_ = self.state_feats_[self.feat_idx_, ...]
 
 
         self.move_eps_ = 0.15
@@ -58,10 +59,9 @@ class Map:
         
         return targets
 
-    def value_iter(self, reward_param, hard_max = False):
-        self.reward_param_ = reward_param
-        assert(reward_param.shape[1] == self.num_states_)
-        rewards = np.sum(self.state_feats_ * self.reward_param_, axis = 1)
+    def value_iter(self, reward_param, rewards = None, hard_max = False):
+        if rewards is None:
+            rewards = np.sum(self.state_feats_ * reward_param, axis = 1)
         value_map_ = np.zeros(self.num_states_)
         value_map = np.random.uniform(-1, 1, size = self.num_states_)
         diff = 1e3
@@ -138,20 +138,20 @@ def main():
     r_param = np.zeros(shape = [1, game_map.num_states_])
     r_param[0, shape * shape - 1] = 10
 
-    val_map_gt, q_map_gt = game_map.value_iter(r_param, True)
+    val_map_gt, _ = game_map.value_iter(r_param, hard_max = True)
     game_map.printval_(val_map_gt)
 
     val_map_gsm, q_map_gsm = game_map.value_iter(r_param)
-    valg_map_gsm, qg_map_gsm = game_map.grads_iter(q_map_gsm)
-    print(np.mean(abs(val_map_gt - val_map_gsm)), np.max(abs(val_map_gt - val_map_gsm)))
+    _, qg_map_gsm = game_map.grads_iter(q_map_gsm)
+    print('p-norm diff mean: %f, max: %f' % (np.mean(abs(val_map_gt - val_map_gsm)), np.max(abs(val_map_gt - val_map_gsm))))
     
     config = edict({'shape': shape, 'approx_type': 'gsm', 'shuffle_state_feat': False})
     game_map = Map(config)
     val_map_p, q_map_p = game_map.value_iter(r_param)
-    valg_map_p, qg_map_p = game_map.grads_iter(q_map_p)
-    print(np.mean(abs(val_map_gt - val_map_p)), np.max(abs(val_map_gt - val_map_p)))
+    _, qg_map_p = game_map.grads_iter(q_map_p)
+    print('gsm diff mean: %f, max: %f' % (np.mean(abs(val_map_gt - val_map_p)), np.max(abs(val_map_gt - val_map_p))))
 
-    print(np.mean(abs(valg_map_p - valg_map_gsm)), np.max(abs(valg_map_p - valg_map_gsm)))
+    print(np.mean(abs(qg_map_p - qg_map_gsm)), np.max(abs(qg_map_p - qg_map_gsm)))
     pdb.set_trace()
 
 if __name__ == '__main__':
