@@ -17,38 +17,35 @@ class TeacherIRL:
 
     def sample(self):
         self.mini_batch_indices_ = np.random.randint(0, self.map_.num_states_, size = self.config_.sample_size)
+        self.mini_batch_opt_acts_ = self.optimal_actions_[self.mini_batch_indices_]
         return
     
     def choose(self, learner_param, lr):
         assert(self.mini_batch_indices_ is not None)
         _, q_map = self.map_.value_iter(learner_param)
         _, qg_map = self.map_.grads_iter(q_map)
-        opt_actions = self.optimal_actions_[self.mini_batch_indices_]
         
         exp_q = np.exp(self.config_.beta * q_map[self.mini_batch_indices_, ...])
         action_prob = exp_q / np.sum(exp_q, axis = 1, keepdims = True)
-        gradients = self.config_.beta * (qg_map[self.mini_batch_indices_, opt_actions, ...] -\
+        gradients = self.config_.beta * (qg_map[self.mini_batch_indices_, self.mini_batch_opt_acts_, ...] -\
                                          np.sum(np.expand_dims(action_prob, 2) * qg_map[self.mini_batch_indices_, ...], axis = 1))
         
-        vals = np.sum(lr * lr * np.square(gradients), axis = 1) - 2 * lr * np.sum((learner_param - self.reward_param_) * gradients, axis = 1)
-        return np.argmin(vals)
+        vals = np.sum(lr * lr * np.square(gradients), axis = 1) + 2 * lr * np.sum((learner_param - self.reward_param_) * gradients, axis = 1)
+        return np.argmin(vals), gradients
 
     def choose_imit(self, learner_rewards, lr):
         assert(self.mini_batch_indices_ is not None)
         _, q_map = self.map_.value_iter(None, learner_rewards)
         _, qg_map = self.map_.grads_iter(q_map)
-        opt_actions = self.optimal_actions_[self.mini_batch_indices_]
 
         exp_q = np.exp(self.config_.beta * q_map[self.mini_batch_indices_, ...])
         action_prob = exp_q / np.sum(exp_q, axis = 1, keepdims = True)
-        gradients = self.config_.beta * (qg_map[self.mini_batch_indices_, opt_actions, ...] -\
+        gradients = self.config_.beta * (qg_map[self.mini_batch_indices_, self.mini_batch_opt_acts_, ...] -\
                                          np.sum(np.expand_dims(action_prob, 2) * qg_map[self.mini_batch_indices_, ...], axis = 1))
         
-        l_stu = self.config_.beta * q_map[(self.mini_batch_indices_, opt_actions)] -\
+        l_stu = self.config_.beta * q_map[(self.mini_batch_indices_, self.mini_batch_opt_acts_)] -\
                 np.log(np.sum(np.exp(self.config_.beta * q_map[self.mini_batch_indices_, ...]), axis = 1))
         l_tea = self.l_[self.mini_batch_indices_]
         
-        vals = np.sum(lr * lr * np.square(gradients), axis = 1) - 2 * lr * (l_stu - l_tea)
+        vals = np.sum(lr * lr * np.square(gradients), axis = 1) + 2 * lr * (l_stu - l_tea)
         return np.argmin(vals)
-
-        return

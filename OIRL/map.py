@@ -12,10 +12,9 @@ class Map:
         self.actions_ = 'udlr'
         self.state_feats_ = np.identity(self.num_states_)
         if self.config_.shuffle_state_feat:
-            self.feat_idx_ = np.range(self.num_states_)
+            self.feat_idx_ = np.arange(self.num_states_)
             np.random.shuffle(self.feat_idx_)
             self.state_feats_ = self.state_feats_[self.feat_idx_, ...]
-
 
         self.move_eps_ = 0.15
         self.gamma_ = 0.8

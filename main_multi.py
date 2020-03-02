@@ -60,7 +60,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     data_choices = []
     eliminates = []
     logpdfs = []
-    kept_dists = []
     angles = []
     for i in tqdm(range(train_iter)):
         if i % 20 == 0:
@@ -93,11 +92,9 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr)
         data_choices.append(data_idx)
         if mode == 'omni' or random_prob is not None:
-            w, eliminate, kd, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
+            w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
         else:
-            w, eliminate, kd, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
-        kept_dists.append(kd)
-        replace_dists.append(rpd)
+            w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
         angles.append(angle)
         #particle_hist.append(copy.deepcopy(learner.particles_))
         eliminates.append(eliminate)
