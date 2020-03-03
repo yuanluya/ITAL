@@ -5,6 +5,8 @@ from scipy.stats import multivariate_normal as mn
 import os
 import sys
 import copy
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import sys
 from tqdm import tqdm
@@ -167,18 +169,24 @@ def main(argv):
     train_iter_smart = 2000
     reg_coef = 0
 
-    dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
-    dy = None if dd != 24 else np.load("MNIST/mnist_train_labels.npy")
-    gt_w = None if dd != 24 else np.load("MNIST/mnist_tf_gt_weights.npy")
-    tx = None if dd != 24 else np.load("MNIST/mnist_test_features.npy")
-    ty = None if dd != 24 else np.load("MNIST/mnist_test_labels.npy")
+    dx = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_train_features.npy")
+    dy = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_train_labels.npy")
+    gt_w = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_train_features_weights.npy")
+    tx = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_test_features.npy")
+    ty = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_test_labels.npy")
     dx_tea = np.load("MNIST/mnist_train_features_tea.npy") if dd == 24 and mode == 'imit' else None
     dy_tea = np.load("MNIST/mnist_train_labels_tea.npy") if dd == 24 and mode == 'imit' else None
     gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea.npy") if dd == 24 and mode == 'imit' else None
     tx_tea = np.load("MNIST/mnist_test_features_tea.npy") if dd == 24 and mode == 'imit' else None
     ty_tea = np.load("MNIST/mnist_test_labels_tea.npy") if dd == 24 and mode == 'imit' else None
 
-
+    if dd == 48:
+        dx = np.load("/home/Datasets/Equation/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
+        dy = np.load("/home/Datasets/Equation/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
+        gt_w = np.load("/home/Datasets/Equation/equation_gt_weights_cnn_3var_48_6layers.npy")
+        tx = np.load("/home/Datasets/Equation/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
+        ty = np.load("/home/Datasets/Equation/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
+    
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 100,
                       'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w,
