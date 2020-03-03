@@ -133,23 +133,34 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         plt.show()
     return dists, dists_, accuracies, logpdfs, eliminates
 
-def main():
+def main(argv):
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     sess = tf.Session(config = tfconfig)
     np.random.seed(400)
 
-    mode_idx = int(sys.argv[2])
+    title = ''
+    mode_idx = int(argv[2])
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
-    task = 'classification' if len(sys.argv) == 3 else 'regression'
-
+    title += mode
+    task = 'classification' if len(argv) == 6 else 'regression'
+    title += task
+    
     lr = 1e-3
-    dd = int(sys.argv[1])
+    dd = int(argv[1])
     num_classes = 10 if dd == 24 or dd == 30 else 4
     if task == 'regression':
         num_classes = 1
+    title += 'num_classes'
+    title += str(num_classes)
+    if dd == 48:
+        title += 'equation'
+    elif dd == 24:
+        title += 'mnist'
+    else:
+        title += 'gaussian'
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3000
     train_iter_simple = 2000
@@ -173,8 +184,8 @@ def main():
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w,
                       'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
-                       'num_classes': num_classes, 'noise_scale_min': 0.01, 'noise_scale_max': 0.1,
-                       'noise_scale_decay': 1000, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
+                       'num_classes': num_classes, 'noise_scale_min': float(argv[3]), 'noise_scale_max': float(argv[4]),
+                       'noise_scale_decay': float(argv[5]), 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     print(config_LS, config_T)
     config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
@@ -233,9 +244,8 @@ def main():
               (mode, num_classes, dd, config_LS.replace_count, config_T.sample_size, dps, num_particles,
                config_LS.noise_scale_min, config_LS.noise_scale_max, config_LS.noise_scale_decay,
                config_LS.target_ratio, config_LS.new_ratio))
-    plt.show()
-    #plt.savefig('figure_%s.png' % learnerM.loss_type_)
-    pdb.set_trace()
+    plt.savefig('%s.png' % title)
+
 
 if __name__ == '__main__':
-    main()
+    main(argv)
