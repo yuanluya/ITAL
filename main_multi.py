@@ -49,7 +49,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         print('test accuracy: %f' % accuracy)
     return dists, dists_, accuracies, logpdf
 
-def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False):
+def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False, prag = False):
     learner.reset(init_ws)
     w = learner.current_mean_
     ws = [w]
@@ -92,9 +92,15 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr)
         data_choices.append(data_idx)
         if mode == 'omni' or random_prob is not None:
-            w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
+            if not prag:
+                w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
+            else:
+                w, eliminate, angle = learner.learn_prag(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
         else:
-            w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
+            if not prag:
+                w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
+            else:
+                w, eliminate, angle = learner.learn_sur_prag(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
         angles.append(angle)
         #particle_hist.append(copy.deepcopy(learner.particles_))
         eliminates.append(eliminate)
@@ -182,7 +188,7 @@ def main():
 
     dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
     dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
-    dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
+    dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag =True)
     dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
     dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
     dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
