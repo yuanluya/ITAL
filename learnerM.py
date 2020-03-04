@@ -202,12 +202,19 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
-        # kept_dist = np.sum(np.square(new_center - gt_w))
-        # replace_dist = np.sum(np.square(replace_center - gt_w))
-        prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
-        norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
-        cosine = np.arccos(prod / norm)
+        cosine = 0
+        if len(to_be_replaced) > 0:
+            replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
+            # kept_dist = np.sum(np.square(new_center - gt_w))
+            # replace_dist = np.sum(np.square(replace_center - gt_w))
+            prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
+            norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
+            cosine = np.arccos(prod / norm)
+
+        eliminate = len(to_be_replaced)
+        self.particles_ = np.take(self.particles_, to_be_kept, axis = 0)
+        self.config_.particle_num = len(self.particles_)
+        '''
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
@@ -220,7 +227,7 @@ class LearnerSM:
             else:
                 self.particles_[i: i + 1, ...] = noise 
             eliminate += 1
-
+        '''
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
         return self.current_mean_, eliminate, cosine
 
@@ -268,12 +275,20 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
-        # kept_dist = np.sum(np.square(new_center - gt_w))
-        # replace_dist = np.sum(np.square(replace_center - gt_w))
-        prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
-        norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
-        cosine = np.arccos(prod / norm)
+        cosine = 0
+        if len(to_be_replaced) > 0:
+            replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
+            # kept_dist = np.sum(np.square(new_center - gt_w))
+            # replace_dist = np.sum(np.square(replace_center - gt_w))
+            prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
+            norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
+            cosine = np.arccos(prod / norm)
+
+        eliminate = len(to_be_replaced)
+        self.particles_ = np.take(self.particles_, to_be_kept, axis = 0)
+        self.config_.particle_num = len(self.particles_)
+        
+        '''
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
@@ -284,6 +299,7 @@ class LearnerSM:
                 self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
             else:
                 self.particles_[i: i + 1, ...] = noise
+        '''
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
         return self.current_mean_, eliminate, cosine

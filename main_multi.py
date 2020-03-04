@@ -147,8 +147,10 @@ def main(argv):
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
     title += mode
+    title += '_'
     task = 'classification' if len(argv) == 6 else 'regression'
     title += task
+    title += '_'
     
     lr = 1e-3
     dd = int(argv[1])
@@ -156,13 +158,18 @@ def main(argv):
     if task == 'regression':
         num_classes = 1
     title += 'num_classes'
+    title += '_'
     title += str(num_classes)
+    title += '_'
     if dd == 48:
         title += 'equation'
     elif dd == 24:
         title += 'mnist'
     else:
         title += 'gaussian'
+    title += '_'
+    title += 'particle_remove'
+    
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3000
     train_iter_simple = 2000
@@ -247,7 +254,7 @@ def main(argv):
 
     axs[0, 1].legend([line_neg1_batch,  line_neg1_sgd, line0, line1, line2, line3],#, line3S],
                ['batch', 'sgd', 'No Replacement', 'Iterative Machine Teaching', 'Random Replacement',
-                'Pragmatic Replacement, %f' % (config_LS.lr)], prop={'size': 12})
+                'Pragmatic Replacement, %f' % (config_LS.lr)], prop={'size': 6})
     fig.suptitle('%s class: %d: dim:%d_data:%d/%d/%d_particle:%d_noise: %f, %f, %d, ratio: %f, %f' %\
               (mode, num_classes, dd, config_LS.replace_count, config_T.sample_size, dps, num_particles,
                config_LS.noise_scale_min, config_LS.noise_scale_max, config_LS.noise_scale_decay,
