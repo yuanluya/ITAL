@@ -212,7 +212,7 @@ def main(argv):
     dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
     dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
 
-    fig, axs = plt.subplots(2, 2, constrained_layout=True)
+    fig, axs = plt.subplots(2, 2)
     line_neg1_batch, = axs[0, 0].plot(dists_neg1_batch, label = 'batch')
     line_neg1_sgd, = axs[0, 0].plot(dists_neg1_sgd, label = 'sgd')
     line0, = axs[0, 0].plot(dists0, label = 'zero')

@@ -81,12 +81,6 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
-        # kept_dist = np.sum(np.square(new_center - gt_w))
-        # replace_dist = np.sum(np.square(replace_center - gt_w))
-        prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
-        norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
-        cosine = np.arccos(prod / norm)
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
@@ -101,7 +95,7 @@ class LearnerSM:
             eliminate += 1
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
-        return self.current_mean_, eliminate, cosine
+        return self.current_mean_, eliminate, 0
 
     def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss, step, gt_w):
         new_particle_losses = []
@@ -147,12 +141,6 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
-        # kept_dist = np.sum(np.square(new_center - gt_w))
-        # replace_dist = np.sum(np.square(replace_center - gt_w))
-        prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
-        norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
-        cosine = np.arccos(prod / norm)
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
@@ -165,7 +153,7 @@ class LearnerSM:
                 self.particles_[i: i + 1, ...] = new_center + noise
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
-        return self.current_mean_, eliminate, cosine
+        return self.current_mean_, eliminate, 0
 
     def learn_prag(self, data_pool, data_y, data_idx, gradients, step, gt_w, random_prob = None):
         gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
