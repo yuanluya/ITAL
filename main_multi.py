@@ -132,7 +132,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         plt.show()
     return dists, dists_, accuracies, logpdfs, eliminates
 
-def main(argv):
+def main():
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -140,17 +140,17 @@ def main(argv):
     np.random.seed(400)
 
     title = ''
-    mode_idx = int(argv[2])
+    mode_idx = int(sys.argv[2])
     modes = ['omni', 'surr', 'imit']
     mode = modes[mode_idx]
     title += mode
     title += '_'
-    task = 'classification' if len(argv) == 6 else 'regression'
+    task = 'classification' if len(sys.argv) == 6 else 'regression'
     title += task
     title += '_'
     
     lr = 1e-3
-    dd = int(argv[1])
+    dd = int(sys.argv[1])
     num_classes = 10 if dd == 24 or dd == 30 else 4
     if task == 'regression':
         num_classes = 1
@@ -196,8 +196,8 @@ def main(argv):
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w,
                       'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
     config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
-                       'num_classes': num_classes, 'noise_scale_min': float(argv[3]), 'noise_scale_max': float(argv[4]),
-                       'noise_scale_decay': float(argv[5]), 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
+                       'num_classes': num_classes, 'noise_scale_min': float(sys.argv[3]), 'noise_scale_max': float(sys.argv[4]),
+                       'noise_scale_decay': float(sys.argv[5]), 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     print(config_LS, config_T)
     config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
@@ -271,4 +271,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    main(argv)
+    main()
