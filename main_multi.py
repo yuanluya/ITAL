@@ -25,11 +25,13 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     accuracies = []
     logpdf = []
     for _ in tqdm(range(train_iter)):
+        '''
         if (_ % 20 == 0):
             pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.5)
             if (pdf == 0):
                 print(_)
             logpdf.append(np.log(pdf))
+        '''
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
@@ -51,7 +53,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         print('test accuracy: %f' % accuracy)
     return dists, dists_, accuracies, logpdf
 
-def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False, prag = False):
+def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False, prag = 0):
     learner.reset(init_ws)
     w = learner.current_mean_
     ws = [w]
@@ -94,15 +96,10 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr)
         data_choices.append(data_idx)
         if mode == 'omni' or random_prob is not None:
-            if not prag:
-                w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
-            else:
-                w, eliminate, angle = learner.learn_prag(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
+            w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob, prag = prag)
         else:
-            if not prag:
-                w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
-            else:
-                w, eliminate, angle = learner.learn_sur_prag(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
+            w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_, prag = prag)
+            
         angles.append(angle)
         #particle_hist.append(copy.deepcopy(learner.particles_))
         eliminates.append(eliminate)
@@ -194,7 +191,7 @@ def main(argv):
         tx = np.load("/home/Datasets/Equation/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
         ty = np.load("/home/Datasets/Equation/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
     
-    config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 100,
+    config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                       'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w,
                       'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
@@ -212,53 +209,64 @@ def main(argv):
     init = tf.global_variables_initializer()
 
 
-    dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-    dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
-    dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag =True)
-    dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
-    dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
-    dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
+    #dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+    #dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+    dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
+    dists4, dists4_, accuracies4, logpdfs4, eliminates4 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 1)
+    dists5, dists5_, accuracies5, logpdfs5, eliminates5 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 2)
+    
+    #dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
+    #dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
+    #dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
 
+    
+    
     fig, axs = plt.subplots(2, 2)
-    line_neg1_batch, = axs[0, 0].plot(dists_neg1_batch, label = 'batch')
-    line_neg1_sgd, = axs[0, 0].plot(dists_neg1_sgd, label = 'sgd')
-    line0, = axs[0, 0].plot(dists0, label = 'zero')
-    line1, = axs[0, 0].plot(dists1, label = 'one')
-    line2, = axs[0, 0].plot(dists2, label = 'smart')
+    #line_neg1_batch, = axs[0, 0].plot(dists_neg1_batch, label = 'batch')
+    #line_neg1_sgd, = axs[0, 0].plot(dists_neg1_sgd, label = 'sgd')
+    #line0, = axs[0, 0].plot(dists0, label = 'zero')
+    #line1, = axs[0, 0].plot(dists1, label = 'one')
+    #line2, = axs[0, 0].plot(dists2, label = 'smart')
     line3, = axs[0, 0].plot(dists3, label = 'smarter')
+    line4, = axs[0, 0].plot(dists4, label = 'noise')
+    line5, = axs[0, 0].plot(dists5, label = 'remove')
     axs[0, 0].set_title('mean_dist')
 
-    line_neg1_batch, = axs[1,1].plot(logpdf_neg1_batch, label = 'batch')
-    line_neg1_sgd, = axs[1,1].plot(logpdf_neg1_sgd, label = 'sgd')
-    line0, = axs[1, 1].plot(logpdfs0, label = 'zero')
-    line1, = axs[1, 1].plot(logpdfs1, label = 'one')
-    line2, = axs[1, 1].plot(logpdfs2, label = 'smart')
+    #line_neg1_batch, = axs[1,1].plot(logpdf_neg1_batch, label = 'batch')
+    #line_neg1_sgd, = axs[1,1].plot(logpdf_neg1_sgd, label = 'sgd')
+    #line0, = axs[1, 1].plot(logpdfs0, label = 'zero')
+    #line1, = axs[1, 1].plot(logpdfs1, label = 'one')
+    #line2, = axs[1, 1].plot(logpdfs2, label = 'smart')
     line3, = axs[1, 1].plot(logpdfs3, label = 'smarter')
+    line4, = axs[1, 1].plot(logpdfs4, label = 'noise')
+    line5, = axs[1, 1].plot(logpdfs5, label = 'remove')
     axs[1, 1].set_title('log pdf per 20 iters')
 
-    line_neg1_batch, = axs[0, 1].plot(accuracies_neg1_batch, label = 'batch')
-    line_neg1_sgd, = axs[0, 1].plot(accuracies_neg1_sgd, label = 'sgd')
-    line0, = axs[0, 1].plot(accuracies0, label = 'zero')
-    line1, = axs[0, 1].plot(accuracies1, label = 'one')
-    line2, = axs[0, 1].plot(accuracies2, label = 'smart')
-    line3, = axs[0, 1].plot(accuracies3, label = 'smarter')
+    #line_neg1_batch, = axs[0, 1].plot(accuracies_neg1_batch, label = 'batch')
+    #line_neg1_sgd, = axs[0, 1].plot(accuracies_neg1_sgd, label = 'sgd')
+    #line0, = axs[0, 1].plot(accuracies0, label = 'zero')
+    #line1, = axs[0, 1].plot(accuracies1, label = 'one')
+    #line2, = axs[0, 1].plot(accuracies2, label = 'smart')
+    line3, = axs[0, 1].plot(accuracies3, label = 'noise')
+    line4, = axs[0, 1].plot(accuracies4, label = 'remove')
     axs[0, 1].set_title('test loss')
 
-    line_neg1_batch, = axs[1, 0].plot(dists_neg1_batch_, label = 'batch')
-    line_neg1_sgd, = axs[1, 0].plot(dists_neg1_sgd_, label = 'sgd')
-    line0, = axs[1, 0].plot(dists0_, label = 'zero')
-    line1, = axs[1, 0].plot(dists1_, label = 'one')
-    line2, = axs[1, 0].plot(dists2_, label = 'smart')
-    line3, = axs[1, 0].plot(dists3_, label = 'smarter')
+    #line_neg1_batch, = axs[1, 0].plot(dists_neg1_batch_, label = 'batch')
+    #line_neg1_sgd, = axs[1, 0].plot(dists_neg1_sgd_, label = 'sgd')
+    #line0, = axs[1, 0].plot(dists0_, label = 'zero')
+    #line1, = axs[1, 0].plot(dists1_, label = 'one')
+    #line2, = axs[1, 0].plot(dists2_, label = 'smart')
+    line3, = axs[1, 0].plot(dists3_, label = 'noise')
+    line4, = axs[1, 0].plot(dists4_, label = 'remove')
     axs[1, 0].set_title('dist mean')
 
-    axs[0, 1].legend([line_neg1_batch,  line_neg1_sgd, line0, line1, line2, line3],#, line3S],
-               ['batch', 'sgd', 'No Replacement', 'Iterative Machine Teaching', 'Random Replacement',
-                'Pragmatic Replacement, %f' % (config_LS.lr)], prop={'size': 6})
-    fig.suptitle('%s class: %d: dim:%d_data:%d/%d/%d_particle:%d_noise: %f, %f, %d, ratio: %f, %f' %\
+    
+    axs[0, 1].legend([line3, line4, line5],
+               ['Pragmatic Replacement', 'noise','particle removal'], prop={'size': 6})
+    fig.suptitle('%s class: %d: dim:%d_data:%d/%d/%d_particle:%d_noise: %f, %f, %d, ratio: %f, %f, lr:  %f' %\
               (mode, num_classes, dd, config_LS.replace_count, config_T.sample_size, dps, num_particles,
                config_LS.noise_scale_min, config_LS.noise_scale_max, config_LS.noise_scale_decay,
-               config_LS.target_ratio, config_LS.new_ratio))
+               config_LS.target_ratio, config_LS.new_ratio, config_LS.lr))
     plt.savefig('%s.png' % title)
 
 
