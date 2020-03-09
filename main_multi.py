@@ -103,6 +103,9 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         angles.append(angle)
         #particle_hist.append(copy.deepcopy(learner.particles_))
         eliminates.append(eliminate)
+        print(w)
+        print(np.sum(np.square(w - teacher.gt_w_)))
+        print()
         dists.append(np.sum(np.square(w - teacher.gt_w_)))
         dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
         ws.append(w)
@@ -137,7 +140,7 @@ def main():
     tfconfig.gpu_options.allow_growth = True
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     sess = tf.Session(config = tfconfig)
-    np.random.seed(400)
+    np.random.seed(int(sys.argv[6]))
 
     title = ''
     mode_idx = int(sys.argv[2])
@@ -145,7 +148,7 @@ def main():
     mode = modes[mode_idx]
     title += mode
     title += '_'
-    task = 'classification' if len(sys.argv) == 6 else 'regression'
+    task = 'classification' if len(sys.argv) == 7 else 'regression'
     title += task
     title += '_'
     
@@ -164,11 +167,13 @@ def main():
         title += 'mnist'
     else:
         title += 'gaussian'
-    
+    title += '_'
+    title += sys.argv[6]
+
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3000
     train_iter_simple = 2000
-    train_iter_smart = 2000
+    train_iter_smart = 21
     reg_coef = 0
     dx = None if dd != 24 else np.load("MNIST_/mnist_train_features.npy")
     dy = None if dd != 24 else np.load("MNIST_/mnist_train_labels.npy")
@@ -210,25 +215,25 @@ def main():
     #dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
     dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
     dists4, dists4_, accuracies4, logpdfs4, eliminates4 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 1)
-    dists5, dists5_, accuracies5, logpdfs5, eliminates5 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 2)
+    #dists5, dists5_, accuracies5, logpdfs5, eliminates5 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 2)
     np.save('dist3_' + title + '.npy', np.array(dists3))
     np.save('dist4_' + title + '.npy', np.array(dists4))
-    np.save('dist5_' + title + '.npy', np.array(dists5))
+    #np.save('dist5_' + title + '.npy', np.array(dists5))
     np.save('dist3__' + title + '.npy', np.array(dists3_))
     np.save('dist4__' + title + '.npy', np.array(dists4_))
-    np.save('dist5__' + title + '.npy', np.array(dists5_))
+    #np.save('dist5__' + title + '.npy', np.array(dists5_))
     np.save('accuracies3_' + title + '.npy', np.array(accuracies3))
     np.save('accuracies4_' + title + '.npy', np.array(accuracies4))
-    np.save('accuracies5_' + title + '.npy', np.array(accuracies5))
+    #np.save('accuracies5_' + title + '.npy', np.array(accuracies5))
     np.save('logpdfs3_' + title + '.npy', np.array(logpdfs3))
     np.save('logpdfs4_' + title + '.npy', np.array(logpdfs4))
-    np.save('logpdfs5_' + title + '.npy', np.array(logpdfs5))  
+    #np.save('logpdfs5_' + title + '.npy', np.array(logpdfs5))  
     #dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
     #dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
     #dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
 
     
-    
+    '''
     fig, axs = plt.subplots(2, 2,constrained_layout= True)
     #line_neg1_batch, = axs[0, 0].plot(dists_neg1_batch, label = 'batch')
     #line_neg1_sgd, = axs[0, 0].plot(dists_neg1_sgd, label = 'sgd')
@@ -276,7 +281,7 @@ def main():
                config_LS.noise_scale_min, config_LS.noise_scale_max, config_LS.noise_scale_decay,
                config_LS.target_ratio, config_LS.new_ratio, config_LS.lr))
     plt.savefig('%s.png' % title)
-
+    '''
 
 if __name__ == '__main__':
     main()
