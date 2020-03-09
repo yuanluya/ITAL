@@ -164,20 +164,17 @@ def main():
         title += 'mnist'
     else:
         title += 'gaussian'
-    title += '_'
-    title += 'particle_remove'
     
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3000
     train_iter_simple = 2000
     train_iter_smart = 2000
     reg_coef = 0
-
-    dx = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_train_features.npy")
-    dy = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_train_labels.npy")
-    gt_w = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_train_features_weights.npy")
-    tx = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_test_features.npy")
-    ty = None if dd != 24 else np.load("/home/Datasets/MNIST/mnist_test_labels.npy")
+    dx = None if dd != 24 else np.load("MNIST_/mnist_train_features.npy")
+    dy = None if dd != 24 else np.load("MNIST_/mnist_train_labels.npy")
+    gt_w = None if dd != 24 else np.load("MNIST_/mnist_train_features_weights.npy")
+    tx = None if dd != 24 else np.load("MNIST_/mnist_test_features.npy")
+    ty = None if dd != 24 else np.load("MNIST_/mnist_test_labels.npy")
     dx_tea = np.load("MNIST/mnist_train_features_tea.npy") if dd == 24 and mode == 'imit' else None
     dy_tea = np.load("MNIST/mnist_train_labels_tea.npy") if dd == 24 and mode == 'imit' else None
     gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea.npy") if dd == 24 and mode == 'imit' else None
@@ -185,11 +182,11 @@ def main():
     ty_tea = np.load("MNIST/mnist_test_labels_tea.npy") if dd == 24 and mode == 'imit' else None
 
     if dd == 48:
-        dx = np.load("/home/Datasets/Equation/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
-        dy = np.load("/home/Datasets/Equation/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
-        gt_w = np.load("/home/Datasets/Equation/equation_gt_weights_cnn_3var_48_6layers.npy")
-        tx = np.load("/home/Datasets/Equation/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
-        ty = np.load("/home/Datasets/Equation/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
+        dx = np.load("Equation_data/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
+        dy = np.load("Equation_data/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
+        gt_w = np.load("Equation_data/equation_gt_weights_cnn_3var_48_6layers.npy")
+        tx = np.load("Equation_data/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
+        ty = np.load("Equation_data/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
     
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                       'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
@@ -214,14 +211,25 @@ def main():
     dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
     dists4, dists4_, accuracies4, logpdfs4, eliminates4 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 1)
     dists5, dists5_, accuracies5, logpdfs5, eliminates5 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 2)
-    
+    np.save('dist3_' + title + '.npy', np.array(dists3))
+    np.save('dist4_' + title + '.npy', np.array(dists4))
+    np.save('dist5_' + title + '.npy', np.array(dists5))
+    np.save('dist3__' + title + '.npy', np.array(dists3_))
+    np.save('dist4__' + title + '.npy', np.array(dists4_))
+    np.save('dist5__' + title + '.npy', np.array(dists5_))
+    np.save('accuracies3_' + title + '.npy', np.array(accuracies3))
+    np.save('accuracies4_' + title + '.npy', np.array(accuracies4))
+    np.save('accuracies5_' + title + '.npy', np.array(accuracies5))
+    np.save('logpdfs3_' + title + '.npy', np.array(logpdfs3))
+    np.save('logpdfs4_' + title + '.npy', np.array(logpdfs4))
+    np.save('logpdfs5_' + title + '.npy', np.array(logpdfs5))  
     #dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
     #dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
     #dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
 
     
     
-    fig, axs = plt.subplots(2, 2)
+    fig, axs = plt.subplots(2, 2,constrained_layout= True)
     #line_neg1_batch, = axs[0, 0].plot(dists_neg1_batch, label = 'batch')
     #line_neg1_sgd, = axs[0, 0].plot(dists_neg1_sgd, label = 'sgd')
     #line0, = axs[0, 0].plot(dists0, label = 'zero')

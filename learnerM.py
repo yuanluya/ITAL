@@ -81,24 +81,24 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        for i in to_be_replaced:
-            noise = np.random.normal(scale = scale,
-                                     size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-                        # noise = t.rvs(df = 5, scale = scale,
-                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-            #rd = np.random.choice(2, p = [1 - replace_ratio, replace_ratio])
-            rd = np.random.rand()
-            if rd < 1  - self.config_.prob:
-                self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
-            else:
-                if prag == 0:
-                    self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
-                elif prag == 1:
-                    self.particles_[i: i + 1, ...] = noise
+        if prag == 2:
+            self.particles_ = np.take(self.particles_, to_be_kept, axis = 0)
+            self.config_.particle_num = len(self.particles_)
+            eliminate = len(to_be_replaced)
+        else:
+            for i in to_be_replaced:
+                noise = np.random.normal(scale = scale,
+                        size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+        
+                rd = np.random.rand()
+                if rd < 1  - self.config_.prob:
+                    self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
                 else:
-                    self.particles_ = np.take(self.particles_, to_be_kept, axis = 0)
-                    self.config_.particle_num = len(self.particles_)
-            eliminate += 1
+                    if prag == 0:
+                        self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
+                    else:
+                        self.particles_[i: i + 1, ...] = noise
+                eliminate += 1
 
         
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
@@ -148,22 +148,23 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        for i in to_be_replaced:
-            noise = np.random.normal(scale = scale,
-                                     size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-                        # noise = t.rvs(df = 5, scale = scale,
-                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-            rd = np.random.rand()
-            if rd < 1 - self.config_.prob:
-                self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
-            else:
-                if prag == 0:
-                    self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
-                elif prag == 1:
-                    self.particles_[i: i + 1, ...] = noise
+        if prag == 2:
+            self.particles_ = np.take(self.particles_, to_be_kept, axis = 0)
+            self.config_.particle_num = len(self.particles_)
+            eliminate = len(to_be_replaced)
+        else:
+            for i in to_be_replaced:
+                noise = np.random.normal(scale = scale,
+                                         size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                rd = np.random.rand()
+                if rd < 1  - self.config_.prob:
+                    self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
                 else:
-                    self.particles_ = np.take(self.particles_, to_be_kept, axis = 0)
-                    self.config_.particle_num = len(self.particles_)
+                    if prag == 0:
+                        self.particles_[i: i + 1, ...] = new_center + noise 
+                    else:
+                        self.particles_[i: i + 1, ...] = noise
+                eliminate += 1
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
         
