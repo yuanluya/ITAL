@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import subprocess
 from easydict import EasyDict as edict
+import multiprocessing
+import time
 
 def get_path(data_cate, arguments):
     #add dist or dist_ or ... as argyment
@@ -54,6 +56,7 @@ def get_path(data_cate, arguments):
     return titles, methods
 
 def save_csv(data_cate, setting_name, random_seeds, arguments):    
+    methods_code = {'3': 'prag', '4': 'noise'} 
     titles, methods = get_path(data_cate, arguments)
     data = []
     method = []
@@ -64,7 +67,7 @@ def save_csv(data_cate, setting_name, random_seeds, arguments):
             d = np.load(filename, allow_pickle = True)
             length = len(d)
             data.append(d)
-            method += [methods[t] for j in range(length)]
+            method += [methods_code[methods[t]] for j in range(length)]
             iterations += [j for j in range(length)]
     data = np.array(data).flatten()
 
@@ -75,14 +78,31 @@ def save_csv(data_cate, setting_name, random_seeds, arguments):
     df.to_csv(save_name)
     print('saved file to %s \n' % save_name)
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 def collect_data(setting_name, random_seeds, arguments):
-    for s in random_seeds:
-        if len(arguments) > 7:
-            arguments_ = arguments[0:-1] + [str(s)] + [arguments[-1]] 
-        else:
-            arguments_ = arguments[:] + [str(s)]
-        subprocess.call(arguments_)
+    #child_processes = []
+    cpu_cnt = int(multiprocessing.cpu_count()/4)
+    
+    random_seed = list(chunks(random_seeds, cpu_cnt))
+    for ss in random_seed:
+        child_processes = []
+        for s in ss:
+            if len(arguments) > 7:
+                arguments_ = arguments[0:-1] + [str(s)] + [arguments[-1]] 
+            else:
+                arguments_ = arguments[:] + [str(s)]
+
+            p = subprocess.Popen(arguments_)
+            child_processes.append(p)
+        for cp in child_processes:
+            cp.wait()
+        #subprocess.call(arguments_)
         #subprocess.call(arguments.append(str(s)))    
+        #p.wait()
 
     save_csv('dist', setting_name, random_seeds, arguments)
     save_csv('dist_', setting_name, random_seeds, arguments)
