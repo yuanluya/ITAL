@@ -10,7 +10,7 @@ import time
 
 def get_path(data_cate, arguments):
     #add dist or dist_ or ... as argyment
-    lines = ['3','4']
+    lines = ['3','4', 'batch', 'sgd']
     titles = []
     methods = edict()
 
@@ -56,7 +56,7 @@ def get_path(data_cate, arguments):
     return titles, methods
 
 def save_csv(data_cate, setting_name, random_seeds, arguments):    
-    methods_code = {'3': 'prag', '4': 'noise'} 
+    methods_code = {'3': 'prag', '4': 'noise', 'batch': 'batch', 'sgd': 'sgd'} 
     titles, methods = get_path(data_cate, arguments)
     data = []
     method = []

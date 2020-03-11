@@ -211,8 +211,18 @@ def main():
     init = tf.global_variables_initializer()
 
 
-    #dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-    #dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+    dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+    np.save('distbatch_' + title + '.npy', np.array(dists_neg1_batch))
+    np.save('distbatch__' + title + '.npy', np.array(dists_neg1_batch_))
+    np.save('accuraciesbatch_' + title + '.npy', np.array(accuracies_neg1_batch))
+    np.save('logpdfsbatch_' + title + '.npy', np.array(logpdf_neg1_batch))
+
+    dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+    np.save('distsgd_' + title + '.npy', np.array(dists_neg1_sgd))
+    np.save('distsgd__' + title + '.npy', np.array(dists_neg1_sgd_))
+    np.save('accuraciessgd_' + title + '.npy', np.array(accuracies_neg1_sgd))
+    np.save('logpdfssgd_' + title + '.npy', np.array(logpdf_neg1_sgd))
+
     dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
     dists4, dists4_, accuracies4, logpdfs4, eliminates4 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 1)
     #dists5, dists5_, accuracies5, logpdfs5, eliminates5 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 2)
