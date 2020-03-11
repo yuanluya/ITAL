@@ -134,7 +134,7 @@ def plot(setting_name):
     axes[1, 1].set_title('log pdf per 20 iters')
     axes[0, 1].set_title('test loss')
     axes[1, 0].set_title('dist mean')
-
+    plt.savefig('omni_regression.png')
     plt.show()
 
 def main():
@@ -142,7 +142,7 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [400+j for j in range(2)]
+    random_seeds = [j for j in range(100)]
     setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':
