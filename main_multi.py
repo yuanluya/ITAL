@@ -25,13 +25,13 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     accuracies = []
     logpdf = []
     for _ in tqdm(range(train_iter)):
-        '''
+        
         if (_ % 20 == 0):
             pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.5)
             if (pdf == 0):
                 print(_)
             logpdf.append(np.log(pdf))
-        '''
+        
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)

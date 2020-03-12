@@ -34,7 +34,7 @@ class LearnerSM:
         self.particles_ = copy.deepcopy(init_ws)
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
-    def learn(self, data_pool, data_y, data_idx, gradients, step, gt_w, random_prob = None, prag = 0):
+    def learn(self, data_pool, data_y, data_idx, gradients, step, gt_w, random_prob = None):
         gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
                                                         self.W_: self.particles_,
                                                         self.y_: data_y[data_idx: data_idx + 1, :]})
@@ -81,30 +81,29 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        if prag == 2:
-            self.particles_ = np.take(self.particles_, to_be_kept, axis = 0)
-            self.config_.particle_num = len(self.particles_)
-            eliminate = len(to_be_replaced)
-        else:
-            for i in to_be_replaced:
-                noise = np.random.normal(scale = scale,
-                        size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-        
-                rd = np.random.rand()
-                if rd < 1  - self.config_.prob:
-                    self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
-                else:
-                    if prag == 0:
-                        self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
-                    else:
-                        self.particles_[i: i + 1, ...] = noise
-                eliminate += 1
+        replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
+        # kept_dist = np.sum(np.square(new_center - gt_w))
+        # replace_dist = np.sum(np.square(replace_center - gt_w))
+        prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
+        norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
+        cosine = np.arccos(prod / norm)
+        for i in to_be_replaced:
+            noise = np.random.normal(scale = scale,
+                                     size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                        # noise = t.rvs(df = 5, scale = scale,
+                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+            #rd = np.random.choice(2, p = [1 - replace_ratio, replace_ratio])
+            rd = np.random.rand()
+            if rd < 1  - self.config_.prob:
+                self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
+            else:
+                self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
+            eliminate += 1
 
-        
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
-        return self.current_mean_, eliminate, 0
+        return self.current_mean_, eliminate, cosine
 
-    def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss, step, gt_w, prag = 0):
+    def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss, step, gt_w):
         new_particle_losses = []
         gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
                                                         self.W_: self.particles_,
@@ -148,27 +147,25 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        if prag == 2:
-            self.particles_ = np.take(self.particles_, to_be_kept, axis = 0)
-            self.config_.particle_num = len(self.particles_)
-            eliminate = len(to_be_replaced)
-        else:
-            for i in to_be_replaced:
-                noise = np.random.normal(scale = scale,
-                                         size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-                rd = np.random.rand()
-                if rd < 1  - self.config_.prob:
-                    self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
-                else:
-                    if prag == 0:
-                        self.particles_[i: i + 1, ...] = new_center + noise 
-                    else:
-                        self.particles_[i: i + 1, ...] = noise
-                eliminate += 1
-
+        replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
+        # kept_dist = np.sum(np.square(new_center - gt_w))
+        # replace_dist = np.sum(np.square(replace_center - gt_w))
+        prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
+        norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
+        cosine = np.arccos(prod / norm)
+        for i in to_be_replaced:
+            noise = np.random.normal(scale = scale,
+                                     size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+                        # noise = t.rvs(df = 5, scale = scale,
+                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+            rd = np.random.rand()
+            if rd < 1 - self.config_.prob:
+                self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
+            else:
+                self.particles_[i: i + 1, ...] = new_center + noise
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
-        
-        return self.current_mean_, eliminate, 0
+
+        return self.current_mean_, eliminate, cosine
 
     def get_grads(self, data_pool, data_y, w_param = None):
         gradients = []
