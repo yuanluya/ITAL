@@ -26,7 +26,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     logpdf = []
     for _ in tqdm(range(train_iter)):
         
-        if (_ % 20 == 0):
+        if (_ % 50 == 0):
             pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.5)
             if (pdf == 0):
                 print(_)
@@ -66,7 +66,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     logpdfs = []
     angles = []
     for i in tqdm(range(train_iter)):
-        if i % 20 == 0:
+        if i % 50 == 0:
             pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5) for p in learner.particles_])
             logpdfs.append(np.log(pdf))
         if teacher.config_.task == 'classification':
