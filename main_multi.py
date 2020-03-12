@@ -176,8 +176,8 @@ def main():
 
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3000
-    train_iter_simple = 21
-    train_iter_smart = 21
+    train_iter_simple = 2000
+    train_iter_smart = 2000
     reg_coef = 0
     dx = None if dd != 24 else np.load("MNIST_/mnist_train_features.npy")
     dy = None if dd != 24 else np.load("MNIST_/mnist_train_labels.npy")
