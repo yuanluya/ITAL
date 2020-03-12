@@ -34,7 +34,7 @@ class LearnerSM:
         self.particles_ = copy.deepcopy(init_ws)
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
-    def learn(self, data_pool, data_y, data_idx, gradients, step, gt_w, random_prob = None):
+    def learn(self, data_pool, data_y, data_idx, gradients, step, gt_w, random_prob = None, strt = False):
         gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
                                                         self.W_: self.particles_,
                                                         self.y_: data_y[data_idx: data_idx + 1, :]})
@@ -44,7 +44,11 @@ class LearnerSM:
         
         gradient = gradients[data_idx: data_idx + 1, ...]
         target_center = self.current_mean_ - self.config_.lr * gradient
-        val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient)) -\
+        if strt:
+            val_target = np.sum((self.current_mean_ - self.particles_) * gradient, axis=(1, 2)) / \
+                     (np.sum(np.square(gradient), axis=(1, 2)) * np.sum(np.square(self.current_mean_ - self.particles_), axis=(1, 2)))
+        else:
+            val_target = self.config_.lr * self.config_.lr * np.sum(np.square(gradient)) -\
                             2 * self.config_.lr * np.sum((self.current_mean_ - self.particles_) * gradient, axis = (1, 2))
 
         gradients_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
@@ -63,15 +67,22 @@ class LearnerSM:
             count = 0
             for j in range(data_pool.shape[0]):
                 if j != data_idx:
-                    val_cmp = gradients_cache[j] - 2 * self.config_.lr * np.sum(particle_cache * gradients[j: j + 1, ...])
-                    if val_target[i] - val_cmp > 1e-8:
-                        count += 1
+                    if strt:
+                        val_cmp = np.sum(particle_cache * gradients[j: j + 1, ...]) / \
+                                  (np.sum(np.square(gradients[j: j + 1, ...])) * np.sum(np.square(particle_cache)))
+                        if val_cmp - val_target[i] > 1e-8:
+                            count += 1
+                    else:
+                        val_cmp = gradients_cache[j] - 2 * self.config_.lr * np.sum(particle_cache * gradients[j: j + 1, ...])
+                        if val_target[i] - val_cmp > 1e-8:
+                            count += 1
                     if count == self.config_.replace_count:
                         to_be_replaced.append(i)
                         break
         
         to_be_kept = list(set(range(self.config_.particle_num)) - set(to_be_replaced))
         #min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])] if len(to_be_kept) > 0 else None
+        cosine = 0
         if len(to_be_replaced) > 0:
             if len(to_be_kept) > 0 and step > 10:
                 new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
@@ -80,13 +91,13 @@ class LearnerSM:
                 #              self.particles_[min_idx: min_idx + 1, ...]
             else:
                 new_center = target_center
-
-        replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
-        # kept_dist = np.sum(np.square(new_center - gt_w))
-        # replace_dist = np.sum(np.square(replace_center - gt_w))
-        prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
-        norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
-        cosine = np.arccos(prod / norm)
+            replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
+            # kept_dist = np.sum(np.square(new_center - gt_w))
+            # replace_dist = np.sum(np.square(replace_center - gt_w))
+            prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
+            norm = np.sum(np.square((gt_w - new_center)))
+            cosine = prod - norm
+        
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])
@@ -140,6 +151,7 @@ class LearnerSM:
                     break
 
         to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
+        cosine = 0
         if len(to_be_replaced) > 0:
             if len(to_be_kept) > 0 and step > 10:
                 new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
@@ -147,12 +159,13 @@ class LearnerSM:
             else:
                 new_center = target_center
 
-        replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
-        # kept_dist = np.sum(np.square(new_center - gt_w))
-        # replace_dist = np.sum(np.square(replace_center - gt_w))
-        prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
-        norm = np.sqrt(np.sum(np.square((gt_w - new_center)))) * np.sqrt(np.sum(np.square((gt_w - replace_center))))
-        cosine = np.arccos(prod / norm)
+            replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
+            # kept_dist = np.sum(np.square(new_center - gt_w))
+            # replace_dist = np.sum(np.square(replace_center - gt_w))
+            prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
+            norm = np.sum(np.square((gt_w - new_center)))
+            cosine = prod - norm
+
         for i in to_be_replaced:
             noise = np.random.normal(scale = scale,
                                      size = [1, self.config_.num_classes, self.config_.data_dim + 1])

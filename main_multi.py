@@ -53,7 +53,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         print('test accuracy: %f' % accuracy)
     return dists, dists_, accuracies, logpdf
 
-def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False, prag = 0):
+def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False):
     learner.reset(init_ws)
     w = learner.current_mean_
     ws = [w]
@@ -81,6 +81,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         gradients, _, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
         if mode == 'omni':
             data_idx = teacher.choose(gradients, w, learner.config_.lr)
+        elif mode == 'omni_strt':
+            data_idx = teacher.choose_strt(gradients, w)
         elif mode == 'surr':
             data_idx = teacher.choose_sur(gradients, losses, learner.config_.lr)
         else:
@@ -95,10 +97,12 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
                 gradients_tea = np.concatenate(gradients_tea, 0)
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr)
         data_choices.append(data_idx)
-        if mode == 'omni' or random_prob is not None:
-            w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob, prag = prag)
+        if mode == 'omni_strt':
+            w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob=random_prob, strt = True)
+        elif mode == 'omni' or random_prob is not None:
+            w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
         else:
-            w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_, prag = prag)
+            w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
             
         angles.append(angle)
         #particle_hist.append(copy.deepcopy(learner.particles_))
@@ -172,8 +176,8 @@ def main():
 
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3000
-    train_iter_simple = 2000
-    train_iter_smart = 2000
+    train_iter_simple = 21
+    train_iter_smart = 21
     reg_coef = 0
     dx = None if dd != 24 else np.load("MNIST_/mnist_train_features.npy")
     dy = None if dd != 24 else np.load("MNIST_/mnist_train_labels.npy")
@@ -224,24 +228,39 @@ def main():
     np.save('logpdfssgd_' + title + '.npy', np.array(logpdf_neg1_sgd))
 
     dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
-    dists4, dists4_, accuracies4, logpdfs4, eliminates4 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 1)
-    #dists5, dists5_, accuracies5, logpdfs5, eliminates5 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 2)
     np.save('dist3_' + title + '.npy', np.array(dists3))
-    np.save('dist4_' + title + '.npy', np.array(dists4))
-    #np.save('dist5_' + title + '.npy', np.array(dists5))
     np.save('dist3__' + title + '.npy', np.array(dists3_))
-    np.save('dist4__' + title + '.npy', np.array(dists4_))
-    #np.save('dist5__' + title + '.npy', np.array(dists5_))
     np.save('accuracies3_' + title + '.npy', np.array(accuracies3))
-    np.save('accuracies4_' + title + '.npy', np.array(accuracies4))
-    #np.save('accuracies5_' + title + '.npy', np.array(accuracies5))
     np.save('logpdfs3_' + title + '.npy', np.array(logpdfs3))
+ 
+    dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
+    np.save('dist2_' + title + '.npy', np.array(dists2))
+    np.save('dist2__' + title + '.npy', np.array(dists2_))
+    np.save('accuracies2_' + title + '.npy', np.array(accuracies2))
+    np.save('logpdfs2_' + title + '.npy', np.array(logpdfs2))
+    dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
+    np.save('dist1_' + title + '.npy', np.array(dists1))
+    np.save('dist1__' + title + '.npy', np.array(dists1_))
+    np.save('accuracies1_' + title + '.npy', np.array(accuracies1))
+    np.save('logpdfs1_' + title + '.npy', np.array(logpdfs1))
+    dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
+    np.save('dist0_' + title + '.npy', np.array(dists0))
+    np.save('dist0__' + title + '.npy', np.array(dists0_))
+    np.save('accuracies0_' + title + '.npy', np.array(accuracies0))
+    np.save('logpdfs0_' + title + '.npy', np.array(logpdfs0 ))
+    dists4, dists4_, accuracies4, logpdfs4, eliminates4 = learn(teacher, learnerM, "omni_strt", init_ws, train_iter_smart)
+    np.save('dist4_' + title + '.npy', np.array(dists4))
+    np.save('dist4__' + title + '.npy', np.array(dists4_))
+    np.save('accuracies4_' + title + '.npy', np.array(accuracies4))
     np.save('logpdfs4_' + title + '.npy', np.array(logpdfs4))
-    #np.save('logpdfs5_' + title + '.npy', np.array(logpdfs5))  
-    #dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
-    #dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
-    #dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
-
+   
+    dists5, dists5_, accuracies5, logpdfs5, _ = learn(teacher, learnerM, "omni_strt", init_ws, train_iter_smart, 1)
+    #dists5, dists5_, accuracies5, logpdfs5, eliminates5 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 2)
+    np.save('dist5_' + title + '.npy', np.array(dists5))
+    np.save('dist5__' + title + '.npy', np.array(dists5_))
+    np.save('accuracies5_' + title + '.npy', np.array(accuracies5))
+    np.save('logpdfs5_' + title + '.npy', np.array(logpdfs5))  
+    
     
     '''
     fig, axs = plt.subplots(2, 2,constrained_layout= True)

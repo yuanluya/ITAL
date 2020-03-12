@@ -109,6 +109,11 @@ class TeacherM:
         vals = np.sum(lr * lr * np.square(gradients), axis = (1, 2)) - 2 * lr * np.sum((prev_w - self.gt_w_) * gradients, axis = (1, 2))
         return np.argmin(vals)
 
+    def choose_strt(self, gradients, prev_w):
+        mag_product = np.sum(np.square(gradients), axis=(1, 2)) * np.sum(np.square(prev_w - self.gt_w_), axis=(1, 2))
+        vals = np.sum((prev_w - self.gt_w_) * gradients, axis=(1, 2)) / mag_product
+        return np.argmax(vals)
+
     def choose_sur(self, gradients, prev_losses, lr):
         vals = np.sum(lr * lr * np.square(gradients), axis = (1, 2)) - 2 * lr * (prev_losses - self.gt_loss_)
         return np.argmin(vals)
