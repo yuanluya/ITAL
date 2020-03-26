@@ -10,7 +10,7 @@ import time
 
 def get_path(data_cate, arguments):
     #add dist or dist_ or ... as argyment
-    lines = ['0', '1', '2', '3', '4', '5', 'batch', 'sgd']
+    lines = ['0', '1', '2', '3', '4', '5', '6', 'batch', 'sgd']
     titles = []
     methods = edict()
 
@@ -56,14 +56,14 @@ def get_path(data_cate, arguments):
     return titles, methods
 
 def save_csv(data_cate, setting_name, random_seeds, arguments):    
-    methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', 'batch': 'batch', 'sgd': 'sgd'} 
+    methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', '6': 'Expert', 'batch': 'batch', 'sgd': 'sgd'} 
     titles, methods = get_path(data_cate, arguments)
     data = []
     method = []
     iterations = []
     for t in titles:
         for s in random_seeds:
-            filename = t + '_' + str(s) + '.npy'
+            filename = 'plot_data/' + t + '_' + str(s) + '.npy'
             d = np.load(filename, allow_pickle = True)
             length = len(d)
             data.append(d)
@@ -71,7 +71,7 @@ def save_csv(data_cate, setting_name, random_seeds, arguments):
             iterations += [j for j in range(length)]
     data = np.array(data).flatten()
 
-    save_name = data_cate + '_' + setting_name + '.csv'
+    save_name = setting_name + '_csv/' + data_cate + '_' + setting_name + '.csv'
     df = pd.DataFrame({'method': method,
                        'iteration': iterations,
                        'data': data})
@@ -85,7 +85,7 @@ def chunks(lst, n):
 
 def collect_data(setting_name, random_seeds, arguments):
     #child_processes = []
-    cpu_cnt = int(multiprocessing.cpu_count()/4) + 1
+    cpu_cnt = int(multiprocessing.cpu_count()/20) + 1
     
     random_seed = list(chunks(random_seeds, cpu_cnt))
     for ss in random_seed:
@@ -103,7 +103,7 @@ def collect_data(setting_name, random_seeds, arguments):
         #subprocess.call(arguments_)
         #subprocess.call(arguments.append(str(s)))    
         #p.wait()
-
+    
     save_csv('dist', setting_name, random_seeds, arguments)
     save_csv('dist_', setting_name, random_seeds, arguments)
     save_csv('logpdfs', setting_name, random_seeds, arguments)
@@ -117,10 +117,11 @@ def plot(setting_name):
 
     f, axes = plt.subplots(2, 2, constrained_layout = True)
     
-    results00 = pd.read_csv('%s.csv' % ('dist'+'_'+setting_name))
-    results01 = pd.read_csv('%s.csv' % ('accuracies'+'_'+setting_name))
-    results10 = pd.read_csv('%s.csv' % ('dist_'+'_'+setting_name))
-    results11 = pd.read_csv('%s.csv' % ('logpdfs'+'_'+setting_name))    
+    path = setting_name + '_csv/'
+    results00 = pd.read_csv(path + '%s.csv' % ('dist'+'_'+setting_name))
+    results01 = pd.read_csv(path + '%s.csv' % ('accuracies'+'_'+setting_name))
+    results10 = pd.read_csv(path + '%s.csv' % ('dist_'+'_'+setting_name))
+    results11 = pd.read_csv(path + '%s.csv' % ('logpdfs'+'_'+setting_name))    
     
     sns.lineplot(x="iteration", y="data",
                  hue="method", data=results00, ax=axes[0,0])
@@ -142,7 +143,7 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [j for j in range(100)]
+    random_seeds = [j for j in range(20)]
     setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':
