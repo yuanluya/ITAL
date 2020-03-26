@@ -85,8 +85,9 @@ def chunks(lst, n):
 
 def collect_data(setting_name, random_seeds, arguments):
     #child_processes = []
-    cpu_cnt = int(multiprocessing.cpu_count()/20) + 1
-    
+
+    cpu_cnt = int(multiprocessing.cpu_count()/10) + 1
+    #cpu_cnt = 1
     random_seed = list(chunks(random_seeds, cpu_cnt))
     for ss in random_seed:
         child_processes = []
