@@ -63,7 +63,7 @@ def save_csv(data_cate, setting_name, random_seeds, arguments):
     iterations = []
     for t in titles:
         for s in random_seeds:
-            filename = 'plot_data/' + t + '_' + str(s) + '.npy'
+            filename = t + '_' + str(s) + '.npy'
             d = np.load(filename, allow_pickle = True)
             length = len(d)
             data.append(d)
@@ -144,7 +144,7 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [j for j in range(20)]
+    random_seeds = [j for j in range(1)]
     setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':

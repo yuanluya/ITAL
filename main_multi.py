@@ -55,6 +55,9 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
 
 def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False):
     learner.reset(init_ws)
+    if mode == 'expt':
+        learner.particle_weights_ = np.ones(learner.config_.particle_num)
+        eta = np.sqrt(8 * np.log(learner.config_.particle_num) / 2000)
     w = learner.current_mean_
     ws = [w]
     dists = [np.sum(np.square(w - teacher.gt_w_))]
@@ -79,7 +82,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         accuracies.append(accuracy)
         teacher.sample()
         gradients, _, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
-        if mode == 'omni':
+        if mode == 'omni' or mode == 'expt':
             data_idx = teacher.choose(gradients, w, learner.config_.lr)
         elif mode == 'omni_strt':
             data_idx = teacher.choose_strt(gradients, w)
@@ -99,6 +102,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         data_choices.append(data_idx)
         if mode == 'omni_strt':
             w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob=random_prob, strt = True)
+        elif mode == 'expt':
+            w, eliminate, angle = learner.learn_expt(teacher.data_pool_, teacher.gt_y_, data_idx, eta)
         elif mode == 'omni' or random_prob is not None:
             w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
         else:
@@ -111,7 +116,11 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         #print(np.sum(np.square(w - teacher.gt_w_)))
         #print()
         dists.append(np.sum(np.square(w - teacher.gt_w_)))
-        dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
+        if mode != 'expt':
+            dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
+        else:
+            dists_.append(np.sum(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))\
+                                 * learner.particle_weights_) / np.sum(learner.particle_weights_))
         ws.append(w)
 
     if teacher.config_.task == 'classification':
@@ -214,7 +223,7 @@ def main():
     learnerM = LearnerSM(sess, config_LS)
     init = tf.global_variables_initializer()
 
-
+    
     dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
     np.save('distbatch_' + title + '.npy', np.array(dists_neg1_batch))
     np.save('distbatch__' + title + '.npy', np.array(dists_neg1_batch_))
@@ -261,6 +270,11 @@ def main():
     np.save('accuracies5_' + title + '.npy', np.array(accuracies5))
     np.save('logpdfs5_' + title + '.npy', np.array(logpdfs5))  
     
+    dists6, dists6_, accuracies6, logpdfs6, _ = learn(teacher, learnerM, 'expt', init_ws, train_iter_smart)
+    np.save('dist6_' + title + '.npy', np.array(dists6))
+    np.save('dist6__' + title + '.npy', np.array(dists6_))
+    np.save('accuracies6_' + title + '.npy', np.array(accuracies6))
+    np.save('logpdfs6_' + title + '.npy', np.array(logpdfs6))
     
     '''
     fig, axs = plt.subplots(2, 2,constrained_layout= True)
