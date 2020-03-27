@@ -57,7 +57,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     learner.reset(init_ws)
     if mode == 'expt':
         learner.particle_weights_ = np.ones(learner.config_.particle_num)
-        eta = np.sqrt(8 * np.log(learner.config_.particle_num) / 2000)
+        eta = np.sqrt(8 * np.log(learner.config_.particle_num) / 10000)
     w = learner.current_mean_
     ws = [w]
     dists = [np.sum(np.square(w - teacher.gt_w_))]
