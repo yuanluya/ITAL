@@ -1,5 +1,5 @@
 from easydict import EasyDict as edict
-import tensorflow as tf
+from multiprocessing import Process, Manager
 import numpy as np
 from scipy.stats import multivariate_normal as mn
 import os
@@ -9,6 +9,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import sys
+import time
 from tqdm import tqdm
 
 from learner import Learner
@@ -16,6 +17,7 @@ from learnerM import LearnerSM
 from teacherM import TeacherM
 
 import pdb
+
 
 def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     sess.run(init)
@@ -25,13 +27,11 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     accuracies = []
     logpdf = []
     for _ in tqdm(range(train_iter)):
-        
         if (_ % 50 == 0):
             pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.5)
             if (pdf == 0):
                 print(_)
             logpdf.append(np.log(pdf))
-        
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
@@ -50,7 +50,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         dists_.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
     if teacher.config_.task == 'classification':
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, w.T), 1) == teacher.gt_y_label_full_)
-        print('test accuracy: %f' % accuracy)
+        print('basic test accuracy: %f' % accuracy)
     return dists, dists_, accuracies, logpdf
 
 def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False):
@@ -70,7 +70,12 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     angles = []
     for i in tqdm(range(train_iter)):
         if i % 50 == 0:
-            pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5) for p in learner.particles_])
+            if mode != 'expt':
+                pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5)\
+                               for p in learner.particles_])
+            else:
+                pdf = np.sum(np.array([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5)\
+                                       for p in learner.particles_]) * learner.particle_weights_) / np.sum(learner.particle_weights_)
             logpdfs.append(np.log(pdf))
         if teacher.config_.task == 'classification':
             #accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
@@ -108,13 +113,9 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
             w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
         else:
             w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
-            
         angles.append(angle)
         #particle_hist.append(copy.deepcopy(learner.particles_))
         eliminates.append(eliminate)
-        #print(w)
-        #print(np.sum(np.square(w - teacher.gt_w_)))
-        #print()
         dists.append(np.sum(np.square(w - teacher.gt_w_)))
         if mode != 'expt':
             dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
@@ -126,8 +127,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     if teacher.config_.task == 'classification':
         learned_w = copy.deepcopy(w[0, ...])
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
-        print('test accuracy: %f' % accuracy)
-    
+        print('smart test accuracy: %f' % accuracy, random_prob)
+
     if (teacher.config_.transform):
         mode = "imit"
     else:
@@ -136,24 +137,27 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         teacher_dim = teacher.config_.data_x_tea.shape[1]
     else:
         teacher_dim = teacher.config_.data_dim
-    if random_prob is None and plot_condition:
-        num_bad = np.sum(np.array(angles) < 0)
-        plt.plot(angles, 'bo', markersize=4)
-        plt.plot(np.zeros(train_iter), 'r-')
-        plt.title('Mode: %s, Student Dimension: %d, Teacher_Dimension: %d, Classes: %d \n bad: %d, ratio of good: %f' %
-                (mode, learner.config_.data_dim, teacher_dim, learner.config_.num_classes,
-                 num_bad, 1 - num_bad / train_iter))
-        plt.ylabel("Projection Length")
-        plt.xlabel("Iterations")
-        plt.show()
+    
     return dists, dists_, accuracies, logpdfs, eliminates
 
-def main():
+def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
+    import tensorflow as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     sess = tf.Session(config = tfconfig)
+    init = tf.global_variables_initializer()
+
+    learnerM = LearnerSM(sess, learner)
+    dists, dists_, accuracies, logpdfs, eliminate = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
+
+    thread_return[key] = [dists, dists_, accuracies, logpdfs, eliminate]
+
+def main():
+    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+
     np.random.seed(int(sys.argv[6]))
+
+    multi_thread = True
 
     title = ''
     mode_idx = int(sys.argv[2])
@@ -164,7 +168,7 @@ def main():
     task = 'classification' if len(sys.argv) == 7 else 'regression'
     title += task
     title += '_'
-    
+
     lr = 1e-3
     dd = int(sys.argv[1])
     num_classes = 10 if dd == 24 or dd == 30 else 4
@@ -188,11 +192,12 @@ def main():
     train_iter_simple = 2000
     train_iter_smart = 2000
     reg_coef = 0
-    dx = None if dd != 24 else np.load("MNIST_/mnist_train_features.npy")
-    dy = None if dd != 24 else np.load("MNIST_/mnist_train_labels.npy")
-    gt_w = None if dd != 24 else np.load("MNIST_/mnist_train_features_weights.npy")
-    tx = None if dd != 24 else np.load("MNIST_/mnist_test_features.npy")
-    ty = None if dd != 24 else np.load("MNIST_/mnist_test_labels.npy")
+
+    dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
+    dy = None if dd != 24 else np.load("MNIST/mnist_train_labels.npy")
+    gt_w = None if dd != 24 else np.load("MNIST/mnist_tf_gt_weights.npy")
+    tx = None if dd != 24 else np.load("MNIST/mnist_test_features.npy")
+    ty = None if dd != 24 else np.load("MNIST/mnist_test_labels.npy")
     dx_tea = np.load("MNIST/mnist_train_features_tea.npy") if dd == 24 and mode == 'imit' else None
     dy_tea = np.load("MNIST/mnist_train_labels_tea.npy") if dd == 24 and mode == 'imit' else None
     gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea.npy") if dd == 24 and mode == 'imit' else None
@@ -218,113 +223,124 @@ def main():
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
     init_w = np.mean(init_ws, 0)
-    learner = Learner(sess, init_w, config_L)
+
     teacher = TeacherM(config_T)
-    learnerM = LearnerSM(sess, config_LS)
+    manager = Manager()
+
+    if multi_thread:
+
+        return_dict = manager.dict()
+        jobs = []
+
+        p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, None, None, return_dict))
+        p.start()
+        p.join()
+
+        eliminates = return_dict[None][-1]
+        ratio = np.mean(eliminates) / num_particles
+        print("Ratio", ratio)
+
+        random_probabilities = [ratio, 1, 0]
+        strt_probabilities = [None, 1]
+
+        for rp in random_probabilities:
+            time.sleep(0.5)
+            p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, rp, rp, return_dict))
+            jobs.append(p)
+            p.start()
+
+        for strt_prob in strt_probabilities:
+            time.sleep(0.5)
+            p = Process(target = learn_thread, args = (teacher, config_LS, "omni_strt", init_ws, train_iter_smart,
+                                                       strt_prob, "omni_strt" + str(strt_prob), return_dict))
+            jobs.append(p)
+            p.start()
+
+        p = Process(target = learn_thread, args = (teacher, config_LS, "expt", init_ws, train_iter_smart, None, "expt", return_dict))
+        jobs.append(p)
+        p.start()
+
+        for j in jobs:
+            print("joining", j)
+            j.join()
+        
+        dists3, dists3_, accuracies3, logpdfs3, eliminates = return_dict[None]
+        np.save('dist3_' + title + '.npy', np.array(dists3))
+        np.save('dist3__' + title + '.npy', np.array(dists3_))
+        np.save('accuracies3_' + title + '.npy', np.array(accuracies3))
+        np.save('logpdfs3_' + title + '.npy', np.array(logpdfs3))
+
+        dists2, dists2_, accuracies2, logpdfs2, _ = return_dict[random_probabilities[0]]
+        np.save('dist2_' + title + '.npy', np.array(dists2))
+        np.save('dist2__' + title + '.npy', np.array(dists2_))
+        np.save('accuracies2_' + title + '.npy', np.array(accuracies2))
+        np.save('logpdfs2_' + title + '.npy', np.array(logpdfs2))
+
+        dists1, dists1_, accuracies1, logpdfs1, _ = return_dict[random_probabilities[1]]
+        np.save('dist1_' + title + '.npy', np.array(dists1))
+        np.save('dist1__' + title + '.npy', np.array(dists1_))
+        np.save('accuracies1_' + title + '.npy', np.array(accuracies1))
+        np.save('logpdfs1_' + title + '.npy', np.array(logpdfs1))
+
+        dists0, dists0_, accuracies0, logpdfs0, _ = return_dict[random_probabilities[2]]
+        np.save('dist0_' + title + '.npy', np.array(dists0))
+        np.save('dist0__' + title + '.npy', np.array(dists0_))
+        np.save('accuracies0_' + title + '.npy', np.array(accuracies0))
+        np.save('logpdfs0_' + title + '.npy', np.array(logpdfs0 ))
+        
+        dists4, dists4_, accuracies4, logpdfs4, _ = return_dict["omni_strt" + str(strt_probabilities[0])]
+        np.save('dist4_' + title + '.npy', np.array(dists4))
+        np.save('dist4__' + title + '.npy', np.array(dists4_))
+        np.save('accuracies4_' + title + '.npy', np.array(accuracies4))
+        np.save('logpdfs4_' + title + '.npy', np.array(logpdfs4))
+
+        dists5, dists5_, accuracies5, logpdfs5, _ = return_dict["omni_strt" + str(strt_probabilities[1])]
+        np.save('dist5_' + title + '.npy', np.array(dists5))
+        np.save('dist5__' + title + '.npy', np.array(dists5_))
+        np.save('accuracies5_' + title + '.npy', np.array(accuracies5))
+        np.save('logpdfs5_' + title + '.npy', np.array(logpdfs5))  
+        
+        dists6, dists6_, accuracies6, logpdfs6, _ = return_dict["expt"]
+        np.save('dist6_' + title + '.npy', np.array(dists6))
+        np.save('dist6__' + title + '.npy', np.array(dists6_))
+        np.save('accuracies6_' + title + '.npy', np.array(accuracies6))
+        np.save('logpdfs6_' + title + '.npy', np.array(logpdfs6))
+
+
+    import tensorflow as tf
+    tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
+    tfconfig.gpu_options.allow_growth = True
+    sess = tf.Session(config = tfconfig)
+    learner = Learner(sess, init_w, config_L)
+
     init = tf.global_variables_initializer()
 
-    
-    dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-    np.save('distbatch_' + title + '.npy', np.array(dists_neg1_batch))
-    np.save('distbatch__' + title + '.npy', np.array(dists_neg1_batch_))
-    np.save('accuraciesbatch_' + title + '.npy', np.array(accuracies_neg1_batch))
-    np.save('logpdfsbatch_' + title + '.npy', np.array(logpdf_neg1_batch))
+    if multi_thread:
+        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+        np.save('distbatch_' + title + '.npy', np.array(dists_neg1_batch))
+        np.save('distbatch__' + title + '.npy', np.array(dists_neg1_batch_))
+        np.save('accuraciesbatch_' + title + '.npy', np.array(accuracies_neg1_batch))
+        np.save('logpdfsbatch_' + title + '.npy', np.array(logpdf_neg1_batch))
 
-    dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
-    np.save('distsgd_' + title + '.npy', np.array(dists_neg1_sgd))
-    np.save('distsgd__' + title + '.npy', np.array(dists_neg1_sgd_))
-    np.save('accuraciessgd_' + title + '.npy', np.array(accuracies_neg1_sgd))
-    np.save('logpdfssgd_' + title + '.npy', np.array(logpdf_neg1_sgd))
+        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+        np.save('distsgd_' + title + '.npy', np.array(dists_neg1_sgd))
+        np.save('distsgd__' + title + '.npy', np.array(dists_neg1_sgd_))
+        np.save('accuraciessgd_' + title + '.npy', np.array(accuracies_neg1_sgd))
+        np.save('logpdfssgd_' + title + '.npy', np.array(logpdf_neg1_sgd))
 
-    dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
-    np.save('dist3_' + title + '.npy', np.array(dists3))
-    np.save('dist3__' + title + '.npy', np.array(dists3_))
-    np.save('accuracies3_' + title + '.npy', np.array(accuracies3))
-    np.save('logpdfs3_' + title + '.npy', np.array(logpdfs3))
- 
-    dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
-    np.save('dist2_' + title + '.npy', np.array(dists2))
-    np.save('dist2__' + title + '.npy', np.array(dists2_))
-    np.save('accuracies2_' + title + '.npy', np.array(accuracies2))
-    np.save('logpdfs2_' + title + '.npy', np.array(logpdfs2))
-    dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
-    np.save('dist1_' + title + '.npy', np.array(dists1))
-    np.save('dist1__' + title + '.npy', np.array(dists1_))
-    np.save('accuracies1_' + title + '.npy', np.array(accuracies1))
-    np.save('logpdfs1_' + title + '.npy', np.array(logpdfs1))
-    dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
-    np.save('dist0_' + title + '.npy', np.array(dists0))
-    np.save('dist0__' + title + '.npy', np.array(dists0_))
-    np.save('accuracies0_' + title + '.npy', np.array(accuracies0))
-    np.save('logpdfs0_' + title + '.npy', np.array(logpdfs0 ))
-    dists4, dists4_, accuracies4, logpdfs4, eliminates4 = learn(teacher, learnerM, "omni_strt", init_ws, train_iter_smart)
-    np.save('dist4_' + title + '.npy', np.array(dists4))
-    np.save('dist4__' + title + '.npy', np.array(dists4_))
-    np.save('accuracies4_' + title + '.npy', np.array(accuracies4))
-    np.save('logpdfs4_' + title + '.npy', np.array(logpdfs4))
-   
-    dists5, dists5_, accuracies5, logpdfs5, _ = learn(teacher, learnerM, "omni_strt", init_ws, train_iter_smart, 1)
-    #dists5, dists5_, accuracies5, logpdfs5, eliminates5 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, prag = 2)
-    np.save('dist5_' + title + '.npy', np.array(dists5))
-    np.save('dist5__' + title + '.npy', np.array(dists5_))
-    np.save('accuracies5_' + title + '.npy', np.array(accuracies5))
-    np.save('logpdfs5_' + title + '.npy', np.array(logpdfs5))  
-    
-    dists6, dists6_, accuracies6, logpdfs6, _ = learn(teacher, learnerM, 'expt', init_ws, train_iter_smart)
-    np.save('dist6_' + title + '.npy', np.array(dists6))
-    np.save('dist6__' + title + '.npy', np.array(dists6_))
-    np.save('accuracies6_' + title + '.npy', np.array(accuracies6))
-    np.save('logpdfs6_' + title + '.npy', np.array(logpdfs6))
-    
-    '''
-    fig, axs = plt.subplots(2, 2,constrained_layout= True)
-    #line_neg1_batch, = axs[0, 0].plot(dists_neg1_batch, label = 'batch')
-    #line_neg1_sgd, = axs[0, 0].plot(dists_neg1_sgd, label = 'sgd')
-    #line0, = axs[0, 0].plot(dists0, label = 'zero')
-    #line1, = axs[0, 0].plot(dists1, label = 'one')
-    #line2, = axs[0, 0].plot(dists2, label = 'smart')
-    line3, = axs[0, 0].plot(dists3, label = 'smarter')
-    line4, = axs[0, 0].plot(dists4, label = 'noise')
-    line5, = axs[0, 0].plot(dists5, label = 'remove')
-    axs[0, 0].set_title('mean_dist')
+    else:
+        learnerM = LearnerSM(sess, config_LS)
 
-    #line_neg1_batch, = axs[1,1].plot(logpdf_neg1_batch, label = 'batch')
-    #line_neg1_sgd, = axs[1,1].plot(logpdf_neg1_sgd, label = 'sgd')
-    #line0, = axs[1, 1].plot(logpdfs0, label = 'zero')
-    #line1, = axs[1, 1].plot(logpdfs1, label = 'one')
-    #line2, = axs[1, 1].plot(logpdfs2, label = 'smart')
-    line3, = axs[1, 1].plot(logpdfs3, label = 'smarter')
-    line4, = axs[1, 1].plot(logpdfs4, label = 'noise')
-    line5, = axs[1, 1].plot(logpdfs5, label = 'remove')
-    axs[1, 1].set_title('log pdf per 20 iters')
-
-    #line_neg1_batch, = axs[0, 1].plot(accuracies_neg1_batch, label = 'batch')
-    #line_neg1_sgd, = axs[0, 1].plot(accuracies_neg1_sgd, label = 'sgd')
-    #line0, = axs[0, 1].plot(accuracies0, label = 'zero')
-    #line1, = axs[0, 1].plot(accuracies1, label = 'one')
-    #line2, = axs[0, 1].plot(accuracies2, label = 'smart')
-    line3, = axs[0, 1].plot(accuracies3, label = 'noise')
-    line4, = axs[0, 1].plot(accuracies4, label = 'remove')
-    axs[0, 1].set_title('test loss')
-
-    #line_neg1_batch, = axs[1, 0].plot(dists_neg1_batch_, label = 'batch')
-    #line_neg1_sgd, = axs[1, 0].plot(dists_neg1_sgd_, label = 'sgd')
-    #line0, = axs[1, 0].plot(dists0_, label = 'zero')
-    #line1, = axs[1, 0].plot(dists1_, label = 'one')
-    #line2, = axs[1, 0].plot(dists2_, label = 'smart')
-    line3, = axs[1, 0].plot(dists3_, label = 'noise')
-    line4, = axs[1, 0].plot(dists4_, label = 'remove')
-    axs[1, 0].set_title('dist mean')
-
-    
-    axs[0, 1].legend([line3, line4, line5],
-               ['Pragmatic Replacement', 'noise','particle removal'], prop={'size': 6})
-    fig.suptitle('%s class: %d: dim:%d_data:%d/%d/%d_particle:%d_noise: %f, %f, %d, ratio: %f, %f, lr:  %f' %\
-              (mode, num_classes, dd, config_LS.replace_count, config_T.sample_size, dps, num_particles,
-               config_LS.noise_scale_min, config_LS.noise_scale_max, config_LS.noise_scale_decay,
-               config_LS.target_ratio, config_LS.new_ratio, config_LS.lr))
-    plt.savefig('%s.png' % title)
-    '''
+        dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
+        dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
+        dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
+        dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
+        dists4, dists4_, accuracies4, logpdfs4, eliminates4 = learn(teacher, learnerM, "omni_strt", init_ws, train_iter_smart)
+        dists5, dists5_, accuracies5, logpdfs5, _ = learn(teacher, learnerM, "omni_strt", init_ws, train_iter_smart, 1)
+        dists6, dists6_, accuracies6, logpdfs6, _ = learn(teacher, learnerM, 'expt', init_ws, train_iter_smart)
+        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+        
 
 if __name__ == '__main__':
     main()
