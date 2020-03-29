@@ -116,7 +116,7 @@ def plot(setting_name):
     sns.set(style="darkgrid")
     sns.set(font_scale=1, rc = paper_rc)
 
-    f, axes = plt.subplots(2, 2, constrained_layout = True)
+    f, axes = plt.subplots(2, 2, constrained_layout = True, figsize=(10.9, 7.5))
     
     path = setting_name + '_csv/'
     results00 = pd.read_csv(path + '%s.csv' % ('dist'+'_'+setting_name))
@@ -124,18 +124,42 @@ def plot(setting_name):
     results10 = pd.read_csv(path + '%s.csv' % ('dist_'+'_'+setting_name))
     results11 = pd.read_csv(path + '%s.csv' % ('logpdfs'+'_'+setting_name))    
     
-    sns.lineplot(x="iteration", y="data",
+    plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results00, ax=axes[0,0])
-    sns.lineplot(x="iteration", y="data",
+    plt1.legend_.remove()
+    plt2 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results01, ax=axes[0,1])
-    sns.lineplot(x="iteration", y="data",
+    plt3 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results10, ax=axes[1,0])
-    sns.lineplot(x="iteration", y="data",
+    plt3.legend_.remove()
+    plt4 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results11, ax=axes[1,1])
+    plt4.legend_.remove()
     axes[0, 0].set_title('mean_dist')
-    axes[1, 1].set_title('log pdf per 20 iters')
+    axes[1, 1].set_title('log pdf per 50 iters')
     axes[0, 1].set_title('test loss')
     axes[1, 0].set_title('dist mean')
+    if setting_name == 'omni_equation':
+        fig.suptitle('omni class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+    elif setting_name == 'imit_equation':
+        fig.suptitle('imit class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+    elif setting_name == 'omni_class10':
+        fig.suptitle('omni class: 10: dim:30_data:1/20/90_particle:1000_noise: 0, 0.1, 1000, ratio: 0, 1, lr: 0.001')
+    elif setting_name == 'imit_class10':
+        fig.suptitle('imit class: 10: dim:30_data:1/20/90_particle:1000_noise: 0.01, 0.1, 1000, ratio: 0, 1, lr: 0.001')
+    elif setting_name == 'omni_class4':
+        fig.suptitle('omni class: 4: dim:50_data:1/20/150_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
+    elif setting_name == 'imit_class4':
+        fig.suptitle('imit class: 4: dim:50_data:1/20/150_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
+    elif setting_name == 'omni_regression':
+        fig.suptitle('omni class: 1: dim:50_data:1/20/300_particle:1000_noise: 0.1, 0.3, 300, ratio: 0, 1, lr: 0.001')
+    elif setting_name == 'imit_regression':
+        fig.suptitle('imit class: 1: dim:50_data:1/20/500_particle:1000_noise: 0.1, 0.3, 200, ratio: 0, 1, lr: 0.001')
+    elif setting_name == 'omni_mnist':
+        fig.suptitle('omni class: 10: dim:24_data:1/20/72_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+    else:
+        fig.suptitle('imit class: 10: dim:24_data:1/20/72_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+    fig.suptitle('%s class: %d: dim:%d_data:%d/%d/%d_particle:%d_noise: %f, %f, %d, ratio: %f, %f, lr: %f')
     plt.savefig('omni_regression.png')
     plt.show()
 
@@ -161,9 +185,9 @@ def main():
         elif setting_name == 'imit_class4':
             arguments = ['python3', 'main_multi.py', '50', '2', '0.01', '0.1', '200']
         elif setting_name == 'omni_regression':
-            arguments = ['python3', 'main_multi.py', '50', '0', '0.01', '0.1', '200', 'regression']
+            arguments = ['python3', 'main_multi.py', '50', '0', '0.1', '0.3', '300', 'regression']
         elif setting_name == 'imit_regression':
-            arguments = ['python3', 'main_multi.py', '50', '2', '0.01', '0.1', '200', 'regression']
+            arguments = ['python3', 'main_multi.py', '50', '2', '0.1', '0.3', '200', 'regression']
         elif setting_name == 'omni_mnist':
             arguments = ['python3', 'main_multi.py', '24', '0', '0', '0.05', '1000']
         elif setting_name == 'imit_mnist':
