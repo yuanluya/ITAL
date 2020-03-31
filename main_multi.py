@@ -22,7 +22,7 @@ import pdb
 def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     sess.run(init)
     [w] = sess.run([learner.w_])
-    dists = [np.sum(np.square(w - teacher.gt_w_))]
+    dists = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     dists_ = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     accuracies = []
     logpdf = []
@@ -57,10 +57,10 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     learner.reset(init_ws)
     if mode == 'expt':
         learner.particle_weights_ = np.ones(learner.config_.particle_num)
-        eta = np.sqrt(8 * np.log(learner.config_.particle_num) / 10000)
+        eta = np.sqrt(8 * np.log(learner.config_.particle_num) / 200000)
     w = learner.current_mean_
     ws = [w]
-    dists = [np.sum(np.square(w - teacher.gt_w_))]
+    dists = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     dists_ = [np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2))))]
     accuracies = []
     particle_hist = []
@@ -220,7 +220,7 @@ def main():
                        'noise_scale_decay': float(sys.argv[5]), 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     print(config_LS, config_T)
     config_LS_strt = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
-                       'num_classes': num_classes, 'noise_scale_min': 0, 'noise_scale_max': 0.05,
+                       'num_classes': num_classes, 'noise_scale_min': 0.001, 'noise_scale_max': 0.01,
                        'noise_scale_decay': 1000, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),

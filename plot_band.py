@@ -65,6 +65,7 @@ def save_csv(data_cate, setting_name, random_seeds, arguments):
         for s in random_seeds:
             filename = t + '_' + str(s) + '.npy'
             d = np.load(filename, allow_pickle = True)
+            #d = d[:int(len(d)/4)]
             length = len(d)
             data.append(d)
             method += [methods_code[methods[t]] for j in range(length)]
@@ -156,9 +157,9 @@ def plot(setting_name):
     elif setting_name == 'imit_regression':
         f.suptitle('imit class: 1: dim:50_data:1/20/500_particle:1000_noise: 0.1, 0.3, 200, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'omni_mnist':
-        f.suptitle('omni class: 10: dim:24_data:1/20/72_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+        f.suptitle('omni class: 10: dim:24_data:1/20/72_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
     else:
-        f.suptitle('imit class: 10: dim:24_data:1/20/72_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+        f.suptitle('imit class: 10: dim:24_tea_dim:30_data:1/20/72_particle:1000_noise: 0.02, 0.1, 1000, ratio: 0, 1, lr: 0.001')
     plt.show()
 
 def main():
@@ -166,7 +167,7 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [j for j in range(20)]
+    random_seeds = [j for j in range(1)]
     setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':
@@ -187,9 +188,9 @@ def main():
         elif setting_name == 'imit_regression':
             arguments = ['python3', 'main_multi.py', '50', '2', '0.1', '0.3', '200', 'regression']
         elif setting_name == 'omni_mnist':
-            arguments = ['python3', 'main_multi.py', '24', '0', '0', '0.05', '1000']
+            arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '200']
         elif setting_name == 'imit_mnist':
-            arguments = ['python3', 'main_multi.py', '24', '2', '0', '0.05', '1000']
+            arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '1000']
         else:
             print('possible setting_names are omni_equation, imit_equation, omni_class10, imit_class10, ')
             print('omni_class4, imit_class4, omni_regression, imit_regression, omni_mnist, imit_mnist')
