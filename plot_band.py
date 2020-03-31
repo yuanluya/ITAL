@@ -85,7 +85,7 @@ def chunks(lst, n):
 
 def collect_data(setting_name, random_seeds, arguments):
     #child_processes = []
-
+    
     cpu_cnt = int(multiprocessing.cpu_count()/10) + 1
     #cpu_cnt = 1
     random_seed = list(chunks(random_seeds, cpu_cnt))
@@ -140,27 +140,25 @@ def plot(setting_name):
     axes[0, 1].set_title('test loss')
     axes[1, 0].set_title('dist mean')
     if setting_name == 'omni_equation':
-        fig.suptitle('omni class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+        f.suptitle('omni class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'imit_equation':
-        fig.suptitle('imit class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+        f.suptitle('imit class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'omni_class10':
-        fig.suptitle('omni class: 10: dim:30_data:1/20/90_particle:1000_noise: 0, 0.1, 1000, ratio: 0, 1, lr: 0.001')
+        f.suptitle('omni class: 10: dim:30_data:1/20/90_particle:1000_noise: 0, 0.1, 1000, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'imit_class10':
-        fig.suptitle('imit class: 10: dim:30_data:1/20/90_particle:1000_noise: 0.01, 0.1, 1000, ratio: 0, 1, lr: 0.001')
+        f.suptitle('imit class: 10: dim:30_data:1/20/90_particle:1000_noise: 0.01, 0.1, 1000, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'omni_class4':
-        fig.suptitle('omni class: 4: dim:50_data:1/20/150_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
+        f.suptitle('omni class: 4: dim:50_data:1/20/150_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'imit_class4':
-        fig.suptitle('imit class: 4: dim:50_data:1/20/150_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
+        f.suptitle('imit class: 4: dim:50_data:1/20/150_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'omni_regression':
-        fig.suptitle('omni class: 1: dim:50_data:1/20/300_particle:1000_noise: 0.1, 0.3, 300, ratio: 0, 1, lr: 0.001')
+        f.suptitle('omni class: 1: dim:50_data:1/20/300_particle:1000_noise: 0.1, 0.3, 300, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'imit_regression':
-        fig.suptitle('imit class: 1: dim:50_data:1/20/500_particle:1000_noise: 0.1, 0.3, 200, ratio: 0, 1, lr: 0.001')
+        f.suptitle('imit class: 1: dim:50_data:1/20/500_particle:1000_noise: 0.1, 0.3, 200, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'omni_mnist':
-        fig.suptitle('omni class: 10: dim:24_data:1/20/72_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
+        f.suptitle('omni class: 10: dim:24_data:1/20/72_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
     else:
-        fig.suptitle('imit class: 10: dim:24_data:1/20/72_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
-    fig.suptitle('%s class: %d: dim:%d_data:%d/%d/%d_particle:%d_noise: %f, %f, %d, ratio: %f, %f, lr: %f')
-    plt.savefig('omni_regression.png')
+        f.suptitle('imit class: 10: dim:24_data:1/20/72_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
     plt.show()
 
 def main():
@@ -168,7 +166,7 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [j for j in range(1)]
+    random_seeds = [j for j in range(20)]
     setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':

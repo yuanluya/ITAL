@@ -219,6 +219,9 @@ def main():
                        'num_classes': num_classes, 'noise_scale_min': float(sys.argv[3]), 'noise_scale_max': float(sys.argv[4]),
                        'noise_scale_decay': float(sys.argv[5]), 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     print(config_LS, config_T)
+    config_LS_strt = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
+                       'num_classes': num_classes, 'noise_scale_min': 0, 'noise_scale_max': 0.05,
+                       'noise_scale_decay': 1000, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
@@ -251,7 +254,7 @@ def main():
 
         for strt_prob in strt_probabilities:
             time.sleep(0.5)
-            p = Process(target = learn_thread, args = (teacher, config_LS, "omni_strt", init_ws, train_iter_smart,
+            p = Process(target = learn_thread, args = (teacher, config_LS_strt, "omni_strt", init_ws, train_iter_smart,
                                                        strt_prob, "omni_strt" + str(strt_prob), return_dict))
             jobs.append(p)
             p.start()
