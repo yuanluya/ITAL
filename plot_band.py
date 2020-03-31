@@ -93,7 +93,7 @@ def collect_data(setting_name, random_seeds, arguments):
     for ss in random_seed:
         child_processes = []
         for s in ss:
-            if len(arguments) > 7:
+            if len(arguments) > 9:
                 arguments_ = arguments[0:-1] + [str(s)] + [arguments[-1]] 
             else:
                 arguments_ = arguments[:] + [str(s)]
@@ -167,30 +167,30 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [j for j in range(1)]
+    random_seeds = [j for j in range(20)]
     setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':
         if setting_name == 'omni_equation':
-            arguments = ['python3', 'main_multi.py', '48', '0', '0', '0.05', '1000', 'regression']
+            arguments = ['python3', 'main_multi.py', '48', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
         elif setting_name == 'imit_equation':
-            arguments = ['python3', 'main_multi.py', '48', '2', '0', '0.05', '1000', 'regression'] 
+            arguments = ['python3', 'main_multi.py', '48', '2', '0', '0.05', '1000', '0.001', '0.01', 'regression'] 
         elif setting_name == 'omni_class10':
-            arguments = ['python3', 'main_multi.py', '30', '0', '0', '0.1', '1000']
+            arguments = ['python3', 'main_multi.py', '30', '0', '0', '0.1', '1000', '0', '0.1']
         elif setting_name == 'imit_class10':
-            arguments = ['python3', 'main_multi.py', '30', '2', '0.01', '0.1', '1000']
+            arguments = ['python3', 'main_multi.py', '30', '2', '0.01', '0.1', '1000', '0.01', '0.1']
         elif setting_name == 'omni_class4':
-            arguments = ['python3', 'main_multi.py', '50', '0', '0.01', '0.1', '200']
+            arguments = ['python3', 'main_multi.py', '50', '0', '0.01', '0.1', '200', '0.01', '0.1']
         elif setting_name == 'imit_class4':
-            arguments = ['python3', 'main_multi.py', '50', '2', '0.01', '0.1', '200']
+            arguments = ['python3', 'main_multi.py', '50', '2', '0.01', '0.1', '200', '0.01', '0.1']
         elif setting_name == 'omni_regression':
-            arguments = ['python3', 'main_multi.py', '50', '0', '0.1', '0.3', '300', 'regression']
+            arguments = ['python3', 'main_multi.py', '50', '0', '0.1', '0.3', '300', '0', '0.05', 'regression']
         elif setting_name == 'imit_regression':
-            arguments = ['python3', 'main_multi.py', '50', '2', '0.1', '0.3', '200', 'regression']
+            arguments = ['python3', 'main_multi.py', '50', '2', '0.1', '0.3', '200', '0', '0.05', 'regression']
         elif setting_name == 'omni_mnist':
-            arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '200']
+            arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '0', '0.05','200']
         elif setting_name == 'imit_mnist':
-            arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '1000']
+            arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '0', '0.05','1000']
         else:
             print('possible setting_names are omni_equation, imit_equation, omni_class10, imit_class10, ')
             print('omni_class4, imit_class4, omni_regression, imit_regression, omni_mnist, imit_mnist')

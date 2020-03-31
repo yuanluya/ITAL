@@ -155,7 +155,7 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-    np.random.seed(int(sys.argv[6]))
+    np.random.seed(int(sys.argv[8]))
 
     multi_thread = True
 
@@ -165,7 +165,7 @@ def main():
     mode = modes[mode_idx]
     title += mode
     title += '_'
-    task = 'classification' if len(sys.argv) == 7 else 'regression'
+    task = 'classification' if len(sys.argv) == 9 else 'regression'
     title += task
     title += '_'
 
@@ -220,7 +220,7 @@ def main():
                        'noise_scale_decay': float(sys.argv[5]), 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     print(config_LS, config_T)
     config_LS_strt = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
-                       'num_classes': num_classes, 'noise_scale_min': 0.001, 'noise_scale_max': 0.01,
+                       'num_classes': num_classes, 'noise_scale_min': float(sys.argv[6]), 'noise_scale_max': float(sys.argv[7]),
                        'noise_scale_decay': 1000, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
@@ -234,7 +234,7 @@ def main():
 
         return_dict = manager.dict()
         jobs = []
-
+        
         p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, None, None, return_dict))
         p.start()
         p.join()
