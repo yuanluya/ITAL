@@ -225,7 +225,7 @@ def main():
     print(config_LS, config_T)
     config_LS_strt = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
                        'num_classes': num_classes, 'noise_scale_min': float(sys.argv[6]), 'noise_scale_max': float(sys.argv[7]),
-                            'noise_scale_decay': 200, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
+                            'noise_scale_decay': 1000, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
@@ -242,7 +242,7 @@ def main():
         p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, None, None, return_dict))
         p.start()
         p.join()
-
+        
         eliminates = return_dict[None][-1]
         ratio = np.mean(eliminates) / num_particles
         print("Ratio", ratio)
@@ -266,7 +266,7 @@ def main():
         p = Process(target = learn_thread, args = (teacher, config_LS, "expt", init_ws, train_iter_smart, None, "expt", return_dict))
         jobs.append(p)
         p.start()
-
+        
         for j in jobs:
             print("joining", j)
             j.join()
@@ -276,7 +276,7 @@ def main():
         np.save('dist3__' + title + '.npy', np.array(dists3_))
         np.save('accuracies3_' + title + '.npy', np.array(accuracies3))
         np.save('logpdfs3_' + title + '.npy', np.array(logpdfs3))
-
+        
         dists2, dists2_, accuracies2, logpdfs2, _ = return_dict[random_probabilities[0]]
         np.save('dist2_' + title + '.npy', np.array(dists2))
         np.save('dist2__' + title + '.npy', np.array(dists2_))
