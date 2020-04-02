@@ -23,6 +23,8 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     sess.run(init)
     [w] = sess.run([learner.w_])
     dists = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
+    print('basic')
+    print(dists[0])
     dists_ = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     accuracies = []
     logpdf = []
@@ -46,7 +48,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         else:
             data_point = [teacher.data_pool_, teacher.gt_y_]
         w = learner.learn(data_point)
-        dists.append(np.sum(np.square(w - teacher.gt_w_)))
+        dists.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
         dists_.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
     if teacher.config_.task == 'classification':
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, w.T), 1) == teacher.gt_y_label_full_)
@@ -61,6 +63,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     w = learner.current_mean_
     ws = [w]
     dists = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
+    print('learn')
+    print(dists[0])
     dists_ = [np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2))))]
     accuracies = []
     particle_hist = []
@@ -116,7 +120,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         angles.append(angle)
         #particle_hist.append(copy.deepcopy(learner.particles_))
         eliminates.append(eliminate)
-        dists.append(np.sum(np.square(w - teacher.gt_w_)))
+        dists.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
         if mode != 'expt':
             dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
         else:
@@ -185,7 +189,7 @@ def main():
     else:
         title += 'gaussian'
     title += '_'
-    title += sys.argv[6]
+    title += sys.argv[8]
 
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3000
@@ -221,7 +225,7 @@ def main():
     print(config_LS, config_T)
     config_LS_strt = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
                        'num_classes': num_classes, 'noise_scale_min': float(sys.argv[6]), 'noise_scale_max': float(sys.argv[7]),
-                       'noise_scale_decay': 1000, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
+                            'noise_scale_decay': 200, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)

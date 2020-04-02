@@ -20,7 +20,7 @@ def get_path(data_cate, arguments):
     mode = modes[mode_idx]
     title += mode
     title += '_'
-    task = 'classification' if len(arguments) == 7 else 'regression'
+    task = 'classification' if len(arguments) == 9 else 'regression'
     title += task
     title += '_'
 
@@ -184,7 +184,7 @@ def main():
         elif setting_name == 'imit_class4':
             arguments = ['python3', 'main_multi.py', '50', '2', '0.01', '0.1', '200', '0.01', '0.1']
         elif setting_name == 'omni_regression':
-            arguments = ['python3', 'main_multi.py', '50', '0', '0.1', '0.3', '300', '0', '0.05', 'regression']
+            arguments = ['python3', 'main_multi.py', '50', '0', '0.1', '0.3', '300', '0.001', '0.05', 'regression']
         elif setting_name == 'imit_regression':
             arguments = ['python3', 'main_multi.py', '50', '2', '0.1', '0.3', '200', '0', '0.05', 'regression']
         elif setting_name == 'omni_mnist':
