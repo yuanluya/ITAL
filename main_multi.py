@@ -29,11 +29,13 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     accuracies = []
     logpdf = []
     for _ in tqdm(range(train_iter)):
+        '''
         if (_ % 50 == 0):
             pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.5)
             if (pdf == 0):
                 print(_)
             logpdf.append(np.log(pdf))
+        '''
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
@@ -73,6 +75,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     logpdfs = []
     angles = []
     for i in tqdm(range(train_iter)):
+        '''
         if i % 50 == 0:
             if mode != 'expt':
                 pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5)\
@@ -81,6 +84,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
                 pdf = np.sum(np.array([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5)\
                                        for p in learner.particles_]) * learner.particle_weights_) / np.sum(learner.particle_weights_)
             logpdfs.append(np.log(pdf))
+        '''
         if teacher.config_.task == 'classification':
             #accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w[0, ...].T))
@@ -192,7 +196,7 @@ def main():
     title += sys.argv[8]
 
     dps = 3 * dd if task == 'classification' else 6 * dd
-    num_particles = 3000
+    num_particles = 1000
     train_iter_simple = 2000
     train_iter_smart = 2000
     reg_coef = 0
@@ -258,7 +262,7 @@ def main():
 
         for strt_prob in strt_probabilities:
             time.sleep(0.5)
-            p = Process(target = learn_thread, args = (teacher, config_LS_strt, "omni_strt", init_ws, train_iter_smart,
+            p = Process(target = learn_thread, args = (teacher, config_LS, "omni_strt", init_ws, train_iter_smart,
                                                        strt_prob, "omni_strt" + str(strt_prob), return_dict))
             jobs.append(p)
             p.start()

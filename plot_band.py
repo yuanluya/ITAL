@@ -167,7 +167,9 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [j for j in range(20)]
+    #random_seeds = [j for j in range(20)]
+    
+    random_seeds = [400]
     setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':
