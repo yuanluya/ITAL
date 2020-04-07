@@ -87,7 +87,7 @@ def chunks(lst, n):
 def collect_data(setting_name, random_seeds, arguments):
     #child_processes = []
     
-    cpu_cnt = int(multiprocessing.cpu_count()/10) + 1
+    cpu_cnt = int(multiprocessing.cpu_count()/15) + 1
     #cpu_cnt = 1
     random_seed = list(chunks(random_seeds, cpu_cnt))
     for ss in random_seed:
@@ -167,10 +167,9 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    #random_seeds = [j for j in range(20)]
+    random_seeds = [j for j in range(20)]
     
-    random_seeds = [400]
-    setting_name = sys.argv[2]
+        setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':
         if setting_name == 'omni_equation':
