@@ -169,7 +169,7 @@ def main():
 
     random_seeds = [j for j in range(20)]
     
-        setting_name = sys.argv[2]
+    setting_name = sys.argv[2]
 
     if sys.argv[1] == 'data':
         if setting_name == 'omni_equation':
