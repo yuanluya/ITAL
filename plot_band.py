@@ -8,56 +8,77 @@ from easydict import EasyDict as edict
 import multiprocessing
 import time
 
-def get_path(data_cate, arguments):
+def get_path(data_cate, arguments, irl = False):
     #add dist or dist_ or ... as argyment
-    lines = ['0', '1', '2', '3', '4', '5', '6', 'batch', 'sgd']
+    #note data_cate in different main functions are different
     titles = []
     methods = edict()
-
     title = '_'
-    mode_idx = int(arguments[3])
-    modes = ['omni', 'surr', 'imit']
-    mode = modes[mode_idx]
-    title += mode
-    title += '_'
-    task = 'classification' if len(arguments) == 9 else 'regression'
-    title += task
-    title += '_'
-
-    dd = int(arguments[2])
-    num_classes = 10 if dd == 24 or dd == 30 else 4
-    if task == 'regression':
-        num_classes = 1
-    title += 'num_classes'
-    title += '_'
-    title += str(num_classes)
-    title += '_'
-    if dd == 48:
-        title += 'equation'
-    elif dd == 24:
-        title += 'mnist'
-    else:
-        title += 'gaussian'
     
-    for l in lines:
-        '''
-        titles.append('dist'+l+title)
-        titles.append('dist'+l+'_'+title)
-        titles.append('logpdfs'+l+title)
-        titles.append('accuracies'+l+title)
-        '''
-        if data_cate == 'dist_':
-            t = 'dist'+l+'_'+title
+    if not irl:
+        lines = ['0', '1', '2', '3', '4', '5', '6', 'batch', 'sgd']
+ 
+        mode_idx = int(arguments[3])
+        modes = ['omni', 'surr', 'imit']
+        mode = modes[mode_idx]
+        title += mode
+        title += '_'
+        task = 'classification' if len(arguments) == 9 else 'regression'
+        title += task
+        title += '_'
+
+        dd = int(arguments[2])
+        num_classes = 10 if dd == 24 or dd == 30 else 4
+        if task == 'regression':
+            num_classes = 1
+        title += 'num_classes'
+        title += '_'
+        title += str(num_classes)
+        title += '_'
+        if dd == 48:
+            title += 'equation'
+        elif dd == 24:
+            title += 'mnist'
         else:
-            t = data_cate+l+title
-        titles.append(t)
-        methods[t] = l 
+            title += 'gaussian'
+    else:
+        lines = ['0', '1', '2', '3']
+
+        title = '_'
+        mode_idx = int(arguments[2])
+        modes = ['omni',  'imit']
+        mode = modes[mode_idx]
+        title += mode
+        title += '_'
+        
+        title += arguments[4]
+        title += '_'
+        title += 'beta'
+        title += '_'
+        title += arguments[8]
+        
+    for l in lines:
+            '''
+            titles.append('dist'+l+title)
+            titles.append('dist'+l+'_'+title)
+            titles.append('logpdfs'+l+title)
+            titles.append('accuracies'+l+title)
+            '''
+            if data_cate == 'dist_':
+                t = 'dist'+l+'_'+title
+            else:
+                t = data_cate+l+title
+            titles.append(t)
+            methods[t] = l 
 
     return titles, methods
 
-def save_csv(data_cate, setting_name, random_seeds, arguments):    
-    methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', '6': 'Expert', 'batch': 'batch', 'sgd': 'sgd'} 
-    titles, methods = get_path(data_cate, arguments)
+def save_csv(data_cate, setting_name, random_seeds, arguments, irl = False):
+    if not irl:
+        methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', '6': 'Expert', 'batch': 'batch', 'sgd': 'sgd'} 
+    else:
+        methods_code = {'0': 'zero', '1': 'one', '2': 'random', '3': 'pragmatic'}
+    titles, methods = get_path(data_cate, arguments, irl)
     data = []
     method = []
     iterations = []
@@ -84,7 +105,7 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-def collect_data(setting_name, random_seeds, arguments):
+def collect_data(setting_name, random_seeds, arguments, irl = False):
     #child_processes = []
     
     cpu_cnt = int(multiprocessing.cpu_count()/15) + 1
@@ -93,7 +114,7 @@ def collect_data(setting_name, random_seeds, arguments):
     for ss in random_seed:
         child_processes = []
         for s in ss:
-            if len(arguments) > 9:
+            if len(arguments) > 9 and not irl:
                 arguments_ = arguments[0:-1] + [str(s)] + [arguments[-1]] 
             else:
                 arguments_ = arguments[:] + [str(s)]
@@ -105,14 +126,20 @@ def collect_data(setting_name, random_seeds, arguments):
         #subprocess.call(arguments_)
         #subprocess.call(arguments.append(str(s)))    
         #p.wait()
-    
-    save_csv('dist', setting_name, random_seeds, arguments)
-    save_csv('dist_', setting_name, random_seeds, arguments)
-    save_csv('logpdfs', setting_name, random_seeds, arguments)
-    save_csv('accuracies', setting_name, random_seeds, arguments)
+    if not irl:
+        save_csv('dist', setting_name, random_seeds, arguments)
+        save_csv('dist_', setting_name, random_seeds, arguments)
+        save_csv('logpdfs', setting_name, random_seeds, arguments)
+        save_csv('accuracies', setting_name, random_seeds, arguments)
+    else:
+        save_csv('dists', setting_name, random_seeds, arguments, True)
+        save_csv('dist_', setting_name, random_seeds, arguments, True)
+        save_csv('distsq', setting_name, random_seeds, arguments, True)
+        save_csv('ar', setting_name, random_seeds, arguments, True)
     print('collected data\n')
 
-def plot(setting_name):
+
+def plot(setting_name, irl = False):
     paper_rc = {'lines.linewidth': 2.5}
     sns.set(style="darkgrid")
     sns.set(font_scale=1, rc = paper_rc)
@@ -120,11 +147,17 @@ def plot(setting_name):
     f, axes = plt.subplots(2, 2, constrained_layout = True, figsize=(10.9, 7.5))
     
     path = setting_name + '_csv/'
-    results00 = pd.read_csv(path + '%s.csv' % ('dist'+'_'+setting_name))
-    results01 = pd.read_csv(path + '%s.csv' % ('accuracies'+'_'+setting_name))
-    results10 = pd.read_csv(path + '%s.csv' % ('dist_'+'_'+setting_name))
-    results11 = pd.read_csv(path + '%s.csv' % ('logpdfs'+'_'+setting_name))    
-    
+    if not irl:
+        results00 = pd.read_csv(path + '%s.csv' % ('dist'+'_'+setting_name))
+        results01 = pd.read_csv(path + '%s.csv' % ('accuracies'+'_'+setting_name))
+        results10 = pd.read_csv(path + '%s.csv' % ('dist_'+'_'+setting_name))
+        results11 = pd.read_csv(path + '%s.csv' % ('logpdfs'+'_'+setting_name))    
+    else:
+        results00 = pd.read_csv(path + '%s.csv' % ('dists'+'_'+setting_name))
+        results01 = pd.read_csv(path + '%s.csv' % ('dist_'+'_'+setting_name))
+        results10 = pd.read_csv(path + '%s.csv' % ('ar'+'_'+setting_name))
+        results11 = pd.read_csv(path + '%s.csv' % ('distsq'+'_'+setting_name)) 
+
     plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results00, ax=axes[0,0])
     plt1.legend_.remove()
@@ -136,10 +169,17 @@ def plot(setting_name):
     plt4 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results11, ax=axes[1,1])
     plt4.legend_.remove()
-    axes[0, 0].set_title('mean_dist')
-    axes[1, 1].set_title('log pdf per 50 iters')
-    axes[0, 1].set_title('test loss')
-    axes[1, 0].set_title('dist mean')
+    if not irl:
+        axes[0, 0].set_title('mean_dist')
+        axes[1, 1].set_title('log pdf per 50 iters')
+        axes[0, 1].set_title('test loss')
+        axes[1, 0].set_title('dist mean')
+    else:
+        axes[0, 0].set_title('action prob total variance distance')
+        axes[1, 1].set_title('q function l2 distance')
+        axes[0, 1].set_title('reward param l2 distance')
+        axes[1, 0].set_title('actual rewards')
+
     if setting_name == 'omni_equation':
         f.suptitle('omni class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
     elif setting_name == 'imit_equation':
@@ -167,10 +207,13 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [j for j in range(20)]
+    random_seeds = [j for j in range(1)]
     
     setting_name = sys.argv[2]
-
+    irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10'}
+    irl = True
+    if setting_name not in irl_settings:
+        irl = False
     if sys.argv[1] == 'data':
         if setting_name == 'omni_equation':
             arguments = ['python3', 'main_multi.py', '48', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
@@ -192,14 +235,22 @@ def main():
             arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '200', '0', '0.05',]
         elif setting_name == 'imit_mnist':
             arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '1000', '0', '0.05']
+        elif setting_name == 'imit_peak_8':
+            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
+        elif setting_name == 'imit_peak_10':
+            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
+        elif setting_name == 'imit_random_8':
+            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
+        elif setting_name == 'imit_random_10':            
+            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
         else:
             print('possible setting_names are omni_equation, imit_equation, omni_class10, imit_class10, ')
             print('omni_class4, imit_class4, omni_regression, imit_regression, omni_mnist, imit_mnist')
             exit()
-        collect_data(setting_name, random_seeds, arguments)
+        collect_data(setting_name, random_seeds, arguments, irl)
         
     elif sys.argv[1] == 'plot':
-        plot(setting_name)
+        plot(setting_name, irl)
     
     else:
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
