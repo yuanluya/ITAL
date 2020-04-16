@@ -146,7 +146,7 @@ def main():
                       'noise_scale_min': float(sys.argv[4]), 'noise_scale_max': float(sys.argv[5]), 'noise_scale_decay': float(sys.argv[6]),
                       'target_ratio': 0, 'new_ratio': 1, 'use_tf': use_tf, 'approx_k': approx_k})
 
-    train_iter = 10
+    train_iter = 1000
     np.set_printoptions(precision = 4)
 
     if not use_tf:
@@ -165,7 +165,7 @@ def main():
         if config_L.shuffle_state_feat:
             gt_r_param_stu[:, map_l.feat_idx_] = gt_r_param_tea
         assert(np.max(abs(np.sum(gt_r_param_stu * map_l.state_feats_, axis = 1) - np.sum(gt_r_param_tea * map_t.state_feats_, axis = 1))) < 1e-9)
-
+        #pdb.set_trace()
         teacher = TeacherIRL(sess, map_t, config_T, gt_r_param_tea, gt_r_param_stu)
         print(teacher.initial_valg_maps_[12][12])
 

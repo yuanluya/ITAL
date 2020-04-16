@@ -207,8 +207,8 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    random_seeds = [j for j in range(1)]
-    
+    #random_seeds = [j for j in range(20)]
+    random_seeds = [3,5,14,19]
     setting_name = sys.argv[2]
     irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10'}
     irl = True
@@ -240,9 +240,13 @@ def main():
         elif setting_name == 'imit_peak_10':
             arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
         elif setting_name == 'imit_random_8':
-            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
+            arguments = ['python3', 'main_irl.py', '1', 'H', '8', '0.005', '0.3', '200', '5', '220']
         elif setting_name == 'imit_random_10':            
             arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
+        elif setting_name == 'omni_peak_8':                         
+            arguments = ['python3', 'main_irl.py', '0', 'E', '8', '0', '0.3', '300', '1', '200']
+        elif setting_name == 'imit_random_10':
+            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']            
         else:
             print('possible setting_names are omni_equation, imit_equation, omni_class10, imit_class10, ')
             print('omni_class4, imit_class4, omni_regression, imit_regression, omni_mnist, imit_mnist')
