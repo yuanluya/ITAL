@@ -31,8 +31,15 @@ class Map:
             self.approx_max_tf_ = lambda vals, k, a: tf.math.pow(tf.reduce_sum(tf.math.pow(vals, k), axis = a), 1.0 / k)
         elif self.config_.approx_type == 'gsm':
             self.approx_k_ = self.config_.approx_k
-            self.approx_max_ = lambda vals, k, a: np.log(np.sum(np.exp(k * np.array(vals)), axis = a)) / k
-            self.approx_max_tf_ = lambda vals, k, a: tf.log(tf.reduce_sum(tf.exp(k * vals), axis = a)) / k
+            self.approx_max_ = lambda vals, k, a: np.max(np.array(vals), axis = a) +\
+                                                  np.log(np.sum(np.exp(k * (np.array(vals) -\
+                                                                            np.max(np.array(vals),
+                                                                                   axis = a,
+                                                                                   keepdims = True))), axis = a)) / k
+            self.approx_max_tf_ = lambda vals, k, a: tf.reduce_max(vals, axis = a) +\
+                                                     tf.log(tf.reduce_sum(tf.exp(k * (vals -\
+                                                                                      tf.reduce_max(vals, axis = a,
+                                                                                                    keepdims = True))), axis = a)) / k
 
         def idx2vec(idx):
             a = np.zeros([1, self.num_states_])

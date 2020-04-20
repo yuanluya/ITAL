@@ -108,7 +108,7 @@ def chunks(lst, n):
 def collect_data(setting_name, random_seeds, arguments, irl = False):
     #child_processes = []
     
-    cpu_cnt = int(multiprocessing.cpu_count()/15) + 1
+    cpu_cnt = int(multiprocessing.cpu_count()/10) + 1
     #cpu_cnt = 1
     random_seed = list(chunks(random_seeds, cpu_cnt))
     for ss in random_seed:
@@ -126,6 +126,7 @@ def collect_data(setting_name, random_seeds, arguments, irl = False):
         #subprocess.call(arguments_)
         #subprocess.call(arguments.append(str(s)))    
         #p.wait()
+    
     if not irl:
         save_csv('dist', setting_name, random_seeds, arguments)
         save_csv('dist_', setting_name, random_seeds, arguments)
@@ -207,10 +208,9 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    #random_seeds = [j for j in range(20)]
-    random_seeds = [3,5,14,19]
+    random_seeds = [j for j in range(20)]
     setting_name = sys.argv[2]
-    irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10'}
+    irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10', 'omni_peak_8', 'omni_random_8'}
     irl = True
     if setting_name not in irl_settings:
         irl = False
@@ -247,6 +247,8 @@ def main():
             arguments = ['python3', 'main_irl.py', '0', 'E', '8', '0', '0.3', '300', '1', '200']
         elif setting_name == 'imit_random_10':
             arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']            
+        elif setting_name == 'omni_random_8':
+            arguments = ['python3', 'main_irl.py', '0', 'H', '8', '0', '0.3', '200', '5', '220']
         else:
             print('possible setting_names are omni_equation, imit_equation, omni_class10, imit_class10, ')
             print('omni_class4, imit_class4, omni_regression, imit_regression, omni_mnist, imit_mnist')
