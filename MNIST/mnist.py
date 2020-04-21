@@ -39,7 +39,7 @@ def train_mnist():
 
     input_shape = 28
     label_shape = 10
-    feat_dim = 32
+    feat_dim = 30
     epochs = 500
     batch_size = 128
     config = [(64, 3, 1, True), (32, 3, 1, True), (32, 3, 1, False)]

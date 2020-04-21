@@ -8,22 +8,22 @@ from easydict import EasyDict as edict
 import multiprocessing
 import time
 
-def get_path(data_cate, arguments, irl = False):
+def get_path(data_cate, arguments, type_ = 'd'):
     #add dist or dist_ or ... as argyment
     #note data_cate in different main functions are different
     titles = []
     methods = edict()
     title = '_'
     
-    if not irl:
+    if type_ == 'd':
         lines = ['0', '1', '2', '3', '4', '5', '6', 'batch', 'sgd']
- 
+        
         mode_idx = int(arguments[3])
         modes = ['omni', 'surr', 'imit']
         mode = modes[mode_idx]
         title += mode
         title += '_'
-        task = 'classification' if len(arguments) == 9 else 'regression'
+        task = 'classification' if 'regression' not in  arguments else 'regression'
         title += task
         title += '_'
 
@@ -41,6 +41,34 @@ def get_path(data_cate, arguments, irl = False):
             title += 'mnist'
         else:
             title += 'gaussian'
+    
+    elif type_ == 'c':
+        lines = ['7', '8']
+        
+        mode_idx = int(arguments[3])
+        modes = ['omni', 'surr', 'imit']
+        mode = modes[mode_idx]
+        title += mode
+        title += '_'
+        task = 'classification' if 'regression' not in  arguments else 'regression'
+        title += task
+        title += '_'
+
+        dd = int(arguments[2])
+        num_classes = 10 if dd == 24 or dd == 30 else 4
+        if task == 'regression':
+            num_classes = 1
+        title += 'num_classes'
+        title += '_'
+        title += str(num_classes)
+        title += '_'
+        if dd == 48:
+            title += 'equation'
+        elif dd == 24:
+            title += 'mnist'
+        else:
+            title += 'gaussian'
+
     else:
         lines = ['0', '1', '2', '3']
 
@@ -73,12 +101,13 @@ def get_path(data_cate, arguments, irl = False):
 
     return titles, methods
 
-def save_csv(data_cate, setting_name, random_seeds, arguments, irl = False):
-    if not irl:
-        methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', '6': 'Expert', 'batch': 'batch', 'sgd': 'sgd'} 
+def save_csv(data_cate, setting_name, random_seeds, arguments, type_ = 'd'):
+    if type_ == 'd' or type_ == 'c':
+        methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', \
+                    '7': 'cont_sgd', '8': 'cont_prag', '6': 'Expert', 'batch': 'batch', 'sgd': 'sgd'} 
     else:
         methods_code = {'0': 'zero', '1': 'one', '2': 'random', '3': 'pragmatic'}
-    titles, methods = get_path(data_cate, arguments, irl)
+    titles, methods = get_path(data_cate, arguments, type_)
     data = []
     method = []
     iterations = []
@@ -105,7 +134,7 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-def collect_data(setting_name, random_seeds, arguments, irl = False):
+def collect_data(setting_name, random_seeds, arguments, type_):
     #child_processes = []
     
     cpu_cnt = int(multiprocessing.cpu_count()/10) + 1
@@ -114,7 +143,7 @@ def collect_data(setting_name, random_seeds, arguments, irl = False):
     for ss in random_seed:
         child_processes = []
         for s in ss:
-            if len(arguments) > 9 and not irl:
+            if 'regression' in  arguments:
                 arguments_ = arguments[0:-1] + [str(s)] + [arguments[-1]] 
             else:
                 arguments_ = arguments[:] + [str(s)]
@@ -127,20 +156,20 @@ def collect_data(setting_name, random_seeds, arguments, irl = False):
         #subprocess.call(arguments.append(str(s)))    
         #p.wait()
     
-    if not irl:
-        save_csv('dist', setting_name, random_seeds, arguments)
-        save_csv('dist_', setting_name, random_seeds, arguments)
-        save_csv('logpdfs', setting_name, random_seeds, arguments)
-        save_csv('accuracies', setting_name, random_seeds, arguments)
+    if type_ == 'd' or type_ == 'c':
+        save_csv('dist', setting_name, random_seeds, arguments, type_)
+        save_csv('dist_', setting_name, random_seeds, arguments, type_)
+        save_csv('logpdfs', setting_name, random_seeds, arguments, type_)
+        save_csv('accuracies', setting_name, random_seeds, arguments, type_)
     else:
-        save_csv('dists', setting_name, random_seeds, arguments, True)
-        save_csv('dist_', setting_name, random_seeds, arguments, True)
-        save_csv('distsq', setting_name, random_seeds, arguments, True)
-        save_csv('ar', setting_name, random_seeds, arguments, True)
+        save_csv('dists', setting_name, random_seeds, arguments, type_)
+        save_csv('dist_', setting_name, random_seeds, arguments, type_)
+        save_csv('distsq', setting_name, random_seeds, arguments, type_)
+        save_csv('ar', setting_name, random_seeds, arguments, type_)
     print('collected data\n')
 
 
-def plot(setting_name, irl = False):
+def plot(setting_name, type_):
     paper_rc = {'lines.linewidth': 2.5}
     sns.set(style="darkgrid")
     sns.set(font_scale=1, rc = paper_rc)
@@ -148,7 +177,7 @@ def plot(setting_name, irl = False):
     f, axes = plt.subplots(2, 2, constrained_layout = True, figsize=(10.9, 7.5))
     
     path = setting_name + '_csv/'
-    if not irl:
+    if type_ == 'd' or type_ == 'c':
         results00 = pd.read_csv(path + '%s.csv' % ('dist'+'_'+setting_name))
         results01 = pd.read_csv(path + '%s.csv' % ('accuracies'+'_'+setting_name))
         results10 = pd.read_csv(path + '%s.csv' % ('dist_'+'_'+setting_name))
@@ -170,7 +199,7 @@ def plot(setting_name, irl = False):
     plt4 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results11, ax=axes[1,1])
     plt4.legend_.remove()
-    if not irl:
+    if type_ == 'd' or type_ == 'c':
         axes[0, 0].set_title('mean_dist')
         axes[1, 1].set_title('log pdf per 50 iters')
         axes[0, 1].set_title('test loss')
@@ -208,21 +237,23 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
+    type_ = 'd'
     random_seeds = [j for j in range(20)]
     setting_name = sys.argv[2]
     irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10', 'omni_peak_8', 'omni_random_8'}
     irl = True
     if setting_name not in irl_settings:
         irl = False
+        type_ = 'c'
     if sys.argv[1] == 'data':
         if setting_name == 'omni_equation':
-            arguments = ['python3', 'main_multi.py', '48', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
+            arguments = ['python3', 'main_multi.py_', '48', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
         elif setting_name == 'imit_equation':
-            arguments = ['python3', 'main_multi.py', '48', '2', '0', '0.05', '1000', '0.001', '0.01', 'regression'] 
+            arguments = ['python3', 'main_multi.py_', '48', '2', '0', '0.05', '1000', '0.001', '0.01', 'regression'] 
         elif setting_name == 'omni_class10':
             arguments = ['python3', 'main_multi.py', '30', '0', '0', '0.1', '1000', '0', '0.1']
         elif setting_name == 'imit_class10':
-            arguments = ['python3', 'main_multi.py', '30', '2', '0.01', '0.1', '1000', '0.01', '0.1']
+            arguments = ['python3', 'main_multi_.py', '30', '2', '0.01', '0.1', '1000', '0.01', '0.1']
         elif setting_name == 'omni_class4':
             arguments = ['python3', 'main_multi.py', '50', '0', '0.01', '0.1', '200', '0.01', '0.1']
         elif setting_name == 'imit_class4':
@@ -234,7 +265,7 @@ def main():
         elif setting_name == 'omni_mnist':
             arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '200', '0', '0.05',]
         elif setting_name == 'imit_mnist':
-            arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '1000', '0', '0.05']
+            arguments = ['python3', 'main_multi_.py', '24', '2', '0.02', '0.1', '1000', '0', '0.05']
         elif setting_name == 'imit_peak_8':
             arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
         elif setting_name == 'imit_peak_10':
@@ -249,14 +280,20 @@ def main():
             arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']            
         elif setting_name == 'omni_random_8':
             arguments = ['python3', 'main_irl.py', '0', 'H', '8', '0', '0.3', '200', '5', '220']
+        elif setting_name == 'omni_mnist_cont':
+            arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '200', '0', '0.05']
+        elif setting_name == 'imit_mnist_cont':
+            arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '1000', '0', '0.05']
+        elif setting_name == 'imit_class10_cont':
+            arguments = ['python3', 'main_multi.py', '30', '2', '0.01', '0.1', '1000', '0.01', '0.1']
         else:
             print('possible setting_names are omni_equation, imit_equation, omni_class10, imit_class10, ')
             print('omni_class4, imit_class4, omni_regression, imit_regression, omni_mnist, imit_mnist')
             exit()
-        collect_data(setting_name, random_seeds, arguments, irl)
+        collect_data(setting_name, random_seeds, arguments, type_)
         
     elif sys.argv[1] == 'plot':
-        plot(setting_name, irl)
+        plot(setting_name, type_)
     
     else:
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')

@@ -105,18 +105,30 @@ class TeacherM:
         self.gt_y_ = None
         self.gt_loss_ = None
 
-    def choose(self, gradients, prev_w, lr):
-        vals = np.sum(lr * lr * np.square(gradients), axis = (1, 2)) - 2 * lr * np.sum((prev_w - self.gt_w_) * gradients, axis = (1, 2))
-        return np.argmin(vals)
+    def choose(self, gradients, prev_w, lr, hard = True):
+        vals = -1 * self.config_.beta * (np.sum(lr * lr * np.square(gradients), axis = (1, 2)) - 2 * lr * np.sum((prev_w - self.gt_w_) * gradients, axis = (1, 2)))
+        if hard:
+            return np.argmax(vals)
+        vals -= np.max(vals)
+        logits = np.exp(vals)
+        selected = np.random.choice(len(gradients), 1, p = logits / np.sum(logits))[0]
+        # return np.argmin(vals)
+        return selected
 
     def choose_strt(self, gradients, prev_w):
         mag_product = np.sum(np.square(gradients), axis=(1, 2)) * np.sum(np.square(prev_w - self.gt_w_), axis=(1, 2))
         vals = np.sum((prev_w - self.gt_w_) * gradients, axis=(1, 2)) / mag_product
         return np.argmax(vals)
 
-    def choose_sur(self, gradients, prev_losses, lr):
-        vals = np.sum(lr * lr * np.square(gradients), axis = (1, 2)) - 2 * lr * (prev_losses - self.gt_loss_)
-        return np.argmin(vals)
+    def choose_sur(self, gradients, prev_losses, lr, hard = True):
+        vals = -1 * self.config_.beta * (np.sum(lr * lr * np.square(gradients), axis = (1, 2)) - 2 * lr * (prev_losses - self.gt_loss_))
+        if hard:
+            return np.argmax(vals)
+        vals -= np.max(vals)
+        logits = np.exp(vals)
+        selected = np.random.choice(len(gradients), 1, p = logits / np.sum(logits))[0]
+        # return np.argmin(vals)
+        return selected
 
     def sample(self):
         indices = np.random.choice(self.data_pool_full_.shape[0], self.config_.sample_size)
