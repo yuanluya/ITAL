@@ -26,10 +26,12 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     logpdf = []
     for _ in tqdm(range(train_iter)):
         if (_ % 50 == 0):
+            '''
             pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.5)
             if (pdf == 0):
                 print(_)
-            logpdf.append(np.log(pdf))
+            '''
+            logpdf.append(1)
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
@@ -68,13 +70,16 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     angles = []
     for i in tqdm(range(train_iter)):
         if i % 50 == 0:
+            '''
             if mode != 'expt':
                 pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5)\
                                 for p in learner.particles_])
             else:
                 pdf = np.sum(np.array([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5)\
                                         for p in learner.particles_]) * learner.particle_weights_) / np.sum(learner.particle_weights_)
-            logpdfs.append(np.log(pdf))
+            '''
+            
+            logpdfs.append(1)
         if teacher.config_.task == 'classification':
             #accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w[0, ...].T))
@@ -160,7 +165,7 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-    beta = 1000
+    beta = 20000
     K = 1
     np.random.seed(int(sys.argv[8]))
 
@@ -196,8 +201,8 @@ def main():
 
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 1000
-    train_iter_simple = 51
-    train_iter_smart = 51
+    train_iter_simple = 500
+    train_iter_smart = 500
     reg_coef = 0
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
@@ -211,7 +216,13 @@ def main():
     tx_tea = np.load("MNIST/mnist_test_features_tea.npy") if dd == 24 and mode == 'imit' else None
     ty_tea = np.load("MNIST/mnist_test_labels_tea.npy") if dd == 24 and mode == 'imit' else None
 
-
+    if dd == 48:
+        dx = np.load("Equation_data/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
+        dy = np.load("Equation_data/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
+        gt_w = np.load("Equation_data/equation_gt_weights_cnn_3var_48_6layers.npy")
+        tx = np.load("Equation_data/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
+        ty = np.load("Equation_data/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
+    
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                       'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w, 'beta': beta,
