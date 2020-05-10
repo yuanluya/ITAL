@@ -169,67 +169,88 @@ def collect_data(setting_name, random_seeds, arguments, type_):
     print('collected data\n')
 
 
-def plot(setting_name, type_):
+def plot(setting_name):
+    main_multi_settings = {'regression', 'class4', 'class10', 'mnist', 'equation'}
+
     paper_rc = {'lines.linewidth': 2.5}
     sns.set(style="darkgrid")
     sns.set(font_scale=1, rc = paper_rc)
-
-    f, axes = plt.subplots(2, 2, constrained_layout = True, figsize=(10.9, 7.5))
     
-    path = setting_name + '_csv/'
-    if type_ == 'd' or type_ == 'c':
-        results00 = pd.read_csv(path + '%s.csv' % ('dist'+'_'+setting_name))
-        results01 = pd.read_csv(path + '%s.csv' % ('accuracies'+'_'+setting_name))
-        results10 = pd.read_csv(path + '%s.csv' % ('dist_'+'_'+setting_name))
-        results11 = pd.read_csv(path + '%s.csv' % ('logpdfs'+'_'+setting_name))    
-    else:
+    directory = setting_name + '_csv/'
+    omni_path = directory + 'omni_' + directory
+    imit_path = directory + 'imit_' + directory
+
+    if setting_name in main_multi_settings:
+        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
+        results1_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
+
+        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('dist'+'_imit_'+setting_name))
+        results1_imit = pd.read_csv(imit_path + '%s.csv' % ('accuracies'+'_imit_'+setting_name))
+
+        display_methods = [ 'batch', 'cont_sgd', 'IMT', 'cont_prag']
+
+        df1 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
+        df2 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
+
+        df1 = pd.concat([df1, results0_omni.loc[results0_omni['method'] == display_methods[1]]])
+        df2 = pd.concat([df2, results1_omni.loc[results1_omni['method'] == display_methods[1]]])
+
+        for method in display_methods[2:]:
+            df1_omni = results0_omni.loc[results0_omni['method'] == method]
+            df2_omni = results1_omni.loc[results1_omni['method'] == method]
+
+            df1_imit = results0_imit.loc[results0_imit['method'] == method]
+            df2_imit = results1_imit.loc[results1_imit['method'] == method]
+            
+            if method == 'cont_prag':
+                method = 'ITAL'
+            df1_omni['method'] = 'omni_' + method
+            df2_omni['method'] = 'omni_' + method
+            df1_imit['method'] = 'imit_' + method
+            df2_imit['method'] = 'imit_' + method
+
+            df1 = pd.concat([df1, df1_omni])
+            df2 = pd.concat([df2, df2_omni])
+
+            df1 = pd.concat([df1, df1_imit])
+            df2 = pd.concat([df2, df2_imit])
+             
+
+        f, axes = plt.subplots(1, 2, , constrained_layout = True, figsize=(10.9, 12))   
+
+        plt1 = sns.lineplot(x="iteration", y="data",
+                 hue="method", data=df1, ax=axes[0])
+        plt1.lines[4].set_linestyle(":")
+        plt1.lines[5].set_linestyle(":")
+        plt2 = sns.lineplot(x="iteration", y="data",
+                 hue="method", data=df2, ax=axes[1])
+        plt2.lines[4].set_linestyle(":")
+        plt2.lines[5].set_linestyle(":")
+
+        leg_lines = plt1.legend().get_lines()
+        leg_lines[5].set_linestyle(":")
+        leg_lines[6].set_linestyle(":")
+
+        leg_lines1 = plt2.legend().get_lines()
+        leg_lines1[5].set_linestyle(":")
+        leg_lines1[6].set_linestyle(":")
+
+        axes[0].set_title('l2 distance')
+        axes[1].set_title('test loss')
+
+    else: #to be modified to add more settings 
         results00 = pd.read_csv(path + '%s.csv' % ('dists'+'_'+setting_name))
         results01 = pd.read_csv(path + '%s.csv' % ('dist_'+'_'+setting_name))
         results10 = pd.read_csv(path + '%s.csv' % ('ar'+'_'+setting_name))
         results11 = pd.read_csv(path + '%s.csv' % ('distsq'+'_'+setting_name)) 
-
-    plt1 = sns.lineplot(x="iteration", y="data",
-                 hue="method", data=results00, ax=axes[0,0])
-    plt1.legend_.remove()
-    plt2 = sns.lineplot(x="iteration", y="data",
-                 hue="method", data=results01, ax=axes[0,1])
-    plt3 = sns.lineplot(x="iteration", y="data",
+        plt3 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results10, ax=axes[1,0])
-    plt3.legend_.remove()
-    plt4 = sns.lineplot(x="iteration", y="data",
+        plt3.legend_.remove()
+        plt4 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=results11, ax=axes[1,1])
-    plt4.legend_.remove()
-    if type_ == 'd' or type_ == 'c':
-        axes[0, 0].set_title('mean_dist')
-        axes[1, 1].set_title('log pdf per 50 iters')
-        axes[0, 1].set_title('test loss')
-        axes[1, 0].set_title('dist mean')
-    else:
-        axes[0, 0].set_title('action prob total variance distance')
-        axes[1, 1].set_title('q function l2 distance')
-        axes[0, 1].set_title('reward param l2 distance')
-        axes[1, 0].set_title('actual rewards')
-
-    if setting_name == 'omni_equation':
-        f.suptitle('omni class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
-    elif setting_name == 'imit_equation':
-        f.suptitle('imit class: 1: dim:48_data:1/20/288_particle:1000_noise: 0, 0.05, 1000, ratio: 0, 1, lr: 0.001')
-    elif setting_name == 'omni_class10':
-        f.suptitle('omni class: 10: dim:30_data:1/20/90_particle:1000_noise: 0, 0.1, 1000, ratio: 0, 1, lr: 0.001')
-    elif setting_name == 'imit_class10':
-        f.suptitle('imit class: 10: dim:30_data:1/20/90_particle:1000_noise: 0.01, 0.1, 1000, ratio: 0, 1, lr: 0.001')
-    elif setting_name == 'omni_class4':
-        f.suptitle('omni class: 4: dim:50_data:1/20/150_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
-    elif setting_name == 'imit_class4':
-        f.suptitle('imit class: 4: dim:50_data:1/20/150_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
-    elif setting_name == 'omni_regression':
-        f.suptitle('omni class: 1: dim:50_data:1/20/300_particle:1000_noise: 0.1, 0.3, 300, ratio: 0, 1, lr: 0.001')
-    elif setting_name == 'imit_regression':
-        f.suptitle('imit class: 1: dim:50_data:1/20/500_particle:1000_noise: 0.1, 0.3, 200, ratio: 0, 1, lr: 0.001')
-    elif setting_name == 'omni_mnist':
-        f.suptitle('omni class: 10: dim:24_data:1/20/72_particle:1000_noise: 0.01, 0.1, 200, ratio: 0, 1, lr: 0.001')
-    else:
-        f.suptitle('imit class: 10: dim:24_tea_dim:30_data:1/20/72_particle:1000_noise: 0.02, 0.1, 1000, ratio: 0, 1, lr: 0.001')
+        plt4.legend_.remove()
+    
+    plt.savefig(setting_name + '.pdf', dpi=300)
     plt.show()
 
 def main():
@@ -307,7 +328,7 @@ def main():
         collect_data(setting_name, random_seeds, arguments, type_)
         
     elif sys.argv[1] == 'plot':
-        plot(setting_name, type_)
+        plot(setting_name)
     
     else:
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
