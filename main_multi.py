@@ -201,8 +201,8 @@ def main():
 
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 1000
-    train_iter_simple = 500
-    train_iter_smart = 500
+    train_iter_simple = 2000
+    train_iter_smart = 2000
     reg_coef = 0
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
@@ -244,6 +244,9 @@ def main():
         return_dict = manager.dict()
         jobs = []
 
+        p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, 1, 1, return_dict))
+        jobs.append(p)
+        p.start()
     
         p = Process(target = learn_thread, args = (teacher, config_LS, "%s_cont" % mode, init_ws,
                                                    train_iter_smart, None, "%s_cont" % mode, return_dict))
@@ -257,6 +260,12 @@ def main():
         for j in jobs:
             print("joining", j)
             j.join()
+            
+        dists1, dists1_, accuracies1, logpdfs1, _ = return_dict[1]
+        np.save('dist1_' + title + '.npy', np.array(dists1))
+        np.save('dist1__' + title + '.npy', np.array(dists1_))
+        np.save('accuracies1_' + title + '.npy', np.array(accuracies1))
+        np.save('logpdfs1_' + title + '.npy', np.array(logpdfs1))
 
         dists7, dists7_, accuracies7, logpdfs7, _ = return_dict['sgd_%s_cont' % mode]
         np.save('dist7_' + title + '.npy', np.array(dists7))
@@ -283,6 +292,16 @@ def main():
     if multi_thread:
         dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
         dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+        np.save('distbatch_' + title + '.npy', np.array(dists_neg1_batch))
+        np.save('distbatch__' + title + '.npy', np.array(dists_neg1_batch_))
+        np.save('accuraciesbatch_' + title + '.npy', np.array(accuracies_neg1_batch))
+        np.save('logpdfsbatch_' + title + '.npy', np.array(logpdf_neg1_batch))
+
+        np.save('distsgd_' + title + '.npy', np.array(dists_neg1_sgd))
+        np.save('distsgd__' + title + '.npy', np.array(dists_neg1_sgd_))
+        np.save('accuraciessgd_' + title + '.npy', np.array(accuracies_neg1_sgd))
+        np.save('logpdfssgd_' + title + '.npy', np.array(logpdf_neg1_sgd))
+
     else:
         learnerM = LearnerSM(sess, config_LS)
 
