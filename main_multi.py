@@ -23,22 +23,22 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     dists = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     dists_ = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     accuracies = []
-    logpdf = []
+    losses_list = []
+
     for _ in tqdm(range(train_iter)):
-        if (_ % 50 == 0):
-            '''
-            pdf = mn.pdf((teacher.gt_w_ - w).flatten(), mean = np.zeros(w.shape).flatten(), cov = 0.5)
-            if (pdf == 0):
-                print(_)
-            '''
-            logpdf.append(1)
+
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
-            accuracy = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
+            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+
+            loss = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
         else:
-            accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w.T) - teacher.gt_y_full_test_), axis = 1))
+            accuracy = 1
+            loss = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w.T) - teacher.gt_y_full_test_), axis = 1))
+        
         accuracies.append(accuracy)
+        losses_list.append(loss)
         teacher.sample()
         if (sgd):
             data_idx = np.random.randint(teacher.data_pool_.shape[0])
@@ -51,7 +51,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     if teacher.config_.task == 'classification':
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, w.T), 1) == teacher.gt_y_label_full_)
         print('basic test accuracy: %f' % accuracy)
-    return dists, dists_, accuracies, logpdf
+    return dists, dists_, accuracies, losses_list
 
 def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False):
     learner.reset(init_ws)
@@ -63,30 +63,23 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     dists = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     dists_ = [np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2))))]
     accuracies = []
+    losses_list = []
     particle_hist = []
     data_choices = []
     eliminates = []
-    logpdfs = []
+
     angles = []
     for i in tqdm(range(train_iter)):
-        if i % 50 == 0:
-            '''
-            if mode != 'expt':
-                pdf = np.mean([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5)\
-                                for p in learner.particles_])
-            else:
-                pdf = np.sum(np.array([mn.pdf((teacher.gt_w_ - p).flatten(), mean = np.zeros(p.shape).flatten(), cov = 0.5)\
-                                        for p in learner.particles_]) * learner.particle_weights_) / np.sum(learner.particle_weights_)
-            '''
-            
-            logpdfs.append(1)
         if teacher.config_.task == 'classification':
-            #accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w[0, ...].T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
-            accuracy = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
+            loss = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
         else:
-            accuracy = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w[0, ...].T) - teacher.gt_y_full_test_), axis = 1))
+            loss = np.mean(0.5 * np.sum(np.square(np.matmul(teacher.data_pool_full_test_, w[0, ...].T) - teacher.gt_y_full_test_), axis = 1))
+            accuracy = 1
+
+        losses_list.append(loss)
         accuracies.append(accuracy)
         teacher.sample()
         gradients, _, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
@@ -148,7 +141,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     else:
         teacher_dim = teacher.config_.data_dim
 
-    return dists, dists_, accuracies, logpdfs, eliminates
+    return dists, dists_, accuracies, losses, eliminates
 
 def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
     import tensorflow as tf
@@ -158,9 +151,9 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
     init = tf.global_variables_initializer()
 
     learnerM = LearnerSM(sess, learner)
-    dists, dists_, accuracies, logpdfs, eliminate = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
+    dists, dists_, accuracies, losses, eliminate = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
 
-    thread_return[key] = [dists, dists_, accuracies, logpdfs, eliminate]
+    thread_return[key] = [dists, dists_, accuracies, losses, eliminate]
 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -168,7 +161,7 @@ def main():
     beta = 20000
     K = 1
     np.random.seed(int(sys.argv[8]))
-
+ 
     multi_thread = True
 
     title = ''
@@ -261,23 +254,23 @@ def main():
             print("joining", j)
             j.join()
             
-        dists1, dists1_, accuracies1, logpdfs1, _ = return_dict[1]
+        dists1, dists1_, accuracies1, losses1, _ = return_dict[1]
         np.save('dist1_' + title + '.npy', np.array(dists1))
         np.save('dist1__' + title + '.npy', np.array(dists1_))
         np.save('accuracies1_' + title + '.npy', np.array(accuracies1))
-        np.save('logpdfs1_' + title + '.npy', np.array(logpdfs1))
+        np.save('losses1_' + title + '.npy', np.array(losses1))
 
-        dists7, dists7_, accuracies7, logpdfs7, _ = return_dict['sgd_%s_cont' % mode]
+        dists7, dists7_, accuracies7, losses7, _ = return_dict['sgd_%s_cont' % mode]
         np.save('dist7_' + title + '.npy', np.array(dists7))
         np.save('dist7__' + title + '.npy', np.array(dists7_))
         np.save('accuracies7_' + title + '.npy', np.array(accuracies7))
-        np.save('logpdfs7_' + title + '.npy', np.array(logpdfs7))
+        np.save('losses7_' + title + '.npy', np.array(losses7))
         
-        dists8, dists8_, accuracies8, logpdfs8, _ = return_dict['%s_cont' % mode]
+        dists8, dists8_, accuracies8, losses8, _ = return_dict['%s_cont' % mode]
         np.save('dist8_' + title + '.npy', np.array(dists8))
         np.save('dist8__' + title + '.npy', np.array(dists8_))
         np.save('accuracies8_' + title + '.npy', np.array(accuracies8))
-        np.save('logpdfs8_' + title + '.npy', np.array(logpdfs8))
+        np.save('losses8_' + title + '.npy', np.array(losses8))
         
 
 
@@ -290,17 +283,17 @@ def main():
     init = tf.global_variables_initializer()
 
     if multi_thread:
-        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
         np.save('distbatch_' + title + '.npy', np.array(dists_neg1_batch))
         np.save('distbatch__' + title + '.npy', np.array(dists_neg1_batch_))
         np.save('accuraciesbatch_' + title + '.npy', np.array(accuracies_neg1_batch))
-        np.save('logpdfsbatch_' + title + '.npy', np.array(logpdf_neg1_batch))
+        np.save('lossesbatch_' + title + '.npy', np.array(losses_neg1_batch))
 
         np.save('distsgd_' + title + '.npy', np.array(dists_neg1_sgd))
         np.save('distsgd__' + title + '.npy', np.array(dists_neg1_sgd_))
         np.save('accuraciessgd_' + title + '.npy', np.array(accuracies_neg1_sgd))
-        np.save('logpdfssgd_' + title + '.npy', np.array(logpdf_neg1_sgd))
+        np.save('lossessgd_' + title + '.npy', np.array(losses_neg1_sgd))
 
     else:
         learnerM = LearnerSM(sess, config_LS)

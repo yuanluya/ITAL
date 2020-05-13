@@ -159,7 +159,7 @@ def collect_data(setting_name, random_seeds, arguments, type_):
     if type_ == 'd' or type_ == 'c':
         save_csv('dist', setting_name, random_seeds, arguments, type_)
         save_csv('dist_', setting_name, random_seeds, arguments, type_)
-        save_csv('logpdfs', setting_name, random_seeds, arguments, type_)
+        save_csv('losses', setting_name, random_seeds, arguments, type_)
         save_csv('accuracies', setting_name, random_seeds, arguments, type_)
     else:
         save_csv('dists', setting_name, random_seeds, arguments, type_)
@@ -226,11 +226,11 @@ def plot(setting_name):
         plt.figure() 
         f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(30, 10))   
 
-        palette ={"omniscient_ITAL":sns.xkcd_rgb["red"],"imitate_ITAL":sns.xkcd_rgb["red"],"batch":sns.xkcd_rgb["blue"], "cont_sgd":sns.xkcd_rgb["green"], \
-                      'omniscient_IMT': sns.xkcd_rgb['dusty purple'], 'imitate_IMT': sns.xkcd_rgb['dusty purple']}
+        palette ={"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate ITAL":sns.xkcd_rgb["red"],"Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["green"], \
+                      'Omniscient IMT': sns.xkcd_rgb['dusty purple'], 'Imitate IMT': sns.xkcd_rgb['dusty purple']}
 
-        dash = {"omniscient_ITAL": '',"imitate_ITAL": (5, 5),"batch":'', "cont_sgd": '', \
-                      'omniscient_IMT': '', 'imitate_IMT': (5, 5)}
+        dash = {"Omniscient ITAL": '',"Imitate ITAL": (5, 5),"Batch":'', "SGD": '', \
+                      'Omniscient IMT': '', 'Imitate IMT': (5, 5)}
 
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method", style = 'method',data=df1, ax=axes[0], palette=palette, dashes = dash)
@@ -238,8 +238,10 @@ def plot(setting_name):
         plt2 = sns.lineplot(x="iteration", y="data",
                  hue="method", style = 'method',data=df2, ax=axes[1], palette=palette, dashes = dash)
 
-        plt1.set(xlabel='training iteration', ylabel='l2 distance')
-        plt2.set(xlabel='training iteration', ylabel='test loss')
+        plt1.set(xlabel='training iteration', ylabel='')
+        plt2.set(xlabel='training iteration', ylabel='')
+        axes[0].set_title('L2 DISTANCE')
+        axes[1].set_title('CROSS ENTROPY LOSS')
 
     elif setting_name == 'cifar': #to be modified to add more settings 
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dists'+'_omni_'+setting_name))
@@ -324,9 +326,9 @@ def plot(setting_name):
         plt3 = sns.lineplot(x="iteration", y="data",
                  hue="method",data=df2, ax=axes[2], palette=palette)
         
-        #plt1.set(xlabel='training iteration', ylabel='l2 distance')
-        #plt2.set(xlabel='training iteration', ylabel='accuracies')
-        #plt3.set(xlabel='training iteration', ylabel='test loss')
+        plt1.set(xlabel='training iteration')
+        plt2.set(xlabel='training iteration')
+        plt3.set(xlabel='training iteration')
         axes[0].set_title('L2 DISTANCE')
         axes[1].set_title('10-CLASS CLASSIFICATION ACCURACY')
         axes[2].set_title('CROSS ENTROPY LOSS')
@@ -352,9 +354,9 @@ def main():
         type_ = 'c'
     if sys.argv[1] == 'data':
         if setting_name == 'omni_equation':
-            arguments = ['python3', 'main_multi.py_', '48', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
+            arguments = ['python3', 'main_multi.py', '48', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
         elif setting_name == 'imit_equation':
-            arguments = ['python3', 'main_multi.py_', '48', '2', '0', '0.05', '1000', '0.001', '0.01', 'regression'] 
+            arguments = ['python3', 'main_multi.py', '48', '2', '0', '0.05', '1000', '0.001', '0.01', 'regression'] 
         if setting_name == 'omni_equation_cont':
             arguments = ['python3', 'main_multi.py', '48', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
         elif setting_name == 'imit_equation_cont':
@@ -362,23 +364,19 @@ def main():
         elif setting_name == 'omni_class10':
             arguments = ['python3', 'main_multi.py', '30', '0', '0', '0.1', '1000', '0', '0.1']
         elif setting_name == 'imit_class10':
-            arguments = ['python3', 'main_multi_.py', '30', '2', '0.01', '0.1', '1000', '0.01', '0.1']
+            arguments = ['python3', 'main_multi.py', '30', '2', '0.01', '0.1', '1000', '0.01', '0.1']
         elif setting_name == 'omni_class4':
             arguments = ['python3', 'main_multi.py', '50', '0', '0.01', '0.1', '200', '0.01', '0.1']
         elif setting_name == 'imit_class4':
             arguments = ['python3', 'main_multi.py', '50', '2', '0.01', '0.1', '200', '0.01', '0.1']
         elif setting_name == 'omni_regression':
             arguments = ['python3', 'main_multi.py', '50', '0', '0.1', '0.3', '300', '0.001', '0.05', 'regression']
-        elif setting_name == 'omni_regression_cont':
-            arguments = ['python3', 'main_multi.py', '50', '0', '0.1', '0.3', '300', '0.001', '0.05', 'regression']
         elif setting_name == 'imit_regression':
-            arguments = ['python3', 'main_multi.py', '50', '2', '0.1', '0.3', '200', '0', '0.05', 'regression']
-        elif setting_name == 'imit_regression_cont':
             arguments = ['python3', 'main_multi.py', '50', '2', '0.1', '0.3', '200', '0', '0.05', 'regression']
         elif setting_name == 'omni_mnist':
             arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '200', '0', '0.05',]
         elif setting_name == 'imit_mnist':
-            arguments = ['python3', 'main_multi_.py', '24', '2', '0.02', '0.1', '1000', '0', '0.05']
+            arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '1000', '0', '0.05']
         elif setting_name == 'imit_peak_8':
             arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
         elif setting_name == 'imit_peak_10':
@@ -393,18 +391,6 @@ def main():
             arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']            
         elif setting_name == 'omni_random_8':
             arguments = ['python3', 'main_irl.py', '0', 'H', '8', '0', '0.3', '200', '5', '220']
-        elif setting_name == 'omni_mnist_cont':
-            arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '200', '0', '0.05']
-        elif setting_name == 'imit_mnist_cont':
-            arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '1000', '0', '0.05']
-        elif setting_name == 'omni_class10_cont':
-            arguments = ['python3', 'main_multi.py', '30', '0', '0', '0.1', '1000', '0', '0.1']
-        elif setting_name == 'imit_class10_cont':
-            arguments = ['python3', 'main_multi.py', '30', '2', '0.01', '0.1', '1000', '0.01', '0.1']
-        elif setting_name == 'omni_class4_cont':
-            arguments = ['python3', 'main_multi.py', '50', '0', '0.01', '0.1', '200', '0.01', '0.1']
-        elif setting_name == 'imit_class4_cont':
-            arguments = ['python3', 'main_multi.py', '50', '2', '0.01', '0.1', '200', '0.01', '0.1']
         else:
             print('possible setting_names are omni_equation, imit_equation, omni_class10, imit_class10, ')
             print('omni_class4, imit_class4, omni_regression, imit_regression, omni_mnist, imit_mnist')
