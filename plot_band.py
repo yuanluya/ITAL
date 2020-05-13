@@ -117,6 +117,7 @@ def save_csv(data_cate, setting_name, random_seeds, arguments, type_ = 'd'):
             d = np.load(filename, allow_pickle = True)
             #d = d[:int(len(d)/4)]
             length = len(d)
+            print(d)
             data.append(d)
             method += [methods_code[methods[t]] for j in range(length)]
             iterations += [j for j in range(length)]

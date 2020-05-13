@@ -30,7 +30,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
-            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, w.T), 1) == teacher.gt_y_label_full_)
+            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w.T), 1) == teacher.gt_y_label_full_test_)
 
             loss = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
         else:
@@ -72,6 +72,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     for i in tqdm(range(train_iter)):
         if teacher.config_.task == 'classification':
             accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w[0, ...].T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
             loss = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
@@ -141,7 +142,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     else:
         teacher_dim = teacher.config_.data_dim
 
-    return dists, dists_, accuracies, losses, eliminates
+    return dists, dists_, accuracies, losses_list, eliminates
 
 def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
     import tensorflow as tf
@@ -158,7 +159,7 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-    beta = 20000
+    beta = 40000
     K = 1
     np.random.seed(int(sys.argv[8]))
  
@@ -271,7 +272,6 @@ def main():
         np.save('dist8__' + title + '.npy', np.array(dists8_))
         np.save('accuracies8_' + title + '.npy', np.array(accuracies8))
         np.save('losses8_' + title + '.npy', np.array(losses8))
-        
 
 
     import tensorflow as tf
