@@ -30,7 +30,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
-            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, w.T), 1) == teacher.gt_y_label_full_)
 
             loss = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
         else:
