@@ -37,12 +37,13 @@ class LearnerSM:
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
     def learn_cont(self, data_pool, data_y, data_idx, gradients, step, gt_w, K = None):
+        prev_mean = copy.deepcopy(self.current_mean_)
         exp_cache_prev_func = lambda w_est: -1 * self.config_.beta *\
                                             ((self.config_.lr ** 2) * np.sum(np.square(gradients), axis = (1, 2)) -\
-                                            2 * self.config_.lr * np.sum((self.current_mean_ - w_est) * gradients, axis = (1, 2)))
+                                            2 * self.config_.lr * np.sum((prev_mean - w_est) * gradients, axis = (1, 2)))
         exp_cache_func = lambda vals: np.exp(vals - np.max(vals))
         teacher_sample_lle_func = lambda exps: np.log((exps / np.sum(exps))[data_idx])
-        lle_gradient_func = lambda w_est, exps: -2 * self.config_.beta * self.config_.lr * gradients[data_idx: data_idx + 1, ...] +\
+        lle_gradient_func = lambda exps: -2 * self.config_.beta * self.config_.lr * gradients[data_idx: data_idx + 1, ...] +\
                                                 2 * self.config_.beta * self.config_.lr * np.sum(gradients *\
                                                 np.expand_dims(np.expand_dims(exps, -1), -1) / np.sum(exps), axis = 0, keepdims = True)
         if K is None:
@@ -54,8 +55,10 @@ class LearnerSM:
                                                    {self.X_: data_pool[data_idx: data_idx + 1, ...],
                                                     self.W_: self.current_mean_,
                                                     self.y_: data_y[data_idx: data_idx + 1, :]})
-                lle_gradient = lle_gradient_func(self.current_mean_, exp_cache)
-                self.current_mean_ += (self.config_.lr * (lle_gradient - gradient_tf[0]))
+                self.current_mean_ -= self.config_.lr * gradient_tf[0]
+                exp_cache = exp_cache_func(exp_cache_prev_func(self.current_mean_))
+                lle_gradient = lle_gradient_func(exp_cache)
+                self.current_mean_ += self.config_.lr * lle_gradient
                 exp_cache = exp_cache_func(exp_cache_prev_func(self.current_mean_))
                 current_lle = teacher_sample_lle_func(exp_cache) - loss
                 steps += 1
@@ -68,8 +71,9 @@ class LearnerSM:
                 gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
                                                                     self.W_: self.current_mean_,
                                                                     self.y_: data_y[data_idx: data_idx + 1, :]})
-                lle_gradient = lle_gradient_func(self.current_mean_, exp_cache_func(exp_cache_prev_func(self.current_mean_)))
-                self.current_mean_ += (self.config_.lr * (lle_gradient - gradient_tf[0]))
+                self.current_mean_ -= self.config_.lr * gradient_tf[0]
+                lle_gradient = lle_gradient_func(exp_cache_func(exp_cache_prev_func(self.current_mean_)))
+                self.current_mean_ += self.config_.lr * lle_gradient
         else:
             total_lle = -1 * np.inf
             for i in range(abs(K)):
@@ -203,8 +207,11 @@ class LearnerSM:
             total_lle = -1 * np.inf
             steps = 0
             while True:
+                self.current_mean_ -= self.config_.lr * current_w_losses_gradient[data_idx: data_idx + 1, ...]
+                current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
+                exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
                 lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
-                self.current_mean_ += (self.config_.lr * (lle_gradient - current_w_losses_gradient[data_idx: data_idx + 1, ...]))
+                self.current_mean_ += self.config_.lr * lle_gradient
                 current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
                 exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
                 current_lle = teacher_sample_lle_func(exp_cache) - current_w_losses[data_idx]
@@ -215,10 +222,12 @@ class LearnerSM:
                     total_lle = current_lle
         elif K > 0:
             for i in range(K):
-                lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
-                self.current_mean_ += (self.config_.lr * (lle_gradient - current_w_losses_gradient[data_idx: data_idx + 1, ...]))
+                self.current_mean_ -= self.config_.lr * current_w_losses_gradient[data_idx: data_idx + 1, ...]
                 current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
                 exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
+                lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
+                self.current_mean_ += self.config_.lr * lle_gradient
+                current_w_losses_gradient, _, _ = self.get_grads(data_pool, data_y)
             # while True:
             #     loss, gradient_tf = self.sess_.run([self.loss_, self.gradient_w_],
             #                                         {self.X_: data_pool[data_idx: data_idx + 1, ...],
