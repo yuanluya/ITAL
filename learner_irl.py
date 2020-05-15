@@ -28,6 +28,83 @@ class LearnerIRL:
             self.initial_val_maps_[i] = np.random.uniform(0, 1, size = [self.map_.num_states_, 1])
             self.initial_valg_maps_[i] = np.random.uniform(-1, 1, size = [self.map_.num_states_, self.map_.num_states_])
     
+    def learn_cont(self, mini_batch_indices, opt_actions, data_idx, gradients, step, gt_w, K = None, batch = False):
+        prev_mean = copy.deepcopy(self.current_mean_)
+        exp_cache_prev_func = lambda w_est: -1 * self.config_.beta_select *\
+                                            ((self.config_.lr ** 2) * np.sum(np.square(gradients), axis = 1) +\
+                                            2 * self.config_.lr * np.sum((prev_mean - w_est) * gradients, axis = 1))
+        exp_cache_func = lambda vals: np.exp(vals - np.max(vals))
+        teacher_sample_lle_func = lambda exps: np.log((exps / np.sum(exps))[data_idx])
+        lle_gradient_func = lambda exps: 2 * self.config_.beta_select * self.config_.lr * gradients[data_idx: data_idx + 1, ...] -\
+                                                2 * self.config_.beta_select * self.config_.lr * np.sum(gradients *\
+                                                np.expand_dims(exps, -1) / np.sum(exps), axis = 0, keepdims = True)
+        
+        def get_grad():
+            val_map, q_map, _ = self.value_iter_op_(self.current_mean_, value_map_init = self.initial_val_maps_[0], hard_max = True)
+            if np.sum(np.isnan(val_map)) > 0:
+                pdb.set_trace()
+            self.initial_val_maps_[0] = val_map
+            valg_map, qg_map, _ = self.gradient_iter_op_(q_map, value_map_init = self.initial_valg_maps_[0])
+            if np.sum(np.isnan(valg_map)) > 0:
+                print("STEP", step)
+                print("PARTICLE NUM", i)
+                pdb.set_trace()
+            self.initial_valg_maps_[0] = valg_map
+            
+            if batch:
+                exp_q = np.exp(self.config_.beta * q_map[mini_batch_indices, ...])
+                action_prob = exp_q / np.sum(exp_q, axis = 1, keepdims = True)
+                gradients = self.config_.beta * (qg_map[mini_batch_indices, opt_actions, ...] -\
+                                                 np.sum(np.expand_dims(action_prob, 2) * qg_map[mini_batch_indices, ...], axis = 1))
+                return np.mean(gradients, axis = 0, keepdims = True)
+
+            action_q = q_map[mini_batch_indices[data_idx]: mini_batch_indices[data_idx] + 1, ...]
+            exp_q = np.exp(self.config_.beta * (action_q - np.max(action_q)))
+            action_prob = exp_q / np.sum(exp_q, axis = 1, keepdims = True)
+            particle_gradient = self.config_.beta * (qg_map[mini_batch_indices[data_idx], opt_actions[data_idx]: opt_actions[data_idx] + 1, ...] -\
+                                                        np.sum(np.expand_dims(action_prob, 2) * qg_map[mini_batch_indices[data_idx]: mini_batch_indices[data_idx] + 1, ...], axis = 1))
+            if np.sum(np.isnan(particle_gradient)) > 0:
+                pdb.set_trace()
+            if np.sum(particle_gradient != 0) == 0:
+                pdb.set_trace()
+            return particle_gradient
+        
+        def get_new_lle():
+            val_map, q_map, _ = self.value_iter_op_(self.current_mean_, value_map_init = self.initial_val_maps_[0], hard_max = True)
+            self.initial_val_maps_[0] = val_map
+            plle = self.config_.beta * q_map[(mini_batch_indices, opt_actions)] -\
+                   np.log(np.sum(np.exp(self.config_.beta * q_map[mini_batch_indices, ...]), axis = 1))
+            return plle
+
+        if K is None:
+            total_lle = -1 * np.inf
+            steps = 0
+            while True:
+                gradient_tf = get_grad()
+                self.current_mean_ += self.config_.lr * gradient_tf
+                lle_gradient = lle_gradient_func(exp_cache_func(exp_cache_prev_func(self.current_mean_)))
+                self.current_mean_ += self.config_.lr * lle_gradient
+                new_lle = get_new_lle()
+                exp_cache = exp_cache_func(exp_cache_prev_func(self.current_mean_))
+                current_lle = teacher_sample_lle_func(exp_cache) + new_lle[data_idx]
+                steps += 1
+                if total_lle >= current_lle:
+                    break
+                else:
+                    total_lle = current_lle
+        elif K > 0:
+            for i in range(K):
+                gradient_tf = get_grad()
+                self.current_mean_ += self.config_.lr * gradient_tf
+                lle_gradient = lle_gradient_func(exp_cache_func(exp_cache_prev_func(self.current_mean_)))
+                self.current_mean_ += self.config_.lr * lle_gradient
+        else:
+            for i in range(abs(K)):
+                gradient_tf = get_grad()
+                self.current_mean_ += self.config_.lr * gradient_tf
+
+        return self.current_mean_, -1
+
     def learn(self, mini_batch_indices, opt_actions, data_idx, gradients, step, gt_w, random_prob = None):
         particle_gradients = []
         for i in range(self.config_.particle_num):
@@ -126,7 +203,80 @@ class LearnerIRL:
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
         return eliminate, cosine
 
-    def learn_imit(self, mini_batch_indices, opt_actions, data_idx, gradients, lle, step, gt_w):
+    def learn_imit_cont(self, mini_batch_indices, opt_actions, data_idx, lle, step, gt_w, K = None):
+        def get_grads_lle():
+            val_map, q_map, _ = self.value_iter_op_(self.current_mean_, value_map_init = self.initial_val_maps_[0], hard_max = True)
+            self.initial_val_maps_[0] = val_map
+            valg_map, qg_map, _ = self.gradient_iter_op_(q_map, value_map_init = self.initial_valg_maps_[0])
+            self.initial_valg_maps_[0] = valg_map
+
+            action_q = q_map[mini_batch_indices[data_idx]: mini_batch_indices[data_idx] + 1, ...]
+            exp_q = np.exp(self.config_.beta * (action_q - np.max(action_q)))
+            action_prob = exp_q / np.sum(exp_q, axis = 1, keepdims = True)
+            particle_gradients = self.config_.beta * (qg_map[mini_batch_indices, opt_actions, ...] -\
+                                                     np.sum(np.expand_dims(action_prob, 2) * qg_map[mini_batch_indices, ...], axis = 1))
+            plle = self.config_.beta * q_map[(mini_batch_indices, opt_actions)] -\
+                   np.log(np.sum(np.exp(self.config_.beta * q_map[mini_batch_indices, ...]), axis = 1))
+            if np.sum(np.isnan(particle_gradients)) > 0:
+                pdb.set_trace()
+            if np.sum(particle_gradients != 0) == 0:
+                pdb.set_trace()
+            return particle_gradients, plle
+
+        gradients, _ = get_grads_lle()
+        exp_cache_prev_func = lambda new_lle: -1 * self.config_.beta_select *\
+                                            ((self.config_.lr ** 2) * np.sum(np.square(gradients), axis = 1) +\
+                                            2 * self.config_.lr * (lle - new_lle))
+        exp_cache_func = lambda vals: np.exp(vals - np.max(vals))
+        teacher_sample_lle_func = lambda exps: np.log((exps / np.sum(exps))[data_idx])
+        lle_gradient_func = lambda w_est_loss_grad, exps:\
+                                2 * self.config_.beta_select * self.config_.lr * w_est_loss_grad[data_idx: data_idx + 1, ...] -\
+                                2 * self.config_.beta_select * self.config_.lr * np.sum(w_est_loss_grad *\
+                                np.expand_dims(exps, -1) / np.sum(exps), axis = 0, keepdims = True)
+        
+        current_w_losses_gradients = copy.deepcopy(gradients)
+        current_lle_as_loss = copy.deepcopy(lle)          
+        exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
+        if K is None:
+            total_lle = -1 * np.inf
+            exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
+            steps = 0
+            while True:
+                self.current_mean_ += self.config_.lr * current_w_losses_gradients[data_idx: data_idx + 1, ...]
+                current_w_losses_gradients, current_lle_as_loss = get_grads_lle()
+                exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
+                lle_gradient = lle_gradient_func(current_w_losses_gradients, exp_cache)
+                self.current_mean_ += self.config_.lr * lle_gradient
+                current_w_losses_gradients, current_lle_as_loss = get_grads_lle()
+                exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
+                current_lle = teacher_sample_lle_func(exp_cache) + current_lle_as_loss[data_idx]
+                steps += 1
+                if total_lle >= current_lle:
+                    break
+                else:
+                    total_lle = current_lle
+        elif K > 0:
+            for i in range(K):
+                self.current_mean_ += self.config_.lr * current_w_losses_gradients[data_idx: data_idx + 1, ...]
+                current_w_losses_gradients, current_lle_as_loss = get_grads_lle()
+                exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
+                lle_gradient = lle_gradient_func(current_w_losses_gradients, exp_cache)
+                self.current_mean_ += self.config_.lr * lle_gradient
+                current_w_losses_gradients, _ = get_grads_lle()
+
+        return self.current_mean_, -1
+
+    #lle is ok to share, because as long as the reward is the same, lle is the same
+    # gradients should not be shared, as it depends on different state feature, which is private knowledge
+    def learn_imit(self, mini_batch_indices, opt_actions, data_idx, lle, step, gt_w):
+        _, q_map, _ = self.value_iter_op_(self.current_mean_, value_map_init = self.initial_val_maps_[self.config_.particle_num])
+        _, qg_map, _ = self.gradient_iter_op_(q_map, value_map_init = self.initial_valg_maps_[self.config_.particle_num])
+
+        exp_q = np.exp(self.config_.beta * q_map[mini_batch_indices, ...])
+        action_prob = exp_q / np.sum(exp_q, axis = 1, keepdims = True)
+        gradients = self.config_.beta * (qg_map[mini_batch_indices, opt_actions, ...] -\
+                                         np.sum(np.expand_dims(action_prob, 2) * qg_map[mini_batch_indices, ...], axis = 1))
+
         particle_gradients = []
         for i in range(self.config_.particle_num):
             val_map, q_map, _ = self.value_iter_op_(self.particles_[i: i + 1, ...], value_map_init = self.initial_val_maps_[i], hard_max = True)

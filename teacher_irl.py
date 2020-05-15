@@ -18,7 +18,7 @@ class TeacherIRL:
         value_map_max, _, _ = self.value_iter_op_(self.reward_param_, hard_max = True)
         #the level of approximation k might need to be tuned given different rewards scale
         print('approximation error: %f' % (np.max(abs(value_map_max - self.value_map_)) / np.mean(abs(value_map_max))))
-        #assert(np.max(abs(value_map_max - self.value_map_)) / np.mean(abs(value_map_max)) < 0.02)
+        assert(np.max(abs(value_map_max - self.value_map_)) / np.mean(abs(value_map_max)) < 0.02)
         q_balance = self.q_map_ - np.mean(self.q_map_, axis = 1, keepdims = True)
         exp_q = np.exp(self.config_.beta * q_balance)
         self.action_probs_ = exp_q / np.sum(exp_q, axis = 1, keepdims = True)
@@ -36,7 +36,7 @@ class TeacherIRL:
         self.mini_batch_opt_acts_ = np.array(self.mini_batch_opt_acts_)
         return
     
-    def choose(self, learner_param, lr):
+    def choose(self, learner_param, lr, hard = True):
         assert(self.mini_batch_indices_ is not None)
         val_map, q_map, _ = self.value_iter_op_(learner_param, value_map_init = self.initial_val_maps_)
         self.initial_val_maps_ = val_map
@@ -48,10 +48,18 @@ class TeacherIRL:
         gradients = self.config_.beta * (qg_map[self.mini_batch_indices_, self.mini_batch_opt_acts_, ...] -\
                                          np.sum(np.expand_dims(action_prob, 2) * qg_map[self.mini_batch_indices_, ...], axis = 1))
         
-        vals = np.sum(lr * lr * np.square(gradients), axis = 1) + 2 * lr * np.sum((learner_param - self.reward_param_) * gradients, axis = 1)
-        return np.argmin(vals), gradients
+        vals = -1 * self.config_.beta_select * (np.sum(lr * lr * np.square(gradients), axis = 1) + 2 * lr * np.sum((learner_param - self.reward_param_) * gradients, axis = 1))
+        if hard:
+            return np.argmax(vals), gradients
+        vals -= np.max(vals)
+        logits = np.exp(vals)
+        if np.sum(np.isnan(logits)) > 0:
+            pdb.set_trace()
+        selected = np.random.choice(len(vals), 1, p = logits / np.sum(logits))[0]
+        # return np.argmin(vals)
+        return selected, gradients
 
-    def choose_imit(self, learner_rewards, lr):
+    def choose_imit(self, learner_rewards, lr, hard = True):
         assert(self.mini_batch_indices_ is not None)
         val_map, q_map, _ = self.value_iter_op_(None, rewards = learner_rewards, value_map_init = self.initial_val_maps_)
         self.initial_val_maps_ = val_map
@@ -67,5 +75,10 @@ class TeacherIRL:
                 np.log(np.sum(np.exp(self.config_.beta * q_map[self.mini_batch_indices_, ...]), axis = 1))
         l_tea = self.l_[(self.mini_batch_indices_, self.mini_batch_opt_acts_)]
         
-        vals = np.sum(lr * lr * np.square(gradients), axis = 1) + 2 * lr * (l_stu - l_tea)
-        return np.argmin(vals), gradients, l_stu
+        vals = -1 * self.config_.beta_select * (np.sum(lr * lr * np.square(gradients), axis = 1) + 2 * lr * (l_stu - l_tea))
+        if hard:
+            return np.argmax(vals), gradients, l_stu
+        vals -= np.max(vals)
+        logits = np.exp(vals)
+        selected = np.random.choice(len(vals), 1, p = logits / np.sum(logits))[0]
+        return selected, gradients, l_stu

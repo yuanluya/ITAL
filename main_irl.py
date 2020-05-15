@@ -17,8 +17,33 @@ from learner_irl import LearnerIRL
 
 import pdb
 
+def learn_basic(teacher, learner, train_iter, init_ws, test_set, batch = True):
+    learner.reset(init_ws)
+
+    ws = [learner.current_mean_]
+    dists = [np.mean(np.max(abs(learner.current_action_prob() - teacher.action_probs_), axis = 1))]
+    dists_ = [np.sum(np.square(learner.current_mean_ - teacher.stu_gt_reward_param_))]
+    distsq = [np.mean(np.square(learner.q_map_ - teacher.q_map_))]
+    actual_rewards = [teacher.map_.test_walk(teacher.reward_param_, learner.action_probs_, test_set[0], greedy = False)]
+    for i in tqdm(range(train_iter)):
+        teacher.sample()
+        if not batch:
+            data_idx = np.random.randint(teacher.config_.sample_size)
+        else:
+            data_idx = np.arange(teacher.config_.sample_size)
+        _, gradients = teacher.choose(learner.current_mean_, learner.lr_)
+        w, _ = learner.learn_cont(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
+                                         gradients, i, teacher.stu_gt_reward_param_, -1, batch = batch)
+        ws.append(w)
+        dists_.append(np.sum(np.square(learner.current_mean_ - teacher.stu_gt_reward_param_)))
+        dists.append(np.mean(np.max(abs(learner.current_action_prob() - teacher.action_probs_), axis = 1)))
+        distsq.append(np.mean(np.square(learner.q_map_ - teacher.q_map_)))
+        if (i + 1) % 10 == 0:
+            actual_rewards.append(teacher.map_.test_walk(teacher.reward_param_, learner.action_probs_, test_set[i + 1], greedy = False))
+    learner.lr_ = learner.config_.lr
+    return dists, dists_, distsq, actual_rewards, ws
+
 def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = None):
-    np.random.seed(555)
     learner.reset(init_ws)
 
     eliminates = []
@@ -56,13 +81,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
         eliminates.append(eliminate)
         if (i + 1) % 10 == 0:
             actual_rewards.append(teacher.map_.test_walk(teacher.reward_param_, learner.action_probs_, test_set[i + 1], greedy = False))
-        # if (i + 1) % 100 == 0:
-        #     learner.lr_ /= 2
-        # if i == 100 and random_prob is None:
-        #     # np.save('init_ws_100.npy', learner.particles_)
-        #     learner.particles_ = np.load('init_ws_100.npy')
-        #     learner.current_mean_ = np.mean(learner.particles_, axis = 0, keepdims = True)
-        #     np.random.seed(999)
+
     learner.lr_ = learner.config_.lr
     return dists, dists_, distsq, actual_rewards, eliminates
 
@@ -76,7 +95,7 @@ def learn_thread_tf(config_T, config_L, mode, train_iter, random_prob, return_ke
     tfconfig.gpu_options.allow_growth = True
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     sess = tf.Session(config = tfconfig)
-    np.random.seed(400)
+    np.random.seed(int(sys.argv[9]))
 
     map_l = Map(sess, config_L)
     map_t = Map(sess, config_T)
@@ -106,7 +125,7 @@ def teacher_run_tf(config_T, config_L, train_iter, thread_return):
     tfconfig.gpu_options.allow_growth = True
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     sess = tf.Session(config = tfconfig)
-    np.random.seed(400)
+    np.random.seed(int(sys.argv[9]))
 
     map_l = Map(sess, config_L)
     map_t = Map(sess, config_T)
@@ -130,26 +149,41 @@ def teacher_run_tf(config_T, config_L, train_iter, thread_return):
 
 def main():
     use_tf = False
-    multi_thread = True
+    multi_thread = False
 
     mode_idx = int(sys.argv[1])
     modes = ['omni', 'imit']
     mode = modes[mode_idx]
-    shape = 8
+
+    shape = int(sys.argv[3])
     lr = 1e-3
-    beta = 1
-    beta_select = 10000
-    K = 20
-    train_iter = 100
+    beta = int(sys.argv[7])
 
     reward_type = sys.argv[2]
-    approx_k = 200 if reward_type == 'E' else 220
+    approx_k = float(sys.argv[8])
+
+    beta_select = 10000
+    K = 1
+    train_iter = 20
+
+    title = ''
+    title += mode
+    title += '_'
+        
+    title += sys.argv[3]
+    title += '_'
+    title += 'beta'
+    title += '_'
+    title += sys.argv[7]
+    title += '_'
+    title += sys.argv[9]
+
 
     config_T = edict({'shape': shape, 'approx_type': 'gsm', 'beta': beta, 'shuffle_state_feat': False,
                       'lr': lr, 'sample_size': 20, 'use_tf': use_tf, 'approx_k': approx_k, 'beta_select': beta_select})
     config_L = edict({'shape': shape, 'approx_type': 'gsm', 'beta': beta, 'lr': lr, "prob": 1,
                       'shuffle_state_feat': mode == 'imit', 'particle_num': 1000, 'replace_count': 1,
-                      'noise_scale_min': 0.00, 'noise_scale_max': 0.2, 'noise_scale_decay': 70, 'cont_K': K,
+                      'noise_scale_min': float(sys.argv[4]), 'noise_scale_max': float(sys.argv[5]), 'noise_scale_decay': float(sys.argv[6]), 'cont_K': K,
                       'target_ratio': 0, 'new_ratio': 1, 'use_tf': use_tf, 'approx_k': approx_k, 'beta_select': beta_select})
 
     np.set_printoptions(precision = 4)
@@ -160,7 +194,7 @@ def main():
         tfconfig.gpu_options.allow_growth = True
         os.environ["CUDA_VISIBLE_DEVICES"] = '0'
         sess = tf.Session(config = tfconfig)
-        np.random.seed(400)
+        np.random.seed(int(sys.argv[9]))
 
         map_l = Map(sess, config_L)
         map_t = Map(sess, config_T)
@@ -253,65 +287,33 @@ def main():
     learner = LearnerIRL(sess, map_l, config_L)
 
     if not multi_thread:
-        dists3, dists3_, distsq3, ar3, eliminates = learn(teacher, learner, mode, init_ws,
-                                                          train_iter, test_set, random_prob = None)
-        dists0, dists0_, distsq0, ar0, _ = learn(teacher, learner, mode, init_ws, train_iter,
-                                                 test_set, random_prob = random_probs[0])
-        dists1, dists1_, distsq1, ar1, _ = learn(teacher, learner, mode, init_ws, train_iter,
-                                                 test_set, random_prob = random_probs[1])
-        dists2, dists2_, distsq2, ar2, _ = learn(teacher, learner, mode, init_ws, train_iter,
-                                                 test_set, random_prob = np.mean(eliminates) / config_L.particle_num)
+        dists_batch, dists_batch_, distsq_batch, ar_batch, _ = learn_basic(teacher, learner, train_iter, init_ws, test_set, True)
+        
+        dists_sgd, dists_sgd_, distsq_sgd, ar_sgd, _ = learn_basic(teacher, learner, train_iter, init_ws, test_set, False)
+        
         dists4, dists4_, distsq4, ar4, _ = learn(teacher, learner, '%s_cont' % mode, init_ws, train_iter,
                                                  test_set)
         dists5, dists5_, distsq5, ar5, _ = learn(teacher, learner, '%s_sgd_cont' % mode, init_ws, train_iter,
                                                  test_set)
+        np.save('distsbatch_' + title + '.npy', np.array(dists_batch))
+        np.save('distbatch__' + title + '.npy', np.array(dists_batch_))
+        np.save('distsqbatch_' + title + '.npy', np.array(distsq_batch))
+        np.save('arbatch_' + title + '.npy', np.array(ar_batch))
 
-    fig, axs = plt.subplots(2, 2, constrained_layout = True)
+        np.save('distssgd_' + title + '.npy', np.array(dists_sgd))
+        np.save('distsgd__' + title + '.npy', np.array(dists_sgd_))
+        np.save('distsqsgd_' + title + '.npy', np.array(distsq_sgd))
+        np.save('arsgd_' + title + '.npy', np.array(ar_sgd))
 
-    line0, = axs[0, 0].plot(dists0, label = 'zero')
-    line1, = axs[0, 0].plot(dists1, label = 'one')
-    line2, = axs[0, 0].plot(dists2, label = 'random')
-    line3, = axs[0, 0].plot(dists3, label = 'smarter')
-    line4, = axs[0, 0].plot(dists4, label = 'cont')
-    line5, = axs[0, 0].plot(dists5, label = 'sgd_cont')
-    axs[0, 0].set_title('action prob total variance distance')
+        np.save('dists4_' + title + '.npy', np.array(dists4))
+        np.save('dist4__' + title + '.npy', np.array(dists4_))
+        np.save('distsq4_' + title + '.npy', np.array(distsq4))
+        np.save('ar4_' + title + '.npy', np.array(ar4))
 
-    line0, = axs[0, 1].plot(dists0_, label = 'zero')
-    line1, = axs[0, 1].plot(dists1_, label = 'one')
-    line2, = axs[0, 1].plot(dists2_, label = 'random')
-    line3, = axs[0, 1].plot(dists3_, label = 'smarter')
-    line4, = axs[0, 1].plot(dists4_, label = 'cont')
-    line5, = axs[0, 1].plot(dists5_, label = 'sgd_cont')
-    axs[0, 1].set_title('reward param l2 distance')
-    axs[0, 1].legend([line0, line1, line2, line3, line4, line5],
-                     ['zero', 'one', 'random', 'pragmatic', '%s_cont' % mode, 'sgd cont'])
-
-    line0, = axs[1, 1].plot(distsq0, label = 'zero')
-    line1, = axs[1, 1].plot(distsq1, label = 'one')
-    line2, = axs[1, 1].plot(distsq2, label = 'random')
-    line3, = axs[1, 1].plot(distsq3, label = 'smarter')
-    line4, = axs[1, 1].plot(distsq4, label = 'cont')
-    line5, = axs[1, 1].plot(distsq5, label = 'sgd_cont')
-    axs[1, 1].set_title('q function l2 distance')
-
-    line0, = axs[1, 0].plot(ar0, label = 'zero')
-    line1, = axs[1, 0].plot(ar1, label = 'one')
-    line2, = axs[1, 0].plot(ar2, label = 'random')
-    line3, = axs[1, 0].plot(ar3, label = 'smarter')
-    line4, = axs[1, 0].plot(ar4, label = 'cont')
-    line5, = axs[1, 0].plot(ar5, label = 'sgd_cont')
-    p.join()
-    axs[1, 0].plot([np.mean(return_list[0])] * len(ar3), label = 'teacher')
-    axs[1, 0].set_title('actual rewards')
-
-    fig.suptitle('%s shape: %d, beta: %.2f, data:%d/%d/%d_particle:%d_noise: %.2f, %.2f, %d,'
-                 'ratio: %.2f, %.2f, lr: %f, beta_select: %.2f, K: %d' %\
-              (mode, shape, beta, config_L.replace_count, config_T.sample_size, (shape ** 2), config_L.particle_num,
-               config_L.noise_scale_min, config_L.noise_scale_max, config_L.noise_scale_decay,
-               config_L.target_ratio, config_L.new_ratio, lr, config_L.beta_select, config_L.cont_K if K is not None else -999))
-
-    plt.show()
-    pdb.set_trace()
+        np.save('dists5_' + title + '.npy', np.array(dists5))
+        np.save('dist5__' + title + '.npy', np.array(dists5_))
+        np.save('distsq5_' + title + '.npy', np.array(distsq5))
+        np.save('ar5_' + title + '.npy', np.array(ar5))
 
     return
 

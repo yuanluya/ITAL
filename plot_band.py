@@ -70,7 +70,7 @@ def get_path(data_cate, arguments, type_ = 'd'):
             title += 'gaussian'
 
     else:
-        lines = ['0', '1', '2', '3']
+        lines = ['batch', 'sgd', '4', '5']
 
         title = '_'
         mode_idx = int(arguments[2])
@@ -106,7 +106,7 @@ def save_csv(data_cate, setting_name, random_seeds, arguments, type_ = 'd'):
         methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', \
                     '7': 'cont_sgd', '8': 'cont_prag', '6': 'Expert', 'batch': 'batch', 'sgd': 'sgd'} 
     else:
-        methods_code = {'0': 'zero', '1': 'one', '2': 'random', '3': 'pragmatic'}
+        methods_code = {'0': 'zero', '1': 'one', '2': 'random', '3': 'pragmatic', '4': 'ITAL', '5': 'IMT', 'batch': 'Batch', 'sgd': 'SGD'}
     titles, methods = get_path(data_cate, arguments, type_)
     data = []
     method = []
@@ -173,10 +173,11 @@ def collect_data(setting_name, random_seeds, arguments, type_):
 def plot(setting_name):
     main_multi_settings = {'regression', 'class4', 'class10'}
     classification = {'class4', 'class10', 'mnist'}
+    irl_settings = {'random', 'peak'}
 
     paper_rc = {'lines.linewidth': 2.5}
     sns.set(style="darkgrid")
-    sns.set(font_scale=1.9, rc = paper_rc)
+    sns.set(font_scale=1.95, rc = paper_rc)
     
     directory = setting_name + '_csv/'
     omni_path = directory + 'omni_' + directory
@@ -262,19 +263,23 @@ def plot(setting_name):
 
         plt2 = sns.lineplot(x="iteration", y="data",
                  hue="method", style = 'method',data=df2, ax=axes[1], palette=palette, dashes = dash)
+        
+        axes[1].set_title('Squared Loss')
         if setting_name in classification:
             plt0 = sns.lineplot(x="iteration", y="data",
                  hue="method", style = 'method',data=df0, ax=axes[2], palette=palette, dashes = dash)
             plt0.set(xlabel='training iteration', ylabel='')
-            axes[2].set_title('TEST ACCURACY')
+            if setting_name == 'class4':
+                axes[2].set_title('4-Class Classification Accuracy')
+            else:
+                axes[2].set_title('10-Class Classification Accuracy')
             plt2.legend_.remove()
-
+            axes[1].set_title('Cross Entropy Loss')
         plt1.legend_.remove()
         
-        plt1.set(xlabel='training iteration', ylabel='')
-        plt2.set(xlabel='training iteration', ylabel='')
-        axes[0].set_title('L2 DISTANCE')
-        axes[1].set_title('CROSS ENTROPY LOSS')
+        plt1.set(xlabel='Training Iteration', ylabel='')
+        plt2.set(xlabel='Training Iteration', ylabel='')
+        axes[0].set_title('L2 Distance')
 
     elif setting_name == 'mnist':  
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
@@ -352,17 +357,17 @@ def plot(setting_name):
                  hue="method",data=df0, ax=axes[0], palette=palette)
         plt1.legend_.remove()
         plt2 = sns.lineplot(x="iteration", y="data",
-                 hue="method",data=df1, ax=axes[1], palette=palette)
+                 hue="method",data=df2, ax=axes[1], palette=palette)
         plt2.legend_.remove()
         plt3 = sns.lineplot(x="iteration", y="data",
-                 hue="method",data=df2, ax=axes[2], palette=palette)
+                 hue="method",data=df1, ax=axes[2], palette=palette)
         
-        plt1.set(xlabel='training iteration')
-        plt2.set(xlabel='training iteration')
-        plt3.set(xlabel='training iteration')
-        axes[0].set_title('L2 DISTANCE')
-        axes[1].set_title('10-CLASS CLASSIFICATION ACCURACY')
-        axes[2].set_title('CROSS ENTROPY LOSS')
+        plt1.set(xlabel='Training Iteration')
+        plt2.set(xlabel='Training Iteration')
+        plt3.set(xlabel='Training Iteration')
+        axes[0].set_title('L2 Distance')
+        axes[2].set_title('10-Class Classification Accuracy')
+        axes[1].set_title('Cross Entropy Loss')
         axes[0].set_ylabel('')
         axes[1].set_ylabel('')
         axes[2].set_ylabel('')
@@ -443,17 +448,111 @@ def plot(setting_name):
                  hue="method",data=df0, ax=axes[0], palette=palette)
         plt1.legend_.remove()
         plt2 = sns.lineplot(x="iteration", y="data",
+                 hue="method",data=df2, ax=axes[1], palette=palette)
+        plt2.legend_.remove()
+        plt3 = sns.lineplot(x="iteration", y="data",
+                 hue="method",data=df1, ax=axes[2], palette=palette)
+        
+        plt1.set(xlabel='Training Iteration')
+        plt2.set(xlabel='Training Iteration')
+        plt3.set(xlabel='Training Iteration')
+        axes[0].set_title('L2 Distance')
+        axes[2].set_title('10-Class Classification Accuracy')
+        axes[1].set_title('Cross Entropy Loss')
+        axes[0].set_ylabel('')
+        axes[1].set_ylabel('')
+        axes[2].set_ylabel('')
+
+    elif setting_name in irl_settings: #to be modified to add more settings 
+        map_shape = ['8', '10']
+        omni_path = {dim : directory + 'omni' + dim +'_' + directory for dim in map_shape}
+        display_methods = [ 'Batch', 'SGD', 'IMT', 'ITAL']
+
+        results0_omni = {}
+        results1_omni = {}
+        results2_omni = {}
+        results3_omni = {}
+        for dim in map_shape:
+            results0_omni[dim] = pd.read_csv(omni_path + '%s.csv' % ('ar'+'_omni' + dim + '_'+setting_name))
+            results1_omni[dim] = pd.read_csv(omni_path + '%s.csv' % ('dists'+'_omni' + dim + '_'+setting_name))
+            results2_omni[dim] = pd.read_csv(omni_path + '%s.csv' % ('dist_'+'_omni' + dim + '_'+setting_name))
+            results3_omni[dim] = pd.read_csv(omni_path + '%s.csv' % ('distsq'+'_omni' + dim + '_'+setting_name))
+
+        imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in map_shape}
+        results0_imit = {}
+        results1_imit = {}
+        results2_imit = {}
+        results3_omni = {}
+        for dim in map_shape:      
+            results0_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('ar'+'_imit' + dim + '_'+setting_name))
+            results1_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('dists'+'_imit' + dim + '_'+setting_name))
+            results2_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('dist_'+'_imit' + dim + '_'+setting_name))
+            results3_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('distsq'+'_imit' + dim + '_'+setting_name))
+
+        df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
+        df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
+        df2 = results2_omni.loc[results2_omni['method'] == display_methods[0]]
+        df3 = results3_omni.loc[results3_omni['method'] == display_methods[0]]
+        
+        sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
+        sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
+        sgd2 = results2_omni.loc[results2_omni['method'] == display_methods[1]]
+        sgd3 = results3_omni.loc[results3_omni['method'] == display_methods[1]]
+        
+        df0 = pd.concat([df0, sgd0])
+        df1 = pd.concat([df1, sgd1])
+        df2 = pd.concat([df2, sgd2])
+        df3 = pd.concat([df3, sgd3])
+
+        for method in display_methods[2:]:
+            df0_omni = results0_omni.loc[results0_omni['method'] == method]
+            df1_omni = results1_omni.loc[results1_omni['method'] == method]
+            df2_omni = results2_omni.loc[results2_omni['method'] == method]
+
+            df0_imit = {dim : results0_imit[dim].loc[results0_imit[dim]['method'] == method] for dim in imit_dim}
+            df1_imit = {dim : results1_imit[dim].loc[results1_imit[dim]['method'] == method] for dim in imit_dim}
+            df2_imit = {dim : results2_imit[dim].loc[results2_imit[dim]['method'] == method] for dim in imit_dim}
+
+            df0_omni['method'] = 'Omniscient ' + method
+            df1_omni['method'] = 'Omniscient ' + method
+            df2_omni['method'] = 'Omniscient ' + method
+
+            df0 = pd.concat([df0, df0_omni])
+            df1 = pd.concat([df1, df1_omni])
+            df2 = pd.concat([df2, df2_omni])
+            
+            for dim in map_shape:
+                df0_imit[dim]['method'] = 'Imitate CNN-' + dim + ' ' + method
+                df1_imit[dim]['method'] = 'Imitate CNN-' + dim + ' ' + method
+                df2_imit[dim]['method'] = 'Imitate CNN-' + dim + ' ' + method
+
+                df0 = pd.concat([df0, df0_imit[dim]])
+                df1 = pd.concat([df1, df1_imit[dim]])
+                df2 = pd.concat([df2, df2_imit[dim]])
+        
+        plt.figure() 
+        f, axes = plt.subplots(1, 3, constrained_layout = True, figsize=(30, 10))   
+
+        palette ={"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate CNN-6 ITAL":sns.xkcd_rgb["orange"], "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], \
+                    "Imitate CNN-12 ITAL":sns.xkcd_rgb["brick red"], "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
+                      'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-6 IMT': sns.xkcd_rgb['olive green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'],\
+                      'Imitate CNN-12 IMT': sns.xkcd_rgb['mustard yellow']}
+        
+        plt1 = sns.lineplot(x="iteration", y="data",
+                 hue="method",data=df0, ax=axes[0], palette=palette)
+        plt1.legend_.remove()
+        plt2 = sns.lineplot(x="iteration", y="data",
                  hue="method",data=df1, ax=axes[1], palette=palette)
         plt2.legend_.remove()
         plt3 = sns.lineplot(x="iteration", y="data",
                  hue="method",data=df2, ax=axes[2], palette=palette)
         
-        plt1.set(xlabel='training iteration')
-        plt2.set(xlabel='training iteration')
-        plt3.set(xlabel='training iteration')
-        axes[0].set_title('L2 DISTANCE')
-        axes[1].set_title('10-CLASS CLASSIFICATION ACCURACY')
-        axes[2].set_title('CROSS ENTROPY LOSS')
+        plt1.set(xlabel='Training Iteration')
+        plt2.set(xlabel='Training Iteration')
+        plt3.set(xlabel='Training Iteration')
+        axes[0].set_title('L2 Distance')
+        axes[1].set_title('10-Class Classification Accuracy')
+        axes[2].set_title('Cross Entropy Loss')
         axes[0].set_ylabel('')
         axes[1].set_ylabel('')
         axes[2].set_ylabel('')
@@ -466,13 +565,12 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         exit()
 
-    type_ = 'd'
+    type_ = 'irl'
     random_seeds = [j for j in range(20)]
     setting_name = sys.argv[2]
     irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10', 'omni_peak_8', 'omni_random_8'}
-    irl = True
+    
     if setting_name not in irl_settings:
-        irl = False
         type_ = 'c'
     if sys.argv[1] == 'data':
         if setting_name == 'omni_equation':
