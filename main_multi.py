@@ -199,16 +199,18 @@ def main():
     train_iter_smart = 2000
     reg_coef = 0
 
+    dim_tea = '20'
+
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
     dy = None if dd != 24 else np.load("MNIST/mnist_train_labels.npy")
     gt_w = None if dd != 24 else np.load("MNIST/mnist_tf_gt_weights.npy")
     tx = None if dd != 24 else np.load("MNIST/mnist_test_features.npy")
     ty = None if dd != 24 else np.load("MNIST/mnist_test_labels.npy")
-    dx_tea = np.load("MNIST/mnist_train_features_tea.npy") if dd == 24 and mode == 'imit' else None
-    dy_tea = np.load("MNIST/mnist_train_labels_tea.npy") if dd == 24 and mode == 'imit' else None
-    gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea.npy") if dd == 24 and mode == 'imit' else None
-    tx_tea = np.load("MNIST/mnist_test_features_tea.npy") if dd == 24 and mode == 'imit' else None
-    ty_tea = np.load("MNIST/mnist_test_labels_tea.npy") if dd == 24 and mode == 'imit' else None
+    dx_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+    dy_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+    gt_w_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+    tx_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+    ty_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
 
     if dd == 48:
         dx = np.load("Equation_data/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
