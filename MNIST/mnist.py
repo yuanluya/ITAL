@@ -39,8 +39,8 @@ def train_mnist():
 
     input_shape = 28
     label_shape = 10
-    feat_dim = 30
-    epochs = 500
+    feat_dim = 24
+    epochs = 1000
     batch_size = 128
     config = [(64, 3, 1, True), (32, 3, 1, True), (32, 3, 1, False)]
     initial_lr = 1e-3
@@ -69,14 +69,14 @@ def train_mnist():
             print("Iteration %d loss: %f accuracy: %f\n" % (i, l, acc))
 
     print("Start Testing.")
-    test_xs = np.reshape(mnist.test.images, (-1, input_shape, input_shape, 1))
-    test_ys = np.reshape(mnist.test.labels, (-1, label_shape))
+    test_xs = np.reshape(np.load("testx.npy"), (-1, input_shape, input_shape, 1))
+    test_ys = np.reshape(np.load("testy.npy"), (-1, label_shape))
     test_features, test_loss, test_acc = sess.run([cf.features_, cf.loss_,  cf.accuracy_], feed_dict={cf.inputs_: test_xs, cf.labels_: test_ys})
     print("Test loss: %f accuracy: %f" % (test_loss, test_acc))
 
     print('getting training image features')
-    all_xs = mnist.train.images
-    all_ys = mnist.train.labels
+    all_xs = np.load("trainx.npy")
+    all_ys = np.load("trainy.npy")
     all_xs = np.reshape(all_xs, (all_xs.shape[0], input_shape, input_shape, 1))
     all_ys = np.reshape(all_ys, (all_xs.shape[0], label_shape))
     current_img_idx = 0
@@ -89,16 +89,16 @@ def train_mnist():
     gt_weights, gt_bias = sess.run(cf.params_)
     gt_weights = np.concatenate([gt_weights, np.expand_dims(gt_bias, 0)], 0).T
 
-    np.save("mnist_train_features_tea.npy", train_features)
-    np.save("mnist_test_features_tea.npy", test_features)
-    np.save("mnist_train_labels_tea.npy", all_ys)
-    np.save("mnist_test_labels_tea.npy", test_ys)
-    np.save("mnist_tf_gt_weights_tea.npy", gt_weights)
+    np.save("mnist_train_features.npy", train_features)
+    np.save("mnist_test_features.npy", test_features)
+    np.save("mnist_train_labels.npy", all_ys)
+    np.save("mnist_test_labels.npy", test_ys)
+    np.save("mnist_tf_gt_weights.npy", gt_weights)
 
-    plt.plot(loss, 'b', label = "Train Loss")
-    # plt.plot(test_loss, 'r', label = "Test Loss")
-    plt.legend()
-    plt.show()
+    # plt.plot(loss, 'b', label = "Train Loss")
+    # # plt.plot(test_loss, 'r', label = "Test Loss")
+    # plt.legend()
+    # plt.show()
 
 if __name__ == "__main__":
     train_mnist()

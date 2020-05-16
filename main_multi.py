@@ -26,7 +26,6 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     losses_list = []
 
     for _ in tqdm(range(train_iter)):
-
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
@@ -67,7 +66,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     particle_hist = []
     data_choices = []
     eliminates = []
-
+    logpdfs = []
     angles = []
     for i in tqdm(range(train_iter)):
         if teacher.config_.task == 'classification':
@@ -102,7 +101,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
                 for j in range(teacher.data_pool_tea_.shape[0]):
                     gradients_tea.append(np.expand_dims(np.matmul(gradients_lv[j: j + 1, ...].T, teacher.data_pool_tea_[j: j + 1, ...]), 0))
                 gradients_tea = np.concatenate(gradients_tea, 0)
-            data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr, hard = True)
+            data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr, hard = True)#(mode[-4: ] != 'cont'))
         data_choices.append(data_idx)
         
         if mode == 'sgd_imit_cont' or mode == 'sgd_omni_cont':
@@ -141,7 +140,16 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         teacher_dim = teacher.config_.data_x_tea.shape[1]
     else:
         teacher_dim = teacher.config_.data_dim
-
+    if random_prob is None and plot_condition:
+        num_bad = np.sum(np.array(angles) < 0)
+        plt.plot(angles, 'bo', markersize=4)
+        plt.plot(np.zeros(train_iter), 'r-')
+        plt.title('Mode: %s, Student Dimension: %d, Teacher_Dimension: %d, Classes: %d \n bad: %d, ratio of good: %f' %
+                (mode, learner.config_.data_dim, teacher_dim, learner.config_.num_classes,
+                 num_bad, 1 - num_bad / train_iter))
+        plt.ylabel("Projection Length")
+        plt.xlabel("Iterations")
+        plt.show()
     return dists, dists_, accuracies, losses_list, eliminates
 
 def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
@@ -152,17 +160,17 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
     init = tf.global_variables_initializer()
 
     learnerM = LearnerSM(sess, learner)
-    dists, dists_, accuracies, losses, eliminate = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
+    dists, dists_, accuracies, logpdfs, eliminate = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
 
-    thread_return[key] = [dists, dists_, accuracies, losses, eliminate]
+    thread_return[key] = [dists, dists_, accuracies, logpdfs, eliminate]
 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-    beta = 40000
+    beta = 31000
     K = 1
     np.random.seed(int(sys.argv[8]))
- 
+
     multi_thread = True
 
     title = ''
@@ -194,31 +202,23 @@ def main():
     title += sys.argv[8]
 
     dps = 3 * dd if task == 'classification' else 6 * dd
-    num_particles = 1000
+    num_particles = 3
     train_iter_simple = 2000
     train_iter_smart = 2000
     reg_coef = 0
-
-    dim_tea = '20'
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
     dy = None if dd != 24 else np.load("MNIST/mnist_train_labels.npy")
     gt_w = None if dd != 24 else np.load("MNIST/mnist_tf_gt_weights.npy")
     tx = None if dd != 24 else np.load("MNIST/mnist_test_features.npy")
     ty = None if dd != 24 else np.load("MNIST/mnist_test_labels.npy")
+    dim_tea = 30
     dx_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
-    dy_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
-    gt_w_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
-    tx_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
-    ty_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+    dy_tea = np.load("MNIST/mnist_train_labels_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+    gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+    tx_tea = np.load("MNIST/mnist_test_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+    ty_tea = np.load("MNIST/mnist_test_labels_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
 
-    if dd == 48:
-        dx = np.load("Equation_data/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
-        dy = np.load("Equation_data/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
-        gt_w = np.load("Equation_data/equation_gt_weights_cnn_3var_48_6layers.npy")
-        tx = np.load("Equation_data/equation_train_features_cnn_3var_48_6layers.npy")[:50000]
-        ty = np.load("Equation_data/equation_train_labels_cnn_3var_48_6layers.npy")[:50000].reshape((50000, 1))
-    
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                       'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
                       'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w, 'beta': beta,
@@ -276,6 +276,7 @@ def main():
         np.save('losses8_' + title + '.npy', np.array(losses8))
 
 
+
     import tensorflow as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
@@ -296,7 +297,6 @@ def main():
         np.save('distsgd__' + title + '.npy', np.array(dists_neg1_sgd_))
         np.save('accuraciessgd_' + title + '.npy', np.array(accuracies_neg1_sgd))
         np.save('lossessgd_' + title + '.npy', np.array(losses_neg1_sgd))
-
     else:
         learnerM = LearnerSM(sess, config_LS)
 
@@ -308,6 +308,8 @@ def main():
         dists5, dists5_, accuracies5, logpdfs5, _ = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
         dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
         dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+
+
 
 if __name__ == '__main__':
     main()

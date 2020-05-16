@@ -566,7 +566,7 @@ def main():
         exit()
 
     type_ = 'irl'
-    random_seeds = [j for j in range(20)]
+    random_seeds = [j for j in range(1)]
     setting_name = sys.argv[2]
     irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10', 'omni_peak_8', 'omni_random_8'}
     

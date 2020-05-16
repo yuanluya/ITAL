@@ -100,11 +100,11 @@ class TeacherM:
                 self.gt_y_label_full_test_tea_ = np.argmax(self.config_.test_y_tea, 1)
                 self.gt_w_tea_ = self.config_.gt_w_tea
             
-            self.linear_vals_ = np.matmul(self.data_pool_full_tea_, self.gt_w_tea_.T)
-            if self.config_.task == 'classification':
-                softmax = np.exp(self.linear_vals_)
-                self.softmax_ = softmax / np.sum(softmax, 1, keepdims = True)
-                self.gt_loss_full_ = -1 * np.sum(self.gt_y_full_tea_ * np.log(self.softmax_ + 1e-6), 1)
+                self.linear_vals_tea_ = np.matmul(self.data_pool_full_tea_, self.gt_w_tea_.T)
+                if self.config_.task == 'classification':
+                    softmax = np.exp(self.linear_vals_tea_)
+                    self.softmax_tea_ = softmax / np.sum(softmax, 1, keepdims = True)
+                    self.gt_loss_full_ = -1 * np.sum(self.gt_y_full_tea_ * np.log(self.softmax_tea_ + 1e-6), 1)
 
             self.data_pool_tea_ = None
         self.data_pool_ = None
