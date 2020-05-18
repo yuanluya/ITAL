@@ -167,7 +167,7 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-    beta = 31000
+    beta = 20000
     K = 1
     np.random.seed(int(sys.argv[8]))
 

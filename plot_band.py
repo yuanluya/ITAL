@@ -780,9 +780,9 @@ def main():
         type_ = 'c'
     if sys.argv[1] == 'data':
         if setting_name == 'omni_equation':
-            arguments = ['python3', 'main_multi.py', '48', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
+            arguments = ['python3', 'main_multi.py', '45', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
         elif setting_name == 'imit_equation':
-            arguments = ['python3', 'main_multi.py', '48', '2', '0', '0.05', '1000', '0.001', '0.01', 'regression'] 
+            arguments = ['python3', 'main_multi.py', '45', '2', '0', '0.05', '1000', '0.001', '0.01', 'regression'] 
         elif setting_name == 'omni_class10':
             arguments = ['python3', 'main_multi.py', '30', '0', '0', '0.1', '1000', '0', '0.1']
         elif setting_name == 'imit_class10':
