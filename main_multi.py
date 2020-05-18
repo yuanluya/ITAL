@@ -203,8 +203,8 @@ def main():
 
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 3
-    train_iter_simple = 2000
-    train_iter_smart = 2000
+    train_iter_simple = 500
+    train_iter_smart = 500
     reg_coef = 0
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
@@ -221,11 +221,11 @@ def main():
 
     dd_ = 45
     if dd == 45:
-        dx_tea = (np.load("/home/Datasets/Equation/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
-        dy_tea = (np.load("/home/Datasets/Equation/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
-        gt_w_tea = (np.load("/home/Datasets/Equation/equation_gt_weights_cnn_3var_%d_6layers.npy" % dd_))
-        tx_tea = (np.load("/home/Datasets/Equation/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
-        ty_tea = (np.load("/home/Datasets/Equation/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
+        dx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
+        dy_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
+        gt_w_tea = (np.load("Equation_data/equation_gt_weights_cnn_3var_%d_6layers.npy" % dd_))
+        tx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
+        ty_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
 
     config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                       'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
@@ -251,40 +251,30 @@ def main():
         p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, 1, 1, return_dict))
         jobs.append(p)
         p.start()
-        '''
+  
         p = Process(target = learn_thread, args = (teacher, config_LS, "%s_cont" % mode, init_ws,
                                                    train_iter_smart, None, "%s_cont" % mode, return_dict))
         jobs.append(p)
         p.start()
-        p = Process(target = learn_thread, args = (teacher, config_LS, 'sgd_%s_cont' % mode, init_ws, train_iter_smart,
-                                                   None, 'sgd_%s_cont' % mode, return_dict))
-        jobs.append(p)
-        p.start()
-        '''
+
         for j in jobs:
             print("joining", j)
             j.join()
-        ''' 
+
         dists1, dists1_, accuracies1, losses1, _ = return_dict[1]
         np.save('dist1_' + title + '.npy', np.array(dists1))
         np.save('dist1__' + title + '.npy', np.array(dists1_))
         np.save('accuracies1_' + title + '.npy', np.array(accuracies1))
         np.save('losses1_' + title + '.npy', np.array(losses1))
-
-        dists7, dists7_, accuracies7, losses7, _ = return_dict['sgd_%s_cont' % mode]
-        np.save('dist7_' + title + '.npy', np.array(dists7))
-        np.save('dist7__' + title + '.npy', np.array(dists7_))
-        np.save('accuracies7_' + title + '.npy', np.array(accuracies7))
-        np.save('losses7_' + title + '.npy', np.array(losses7))
         
         dists8, dists8_, accuracies8, losses8, _ = return_dict['%s_cont' % mode]
         np.save('dist8_' + title + '.npy', np.array(dists8))
         np.save('dist8__' + title + '.npy', np.array(dists8_))
         np.save('accuracies8_' + title + '.npy', np.array(accuracies8))
         np.save('losses8_' + title + '.npy', np.array(losses8))
-        '''
+        
 
-    '''
+    
     import tensorflow as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
@@ -317,7 +307,7 @@ def main():
         dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
         dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
 
-    '''
+    
 
 if __name__ == '__main__':
     main()

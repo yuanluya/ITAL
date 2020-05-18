@@ -359,7 +359,6 @@ def plot(setting_name):
     elif setting_name == 'cifar': #to be modified to add more settings 
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dists'+'_omni_'+setting_name))
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
-        results2_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
 
         imit_dim = ['6','9','12']
         imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
@@ -369,78 +368,61 @@ def plot(setting_name):
         for dim in imit_dim:      
             results0_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('dists'+'_imit' + dim + '_'+setting_name))
             results1_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('accuracies'+'_imit' + dim + '_'+setting_name))
-            results2_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
-        df2 = results2_omni.loc[results2_omni['method'] == display_methods[0]]
         
         df0['method'] = 'Batch'
         df1['method'] = 'Batch'
-        df2['method'] = 'Batch'
         
         sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
         sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
-        sgd2 = results2_omni.loc[results2_omni['method'] == display_methods[1]]
 
         sgd0['method'] = 'SGD'
         sgd1['method'] = 'SGD'
-        sgd2['method'] = 'SGD'
         
         df0 = pd.concat([df0, sgd0])
         df1 = pd.concat([df1, sgd1])
-        df2 = pd.concat([df2, sgd2])
 
         for method in display_methods[2:]:
             df0_omni = results0_omni.loc[results0_omni['method'] == method]
             df1_omni = results1_omni.loc[results1_omni['method'] == method]
-            df2_omni = results2_omni.loc[results2_omni['method'] == method]
 
             df0_imit = {dim : results0_imit[dim].loc[results0_imit[dim]['method'] == method] for dim in imit_dim}
             df1_imit = {dim : results1_imit[dim].loc[results1_imit[dim]['method'] == method] for dim in imit_dim}
-            df2_imit = {dim : results2_imit[dim].loc[results2_imit[dim]['method'] == method] for dim in imit_dim}
 
             if method == 'cont_prag':
                 method = 'ITAL'
 
             df0_omni['method'] = 'Omniscient ' + method
             df1_omni['method'] = 'Omniscient ' + method
-            df2_omni['method'] = 'Omniscient ' + method
 
             df0 = pd.concat([df0, df0_omni])
             df1 = pd.concat([df1, df1_omni])
-            df2 = pd.concat([df2, df2_omni])
             
             for dim in imit_dim:
                 df0_imit[dim]['method'] = 'Imitate CNN-' + dim + ' ' + method
                 df1_imit[dim]['method'] = 'Imitate CNN-' + dim + ' ' + method
-                df2_imit[dim]['method'] = 'Imitate CNN-' + dim + ' ' + method
 
                 df0 = pd.concat([df0, df0_imit[dim]])
                 df1 = pd.concat([df1, df1_imit[dim]])
-                df2 = pd.concat([df2, df2_imit[dim]])
         
         plt.figure() 
-        f, axes = plt.subplots(1, 3, constrained_layout = True, figsize=(30, 10))   
+        f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(20, 7.5))   
         
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method",data=df0, ax=axes[0], palette=palette)
         plt1.legend_.remove()
         plt2 = sns.lineplot(x="iteration", y="data",
-                 hue="method",data=df2, ax=axes[1], palette=palette)
+                 hue="method",data=df1, ax=axes[1], palette=palette)
         plt2.legend_.remove()
-        plt3 = sns.lineplot(x="iteration", y="data",
-                 hue="method",data=df1, ax=axes[2], palette=palette)
         
         plt1.set(xlabel='Training Iteration')
         plt2.set(xlabel='Training Iteration')
-        plt3.set(xlabel='Training Iteration')
-        axes[0].set_title('L2 Distance')
-        axes[2].set_title('10-Class Classification Accuracy')
-        axes[1].set_title('Cross Entropy Loss')
+        axes[0].set_title('L2 Distance', fontweight="bold", size=29)
+        axes[1].set_title('10-Class Classification Accuracy', fontweight="bold", size=29)
         axes[0].set_ylabel('')
         axes[1].set_ylabel('')
-        axes[2].set_ylabel('')
 
     elif setting_name in irl_settings: #to be modified to add more settings 
         omni_path = directory + 'omni_' + directory
@@ -552,7 +534,7 @@ def plot(setting_name):
 
 def plot_supp(setting_name):
     main_multi_settings = {'regression', 'class4', 'class10'}
-    classification = {'class4', 'class10', 'mnist'}
+    classification = {'class4', 'class10'}
     irl_settings = {'random', 'peak'}
 
     paper_rc = {'lines.linewidth': 2.5}
