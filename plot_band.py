@@ -171,7 +171,7 @@ def collect_data(setting_name, random_seeds, arguments, type_):
 
 
 def plot(setting_name):
-    main_multi_settings = {'equation', 'regression', 'class4', 'class10'}
+    main_multi_settings = {'regression', 'class4', 'class10'}
     classification = {'class4', 'class10', 'mnist'}
     irl_settings = {'random', 'peak'}
 
@@ -191,12 +191,17 @@ def plot(setting_name):
                 "Imitate CNN-12 ITAL":sns.xkcd_rgb["brick red"], \
                 'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-6 IMT': sns.xkcd_rgb['olive green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'],\
                 'Imitate CNN-12 IMT': sns.xkcd_rgb['mustard yellow'], \
-                "Imitate ITAL":sns.xkcd_rgb["burnt orange"], 'Imitate IMT': sns.xkcd_rgb['dark green']}
+                "Imitate ITAL":sns.xkcd_rgb["burnt orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
+                'Imitate Dim-50 ITAL':sns.xkcd_rgb["brick red"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-45 ITAL':sns.xkcd_rgb["burnt orange"], \
+                'Imitate Dim-50 IMT': sns.xkcd_rgb['mustard yellow'], 'Imitate Dim-45 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['olive green']}
 
     dash = {"Omniscient ITAL": '',"Imitate ITAL": (5, 5),"Batch":'', "SGD": '', \
             'Omniscient IMT': '', 'Imitate IMT': (5, 5)}
 
     display_methods = [ 'batch', 'sgd', 'IMT', 'cont_prag']
+
+    plt.figure() 
+    f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(20, 6))   
 
     if setting_name in main_multi_settings:
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
@@ -258,11 +263,6 @@ def plot(setting_name):
                 df0 = pd.concat([df0, df0_omni])
                 df0 = pd.concat([df0, df0_imit])
 
-
-        plt.figure() 
-        
-        f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(20, 7.5))   
-
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=df1, ax=axes[0], palette=palette)
 
@@ -283,9 +283,74 @@ def plot(setting_name):
 
         plt1.legend_.remove()
         plt2.legend_.remove()
-        plt1.set(xlabel='Training Iteration', ylabel='')
-        plt2.set(xlabel='Training Iteration', ylabel='')
+        plt1.set(xlabel='', ylabel='')
+        plt2.set(xlabel='', ylabel='')
         axes[0].set_title('L2 Distance', fontweight="bold", size=29)
+
+    elif setting_name == 'equation':  
+        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
+        results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
+
+        imit_dim = ['50','45','40']
+        imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
+        results0_imit = {}
+        results1_imit = {}
+        results2_imit = {}
+        for dim in imit_dim:      
+            results0_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('dist'+'_imit' + dim + '_'+setting_name))
+            results1_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
+
+        df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
+        df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
+        
+        df0['method'] = 'Batch'
+        df1['method'] = 'Batch'
+        
+        sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
+        sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
+
+        sgd0['method'] = 'SGD'
+        sgd1['method'] = 'SGD'
+        
+        df0 = pd.concat([df0, sgd0])
+        df1 = pd.concat([df1, sgd1])
+
+        for method in display_methods[2:]:
+            df0_omni = results0_omni.loc[results0_omni['method'] == method]
+            df1_omni = results1_omni.loc[results1_omni['method'] == method]
+
+            df0_imit = {dim : results0_imit[dim].loc[results0_imit[dim]['method'] == method] for dim in imit_dim}
+            df1_imit = {dim : results1_imit[dim].loc[results1_imit[dim]['method'] == method] for dim in imit_dim}
+
+            if method == 'cont_prag':
+                method = 'ITAL'
+
+            df0_omni['method'] = 'Omniscient ' + method
+            df1_omni['method'] = 'Omniscient ' + method
+
+            df0 = pd.concat([df0, df0_omni])
+            df1 = pd.concat([df1, df1_omni])
+            
+            for dim in imit_dim:
+                df0_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
+                df1_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
+
+                df0 = pd.concat([df0, df0_imit[dim]])
+                df1 = pd.concat([df1, df1_imit[dim]])
+        
+        plt1 = sns.lineplot(x="iteration", y="data",
+                 hue="method",data=df0, ax=axes[0], palette=palette) 
+        plt1.legend_.remove()
+        plt2 = sns.lineplot(x="iteration", y="data",
+                 hue="method",data=df1, ax=axes[1], palette=palette)
+        plt2.legend_.remove()
+        
+        plt1.set(ylabel='')
+        plt2.set(ylabel='')
+        axes[0].set_title('L2 Distance', fontweight="bold", size=29)
+        axes[1].set_title('Squared Loss', fontweight="bold", size=29)
+        axes[0].set_xlabel('Training Iteration', fontweight="bold", size=29)
+        axes[1].set_xlabel('Training Iteration', fontweight="bold", size=29)
 
     elif setting_name == 'mnist':  
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
@@ -338,9 +403,6 @@ def plot(setting_name):
                 df0 = pd.concat([df0, df0_imit[dim]])
                 df1 = pd.concat([df1, df1_imit[dim]])
         
-        plt.figure() 
-        f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(20, 7.5))   
-        
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method",data=df0, ax=axes[0], palette=palette) 
         plt1.legend_.remove()
@@ -348,8 +410,8 @@ def plot(setting_name):
                  hue="method",data=df1, ax=axes[1], palette=palette)
         plt2.legend_.remove()
         
-        plt1.set(xlabel='Training Iteration')
-        plt2.set(xlabel='Training Iteration')
+        plt1.set(xlabel='')
+        plt2.set(xlabel='')
         axes[0].set_title('L2 Distance', fontweight="bold", size=29)
         axes[1].set_title('10-Class Classification Accuracy', fontweight="bold", size=29)
         axes[0].set_ylabel('')
@@ -406,9 +468,6 @@ def plot(setting_name):
 
                 df0 = pd.concat([df0, df0_imit[dim]])
                 df1 = pd.concat([df1, df1_imit[dim]])
-        
-        plt.figure() 
-        f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(20, 7.5))   
         
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method",data=df0, ax=axes[0], palette=palette)
@@ -529,11 +588,10 @@ def plot(setting_name):
         axes[1].set_ylabel('')
         axes[2].set_ylabel('')
 
-    plt.savefig(setting_name + '.pdf', dpi=300)
+    plt.savefig(setting_name + '-main.pdf', dpi=300)
     plt.show()
 
 def plot_supp(setting_name):
-    main_multi_settings = {'regression', 'class4', 'class10'}
     classification = {'class4', 'class10'}
     irl_settings = {'random', 'peak'}
 
@@ -553,16 +611,18 @@ def plot_supp(setting_name):
                 "Imitate CNN-12 ITAL":sns.xkcd_rgb["brick red"], \
                 'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-6 IMT': sns.xkcd_rgb['olive green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'],\
                 'Imitate CNN-12 IMT': sns.xkcd_rgb['mustard yellow'], \
-                "Imitate ITAL":sns.xkcd_rgb["burnt orange"], 'Imitate IMT': sns.xkcd_rgb['dark green']}
-
-    dash = {"Omniscient ITAL": '',"Imitate ITAL": (5, 5),"Batch":'', "SGD": '', \
-            'Omniscient IMT': '', 'Imitate IMT': (5, 5)}
+                "Imitate ITAL":sns.xkcd_rgb["burnt orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
+                'Imitate Dim-50 ITAL':sns.xkcd_rgb["brick red"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-45 ITAL':sns.xkcd_rgb["burnt orange"], \
+                'Imitate Dim-50 IMT': sns.xkcd_rgb['mustard yellow'], 'Imitate Dim-45 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['olive green']}
 
     display_methods = [ 'batch', 'sgd', 'IMT', 'cont_prag']
 
+    plt.figure()     
+    f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6)) 
+
     if setting_name in classification:
-        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
-        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('accuracies'+'_imit_'+setting_name))
+        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
+        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('losses'+'_imit_'+setting_name))
   
         df1 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1['method'] = 'Batch' 
@@ -572,52 +632,21 @@ def plot_supp(setting_name):
 
         for method in display_methods[2:]:
             df1_omni = results0_omni.loc[results0_omni['method'] == method]
-
             df1_imit = results0_imit.loc[results0_imit['method'] == method]
             
-
             if method == 'cont_prag':
                 method = 'ITAL'
             df1_omni['method'] = 'Omniscient ' + method
-            df2_omni['method'] = 'Omniscient ' + method
             df1_imit['method'] = 'Imitate ' + method
-            df2_imit['method'] = 'Imitate ' + method
-            if setting_name in classification:
-                df0_omni['method'] = 'Omniscient ' + method
-                df0_imit['method'] = 'Imitate ' + method
 
             df1 = pd.concat([df1, df1_omni])
-            df2 = pd.concat([df2, df2_omni])
-
             df1 = pd.concat([df1, df1_imit])
-            df2 = pd.concat([df2, df2_imit])
-
-            if setting_name in classification:
-                df0 = pd.concat([df0, df0_omni])
-                df0 = pd.concat([df0, df0_imit])
-
-
-        plt.figure() 
-        
-        f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(20, 10))   
+  
 
         plt1 = sns.lineplot(x="iteration", y="data",
-                 hue="method", data=df1, ax=axes[0], palette=palette)
-
-        if setting_name not in classification:
-            plt2 = sns.lineplot(x="iteration", y="data",
-                     hue="method", data=df2, ax=axes[1], palette=palette)
-        else:
-            plt2 = sns.lineplot(x="iteration", y="data",
-                     hue="method", data=df0, ax=axes[1], palette=palette)
+                 hue="method", data=df1, ax=axes, palette=palette)
       
-        
-        axes[1].set_title('Squared Loss')
-        if setting_name in classification:
-            if setting_name == 'class4':
-                axes[1].set_title('4-Class Classification Accuracy')
-            else:
-                axes[1].set_title('10-Class Classification Accuracy')
+        axes.set_title('Cross Entropy Loss', fontweight="bold", size=29)
         '''
         if setting_name in classification:
             plt0 = sns.lineplot(x="iteration", y="data",
@@ -631,15 +660,10 @@ def plot_supp(setting_name):
             axes[1].set_title('Cross Entropy Loss')
         '''
         plt1.legend_.remove()
-        plt2.legend_.remove()
         plt1.set(xlabel='Training Iteration', ylabel='')
-        plt2.set(xlabel='Training Iteration', ylabel='')
-        axes[0].set_title('L2 Distance')
 
     elif setting_name == 'mnist':  
-        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
-        results1_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
-        results2_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
+        results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
 
         imit_dim = ['30','24','20']
         imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
@@ -647,81 +671,42 @@ def plot_supp(setting_name):
         results1_imit = {}
         results2_imit = {}
         for dim in imit_dim:      
-            results0_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('dist'+'_imit' + dim + '_'+setting_name))
-            results1_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('accuracies'+'_imit' + dim + '_'+setting_name))
-            results2_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
+            results1_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
 
-        df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
-        df2 = results2_omni.loc[results2_omni['method'] == display_methods[0]]
-        
-        df0['method'] = 'Batch'
         df1['method'] = 'Batch'
-        df2['method'] = 'Batch'
         
-        sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
         sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
-        sgd2 = results2_omni.loc[results2_omni['method'] == display_methods[1]]
-
-        sgd0['method'] = 'SGD'
         sgd1['method'] = 'SGD'
-        sgd2['method'] = 'SGD'
         
-        df0 = pd.concat([df0, sgd0])
         df1 = pd.concat([df1, sgd1])
-        df2 = pd.concat([df2, sgd2])
 
         for method in display_methods[2:]:
-            df0_omni = results0_omni.loc[results0_omni['method'] == method]
             df1_omni = results1_omni.loc[results1_omni['method'] == method]
-            df2_omni = results2_omni.loc[results2_omni['method'] == method]
 
-            df0_imit = {dim : results0_imit[dim].loc[results0_imit[dim]['method'] == method] for dim in imit_dim}
             df1_imit = {dim : results1_imit[dim].loc[results1_imit[dim]['method'] == method] for dim in imit_dim}
-            df2_imit = {dim : results2_imit[dim].loc[results2_imit[dim]['method'] == method] for dim in imit_dim}
 
             if method == 'cont_prag':
                 method = 'ITAL'
 
-            df0_omni['method'] = 'Omniscient ' + method
             df1_omni['method'] = 'Omniscient ' + method
-            df2_omni['method'] = 'Omniscient ' + method
 
-            df0 = pd.concat([df0, df0_omni])
             df1 = pd.concat([df1, df1_omni])
-            df2 = pd.concat([df2, df2_omni])
             
             for dim in imit_dim:
-                df0_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
                 df1_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
-                df2_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
 
-                df0 = pd.concat([df0, df0_imit[dim]])
                 df1 = pd.concat([df1, df1_imit[dim]])
-                df2 = pd.concat([df2, df2_imit[dim]])
-        
-        plt.figure() 
-        f, axes = plt.subplots(1, 3, constrained_layout = True, figsize=(30, 10))   
         
         plt1 = sns.lineplot(x="iteration", y="data",
-                 hue="method",data=df0, ax=axes[0], palette=palette)
+                 hue="method",data=df1, ax=axes, palette=palette)
         plt1.legend_.remove()
-        plt2 = sns.lineplot(x="iteration", y="data",
-                 hue="method",data=df2, ax=axes[1], palette=palette)
-        plt2.legend_.remove()
-        plt3 = sns.lineplot(x="iteration", y="data",
-                 hue="method",data=df1, ax=axes[2], palette=palette)
-        
-        plt1.set(xlabel='Training Iteration')
-        plt2.set(xlabel='Training Iteration')
-        plt3.set(xlabel='Training Iteration')
-        axes[0].set_title('L2 Distance')
-        axes[2].set_title('10-Class Classification Accuracy')
-        axes[1].set_title('Cross Entropy Loss')
-        axes[0].set_ylabel('')
-        axes[1].set_ylabel('')
-        axes[2].set_ylabel('')
 
+        plt1.set(xlabel='Training Iteration')
+        axes.set_title('Cross Entropy Loss')
+        axes.set_ylabel('')
+
+    plt.savefig(setting_name + '-supp.pdf', dpi=300)
 
 def main():
     if len(sys.argv) != 3:
