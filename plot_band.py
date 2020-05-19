@@ -43,7 +43,7 @@ def get_path(data_cate, arguments, type_ = 'd'):
             title += 'gaussian'
     
     elif type_ == 'c':
-        lines = ['1', '7', '8', 'batch', 'sgd']
+        lines = ['1', '8', 'batch', 'sgd']
         
         mode_idx = int(arguments[3])
         modes = ['omni', 'surr', 'imit']
@@ -171,7 +171,7 @@ def collect_data(setting_name, random_seeds, arguments, type_):
 
 
 def plot(setting_name):
-    main_multi_settings = {'regression', 'class4', 'class10'}
+    main_multi_settings = {'equation', 'regression', 'class4', 'class10'}
     classification = {'class4', 'class10', 'mnist'}
     irl_settings = {'random', 'peak'}
 
@@ -560,45 +560,21 @@ def plot_supp(setting_name):
 
     display_methods = [ 'batch', 'sgd', 'IMT', 'cont_prag']
 
-    if setting_name in main_multi_settings:
-        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
-        results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
-
-        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('dist'+'_imit_'+setting_name))
-        results1_imit = pd.read_csv(imit_path + '%s.csv' % ('losses'+'_imit_'+setting_name))
-
+    if setting_name in classification:
+        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
+        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('accuracies'+'_imit_'+setting_name))
+  
         df1 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
-        df2 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
         df1['method'] = 'Batch' 
-        df2['method'] = 'Batch'
 
         sgd1 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
-        sgd2 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
         sgd1['method'] = 'SGD'
-        sgd2['method'] = 'SGD'
-
-        df1 = pd.concat([df1, sgd1])
-        df2 = pd.concat([df2, sgd2])
-
-        if setting_name in classification:
-            results2_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
-            results2_imit = pd.read_csv(imit_path + '%s.csv' % ('accuracies'+'_imit_'+setting_name))
-            df0 = results2_omni.loc[results2_omni['method'] == display_methods[0]]
-            df0['method'] = 'Batch'
-            sgd0 = results2_omni.loc[results2_omni['method'] == display_methods[1]]
-            sgd0['method'] = 'SGD'
-            df0 = pd.concat([df0, sgd0])
 
         for method in display_methods[2:]:
             df1_omni = results0_omni.loc[results0_omni['method'] == method]
-            df2_omni = results1_omni.loc[results1_omni['method'] == method]
 
             df1_imit = results0_imit.loc[results0_imit['method'] == method]
-            df2_imit = results1_imit.loc[results1_imit['method'] == method]
             
-            if setting_name in classification:
-                df0_omni = results2_omni.loc[results2_omni['method'] == method]
-                df0_imit = results2_imit.loc[results2_imit['method'] == method]
 
             if method == 'cont_prag':
                 method = 'ITAL'

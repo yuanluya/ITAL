@@ -219,7 +219,7 @@ def main():
     tx_tea = np.load("MNIST/mnist_test_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
     ty_tea = np.load("MNIST/mnist_test_labels_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
 
-    dd_ = 45
+    dd_ = 50
     if dd == 45:
         dx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
         dy_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
