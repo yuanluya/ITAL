@@ -182,17 +182,14 @@ def plot(setting_name):
     omni_path = directory + 'omni_' + directory
     imit_path = directory + 'imit_' + directory
 
-    palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["orange"], "Imitate Dim-24 ITAL":sns.xkcd_rgb["burnt orange"], \
-                "Imitate Dim-30 ITAL":sns.xkcd_rgb["brick red"], "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
-                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate Dim-20 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-24 IMT': sns.xkcd_rgb['dark green'],\
-                'Imitate Dim-30 IMT': sns.xkcd_rgb['mustard yellow'], \
-                "Imitate CNN-6 ITAL":sns.xkcd_rgb["orange"], "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], \
-                "Imitate CNN-12 ITAL":sns.xkcd_rgb["brick red"], \
-                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-6 IMT': sns.xkcd_rgb['olive green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'],\
-                'Imitate CNN-12 IMT': sns.xkcd_rgb['mustard yellow'], \
-                "Imitate ITAL":sns.xkcd_rgb["burnt orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
-                'Imitate Dim-50 ITAL':sns.xkcd_rgb["brick red"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-45 ITAL':sns.xkcd_rgb["burnt orange"], \
-                'Imitate Dim-50 IMT': sns.xkcd_rgb['mustard yellow'], 'Imitate Dim-45 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['olive green']}
+    palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate Dim-30 ITAL":sns.xkcd_rgb["orange"], \
+                "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
+                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate Dim-20 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-30 IMT': sns.xkcd_rgb['olive green'],\
+                "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate CNN-12 ITAL":sns.xkcd_rgb["orange"], \
+                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'], 'Imitate CNN-12 IMT': sns.xkcd_rgb['olive green'],\
+                "Imitate ITAL":sns.xkcd_rgb["orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
+                'Imitate Dim-50 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["burnt orange"], \
+                'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green']}
 
     dash = {"Omniscient ITAL": '',"Imitate ITAL": (5, 5),"Batch":'', "SGD": '', \
             'Omniscient IMT': '', 'Imitate IMT': (5, 5)}
@@ -290,7 +287,7 @@ def plot(setting_name):
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
 
-        imit_dim = ['50','45','40']
+        imit_dim = ['50','40']
         imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
         results0_imit = {}
         results1_imit = {}
@@ -355,7 +352,7 @@ def plot(setting_name):
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
 
-        imit_dim = ['30','24','20']
+        imit_dim = ['30','20']
         imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
         results0_imit = {}
         results1_imit = {}
@@ -421,7 +418,7 @@ def plot(setting_name):
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dists'+'_omni_'+setting_name))
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
 
-        imit_dim = ['6','9','12']
+        imit_dim = ['9','12']
         imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
         results0_imit = {}
         results1_imit = {}
@@ -561,17 +558,14 @@ def plot_supp(setting_name):
     omni_path = directory + 'omni_' + directory
     imit_path = directory + 'imit_' + directory
 
-    palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["orange"], "Imitate Dim-24 ITAL":sns.xkcd_rgb["burnt orange"], \
-                "Imitate Dim-30 ITAL":sns.xkcd_rgb["brick red"], "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
-                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate Dim-20 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-24 IMT': sns.xkcd_rgb['dark green'],\
-                'Imitate Dim-30 IMT': sns.xkcd_rgb['mustard yellow'], \
-                "Imitate CNN-6 ITAL":sns.xkcd_rgb["orange"], "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], \
-                "Imitate CNN-12 ITAL":sns.xkcd_rgb["brick red"], \
-                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-6 IMT': sns.xkcd_rgb['olive green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'],\
-                'Imitate CNN-12 IMT': sns.xkcd_rgb['mustard yellow'], \
-                "Imitate ITAL":sns.xkcd_rgb["burnt orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
-                'Imitate Dim-50 ITAL':sns.xkcd_rgb["brick red"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-45 ITAL':sns.xkcd_rgb["burnt orange"], \
-                'Imitate Dim-50 IMT': sns.xkcd_rgb['mustard yellow'], 'Imitate Dim-45 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['olive green']}
+    palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate Dim-30 ITAL":sns.xkcd_rgb["orange"], \
+                "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
+                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate Dim-20 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-30 IMT': sns.xkcd_rgb['olive green'],\
+                "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate CNN-12 ITAL":sns.xkcd_rgb["orange"], \
+                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'], 'Imitate CNN-12 IMT': sns.xkcd_rgb['olive green'],\
+                "Imitate ITAL":sns.xkcd_rgb["orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
+                'Imitate Dim-50 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["burnt orange"], \
+                'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green']}
 
     display_methods = [ 'batch', 'sgd', 'IMT', 'cont_prag']
 
@@ -623,7 +617,7 @@ def plot_supp(setting_name):
     elif setting_name == 'mnist':  
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
 
-        imit_dim = ['30','24','20']
+        imit_dim = ['30','20']
         imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
         results0_imit = {}
         results1_imit = {}
@@ -693,9 +687,9 @@ def main():
         elif setting_name == 'imit_class4':
             arguments = ['python3', 'main_multi.py', '50', '2', '0.01', '0.1', '200', '0.01', '0.1']
         elif setting_name == 'omni_regression':
-            arguments = ['python3', 'main_multi.py', '50', '0', '0.1', '0.3', '300', '0.001', '0.05', 'regression']
+            arguments = ['python3', 'main_multi.py', '100', '0', '0.1', '0.3', '300', '0.001', '0.05', 'regression']
         elif setting_name == 'imit_regression':
-            arguments = ['python3', 'main_multi.py', '50', '2', '0.1', '0.3', '200', '0', '0.05', 'regression']
+            arguments = ['python3', 'main_multi.py', '100', '2', '0.1', '0.3', '200', '0', '0.05', 'regression']
         elif setting_name == 'omni_mnist':
             arguments = ['python3', 'main_multi.py', '24', '0', '0.01', '0.1', '200', '0', '0.05',]
         elif setting_name == 'imit_mnist':

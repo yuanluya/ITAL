@@ -167,7 +167,7 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-    beta = 20000
+    beta = -30001
     K = 1
     np.random.seed(int(sys.argv[8]))
 
@@ -202,9 +202,9 @@ def main():
     title += sys.argv[8]
 
     dps = 3 * dd if task == 'classification' else 6 * dd
-    num_particles = 3
-    train_iter_simple = 500
-    train_iter_smart = 500
+    num_particles = 1
+    train_iter_simple = 2000
+    train_iter_smart = 2000
     reg_coef = 0
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
@@ -212,7 +212,7 @@ def main():
     gt_w = None if dd != 24 else np.load("MNIST/mnist_tf_gt_weights.npy")
     tx = None if dd != 24 else np.load("MNIST/mnist_test_features.npy")
     ty = None if dd != 24 else np.load("MNIST/mnist_test_labels.npy")
-    dim_tea = 24
+    dim_tea = 20
     dx_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
     dy_tea = np.load("MNIST/mnist_train_labels_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
     gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
