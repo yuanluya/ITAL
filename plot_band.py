@@ -17,46 +17,8 @@ def get_path(data_cate, arguments, type_ = 'd'):
     
     if type_ != 'irl':
         lines = ['1', '8', 'batch', 'sgd']
-        '''
-        mode_idx = int(arguments[3])
-        modes = ['omni', 'surr', 'imit']
-        mode = modes[mode_idx]
-        title += mode
-        title += '_'
-        task = 'classification' if 'regression' not in  arguments else 'regression'
-        title += task
-        title += '_'
-
-        dd = int(arguments[2])
-        num_classes = 10 if dd == 24 or dd == 30 else 4
-        if task == 'regression':
-            num_classes = 1
-        title += 'num_classes'
-        title += '_'
-        title += str(num_classes)
-        title += '_'
-        if dd == 45:
-            title += 'equation'
-        elif dd == 24:
-            title += 'mnist'
-        else:
-            title += 'gaussian'
-        '''
     else:
-        lines = ['batch', 'sgd', '4', '5']
-
-        title = '_'
-        mode_idx = int(arguments[2])
-        modes = ['omni',  'imit']
-        mode = modes[mode_idx]
-        title += mode
-        title += '_'
-        
-        title += arguments[4]
-        title += '_'
-        title += 'beta'
-        title += '_'
-        title += arguments[9]
+        lines = ['0', '1', '2', '3']
         
     for l in lines:
             '''
@@ -77,6 +39,9 @@ def get_path(data_cate, arguments, type_ = 'd'):
 def save_csv(data_cate, setting_name, mode, random_seeds, arguments, type_ = 'd'):
     methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', \
                     '7': 'cont_sgd', '8': 'ITAL', '6': 'Expert', 'batch': 'Batch', 'sgd': 'SGD'} 
+    if type_ == 'irl':
+        methods_code = {'0': 'IMT', '1': 'ITAL', '2': 'Batch', '3': 'SGD'} 
+    
     titles, methods = get_path(data_cate, arguments, type_)
     data = []
     method = []
@@ -135,16 +100,17 @@ def collect_data(setting_name, mode, random_seeds, arguments, type_):
         save_csv('losses', setting_name, mode, random_seeds, arguments, type_)
         save_csv('accuracies', setting_name, mode, random_seeds, arguments, type_)
     else:
-        save_csv('dists', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('dist_', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('distsq', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('ar', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('action_dist', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('reward_dist', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('q_dist', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('rewards', setting_name, mode, random_seeds, arguments, type_)
     print('collected data\n')
 
 
 def plot(setting_name):
     main_multi_settings = {'regression_coop', 'regression_adv', 'class10_coop', 'class10_adv'}
     classification = {'class10_coop', 'class10_adv', 'mnist'}
+    irl_settings = {'irlH_coop', 'irlH_adv', 'irlE_coop', 'irlE_adv'}
 
     paper_rc = {'lines.linewidth': 2.5}
     sns.set(style="darkgrid")
@@ -182,13 +148,9 @@ def plot(setting_name):
 
         df1 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df2 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
-        df1['method'] = 'Batch' 
-        df2['method'] = 'Batch'
 
         sgd1 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
         sgd2 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
-        sgd1['method'] = 'SGD'
-        sgd2['method'] = 'SGD'
 
         df1 = pd.concat([df1, sgd1])
         df2 = pd.concat([df2, sgd2])
@@ -197,9 +159,8 @@ def plot(setting_name):
             results2_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
             results2_imit = pd.read_csv(imit_path + '%s.csv' % ('accuracies'+'_imit_'+setting_name))
             df0 = results2_omni.loc[results2_omni['method'] == display_methods[0]]
-            df0['method'] = 'Batch'
+
             sgd0 = results2_omni.loc[results2_omni['method'] == display_methods[1]]
-            sgd0['method'] = 'SGD'
             df0 = pd.concat([df0, sgd0])
 
         for method in display_methods[2:]:
@@ -213,8 +174,6 @@ def plot(setting_name):
                 df0_omni = results2_omni.loc[results2_omni['method'] == method]
                 df0_imit = results2_imit.loc[results2_imit['method'] == method]
 
-            if method == 'cont_prag':
-                method = 'ITAL'
             df1_omni['method'] = 'Omniscient ' + method
             df2_omni['method'] = 'Omniscient ' + method
             df1_imit['method'] = 'Imitate ' + method
@@ -357,9 +316,6 @@ def plot(setting_name):
             df0_imit = {dim : results0_imit[dim].loc[results0_imit[dim]['method'] == method] for dim in imit_dim}
             df1_imit = {dim : results1_imit[dim].loc[results1_imit[dim]['method'] == method] for dim in imit_dim}
 
-            if method == 'cont_prag':
-                method = 'ITAL'
-
             df0_omni['method'] = 'Omniscient ' + method
             df1_omni['method'] = 'Omniscient ' + method
 
@@ -402,16 +358,10 @@ def plot(setting_name):
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
-        
-        df0['method'] = 'Batch'
-        df1['method'] = 'Batch'
-        
+  
         sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
         sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
-
-        sgd0['method'] = 'SGD'
-        sgd1['method'] = 'SGD'
-        
+    
         df0 = pd.concat([df0, sgd0])
         df1 = pd.concat([df1, sgd1])
 
@@ -448,29 +398,19 @@ def plot(setting_name):
         axes[0].set_ylabel('')
         axes[1].set_ylabel('')
 
-    elif setting_name == 'irlH': #to be modified to add more settings 
-        omni_path = directory + 'omni_' + directory
-        display_methods = [ 'batch', 'sgd', 'IMT', 'cont_prag']
+    elif setting_name in irl_settings: #to be modified to add more settings 
 
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('reward_dist'+'_omni_'+setting_name))
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('action_dist'+'_omni_'+setting_name))
 
-        imit_path = directory + 'imit_' + directory
-    
         results0_imit = pd.read_csv(imit_path + '%s.csv' % ('reward_dist'+'_imit_'+setting_name))
         results1_imit = pd.read_csv(imit_path + '%s.csv' % ('action_dist'+'_imit_'+setting_name))
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
-        
-        df0['method'] = 'Batch'
-        df1['method'] = 'Batch'
 
         sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
         sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
-       
-        sgd0['method'] = 'SGD'
-        sgd1['method'] = 'SGD'
 
         df0 = pd.concat([df0, sgd0])
         df1 = pd.concat([df1, sgd1])
@@ -481,9 +421,6 @@ def plot(setting_name):
 
             df0_imit = results0_imit.loc[results0_imit['method'] == method]
             df1_imit = results1_imit.loc[results1_imit['method'] == method]
-
-            if method == 'cont_prag':
-                method = 'ITAL'
 
             df0_omni['method'] = 'Omniscient ' + method
             df1_omni['method'] = 'Omniscient ' + method
@@ -517,7 +454,7 @@ def plot(setting_name):
 
 def plot_supp(setting_name):
     classification = {'class10_coop', 'class10_adv'}
-    irl_settings = {'random', 'peak'}
+    irl_settings = {'irlH_coop', 'irlH_adv', 'irlE_coop', 'irlE_adv'}
 
     paper_rc = {'lines.linewidth': 2.5}
     sns.set(style="darkgrid")
@@ -654,8 +591,8 @@ def remove_npy(dir):
 def CollectDataAndPlot(setting_name):
     type_ = 'irl'
     random_seeds = [j for j in range(1)]
-    irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10', 'omni_peak_8', 'omni_random_8'}
-    
+    irl_settings = {'irlH_coop', 'irlH_adv', 'irlE_coop', 'irlE_adv'}
+
     if setting_name not in irl_settings:
         type_ = 'c'  
     if setting_name == 'regression_coop' or setting_name == 'regression_adv':
@@ -707,6 +644,14 @@ def CollectDataAndPlot(setting_name):
         collect_data(setting_name, 'imit12', random_seeds, arguments, type_)
         remove_npy(setting_name)
 
+    elif setting_name in irl_settings:
+        arguments = ['python3', 'main_irl.py', setting_name, 'omni']
+        collect_data(setting_name, 'omni', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_irl.py', setting_name, 'imit']
+        collect_data(setting_name, 'imit', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+
     else:
         print('Invalid setting')
         return
@@ -755,16 +700,10 @@ def main():
             arguments = ['python3', 'main_multi.py', '24', '2', '0.02', '0.1', '1000', '0', '0.05']
         elif setting_name == 'imit_peak_8':
             arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
-        elif setting_name == 'imit_peak_10':
-            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
         elif setting_name == 'imit_random_8':
             arguments = ['python3', 'main_irl.py', '1', 'H', '8', '0.005', '0.3', '200', '5', '220']
-        elif setting_name == 'imit_random_10':            
-            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']
         elif setting_name == 'omni_peak_8':                         
-            arguments = ['python3', 'main_irl.py', '0', 'E', '8', '0', '0.3', '300', '1', '200']
-        elif setting_name == 'imit_random_10':
-            arguments = ['python3', 'main_irl.py', '1', 'E', '8', '0', '0.2', '70', '1', '200']            
+            arguments = ['python3', 'main_irl.py', '0', 'E', '8', '0', '0.3', '300', '1', '200']          
         elif setting_name == 'omni_random_8':
             arguments = ['python3', 'main_irl.py', '0', 'H', '8', '0', '0.3', '200', '5', '220']
         else:

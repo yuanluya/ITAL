@@ -3,7 +3,6 @@ beta = 5000
 K = 1
 multi_thread = True
 dd = 45
-dd_ = -1
 num_classes = 1
 dps = 6 * dd
 reg_coef = 0
