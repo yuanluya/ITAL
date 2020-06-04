@@ -208,7 +208,9 @@ def main():
     train_iter_smart = 50
     reg_coef = 0
     '''
-    np.random.seed(int(sys.argv[4]))
+    directory = sys.argv[1]
+    random_seed = sys.argv[4]
+    np.random.seed(int(random_seed))
     dd_ = int(sys.argv[3])
     dd = config.dd
     multi_thread = config.multi_thread
@@ -222,14 +224,32 @@ def main():
     gt_w = None if dd != 24 else np.load("MNIST/mnist_tf_gt_weights.npy")
     tx = None if dd != 24 else np.load("MNIST/mnist_test_features.npy")
     ty = None if dd != 24 else np.load("MNIST/mnist_test_labels.npy")
-    dim_tea = 20
-    dx_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
-    dy_tea = np.load("MNIST/mnist_train_labels_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
-    gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
-    tx_tea = np.load("MNIST/mnist_test_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
-    ty_tea = np.load("MNIST/mnist_test_labels_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
+ 
+    dx_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dd_) if dd == 24 and  'imit' in mode else None
+    dy_tea = np.load("MNIST/mnist_train_labels_tea_%d.npy" % dd_) if dd == 24 and 'imit' in mode else None
+    gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea_%d.npy" % dd_) if dd == 24 and 'imit' in mode else None
+    tx_tea = np.load("MNIST/mnist_test_features_tea_%d.npy" % dd_) if dd == 24 and 'imit' in mode else None
+    ty_tea = np.load("MNIST/mnist_test_labels_tea_%d.npy" % dd_) if dd == 24 and  'imit' in mode else None
 
-    #dd_ = int(sys.argv[8])
+    if (dd == 32):
+        dx = np.load("CIFAR/cifar_train_features6.npy")
+        dy = np.load("CIFAR/cifar_train_labels6.npy")
+        gt_w = np.load("CIFAR/cifar_tf_gt_weights6.npy")
+        tx = np.load("CIFAR/cifar_test_features6.npy")
+        ty = np.load("CIFAR/cifar_test_labels6.npy")
+
+        if 'imit' in mode:
+            dx_tea = np.load("CIFAR/cifar_train_features%d.npy" % dd_) 
+            dy_tea = np.load("CIFAR/cifar_train_labels%d.npy" % dd_)  
+            gt_w_tea = np.load("CIFAR/cifar_tf_gt_weights%d.npy" % dd_)  
+            tx_tea = np.load("CIFAR/cifar_test_features%d.npy" % dd_)  
+            ty_tea = np.load("CIFAR/cifar_test_labels%d.npy" % dd_)  
+        else:
+            dx_tea = None
+            dy_tea = None
+            gt_w_tea = None
+            tx_tea = None
+            ty_tea = None
 
     if (dd == 45):
         dx = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd))[:50000]
@@ -237,7 +257,7 @@ def main():
         gt_w = (np.load("Equation_data/equation_gt_weights_cnn_3var_%d_6layers.npy" % dd))
         tx = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd))[50000:100000]
         ty = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd))[50000:100000].reshape((50000, 1))
-        if mode == 'omni' or mode == 'surr':
+        if 'imit' not in mode:
             dx_tea = None
             dy_tea = None
             gt_w_tea = None
@@ -271,7 +291,22 @@ def main():
 
         return_dict = manager.dict()
         jobs = []
-        
+        '''
+        p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, None, None, return_dict))
+        jobs.append(p)
+        p.start()
+
+        # eliminates = return_dict[None][-1]
+        ratio = 0.85#np.mean(eliminates) / num_particles
+
+        random_probabilities = [ratio, 1, 0]
+
+        for rp in random_probabilities:
+            time.sleep(0.5)
+            p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, rp, rp, return_dict))
+            jobs.append(p)
+            p.start()
+        '''
         p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, 1, 1, return_dict))
         jobs.append(p)
         p.start()
@@ -281,21 +316,27 @@ def main():
         jobs.append(p)
         p.start()
 
+        '''
+        p = Process(target = learn_thread, args = (teacher, config_LS, 'sgd_%s_cont' % mode, init_ws, train_iter_smart,
+                                                   None, 'sgd_%s_cont' % mode, return_dict))
+        jobs.append(p)
+        p.start()
+        '''
         for j in jobs:
             print("joining", j)
             j.join()
 
         dists1, dists1_, accuracies1, losses1, _ = return_dict[1]
-        np.save(sys.argv[1] + '/dist1_' + sys.argv[4] + '.npy', np.array(dists1))
-        np.save(sys.argv[1]+ '/dist1__' + sys.argv[4] + '.npy', np.array(dists1_))
-        np.save(sys.argv[1]+ '/accuracies1_' + sys.argv[4] + '.npy', np.array(accuracies1))
-        np.save(sys.argv[1]+ '/losses1_' + sys.argv[4] + '.npy', np.array(losses1))
+        np.save(directory + '/dist1_' + random_seed + '.npy', np.array(dists1))
+        np.save(directory + '/dist1__' + random_seed + '.npy', np.array(dists1_))
+        np.save(directory+ '/accuracies1_' + random_seed + '.npy', np.array(accuracies1))
+        np.save(directory + '/losses1_' + random_seed + '.npy', np.array(losses1))
         
         dists8, dists8_, accuracies8, losses8, _ = return_dict['%s_cont' % mode]
-        np.save(sys.argv[1]+ '/dist8_' + sys.argv[4] + '.npy', np.array(dists8))
-        np.save(sys.argv[1]+ '/dist8__' + sys.argv[4] + '.npy', np.array(dists8_))
-        np.save(sys.argv[1]+ '/accuracies8_' + sys.argv[4] + '.npy', np.array(accuracies8))
-        np.save(sys.argv[1]+ '/losses8_' + sys.argv[4] + '.npy', np.array(losses8))
+        np.save(directory + '/dist8_' + random_seed + '.npy', np.array(dists8))
+        np.save(directory + '/dist8__' + random_seed + '.npy', np.array(dists8_))
+        np.save(directory + '/accuracies8_' + random_seed + '.npy', np.array(accuracies8))
+        np.save(directory + '/losses8_' + random_seed + '.npy', np.array(losses8))
         
 
     
@@ -310,15 +351,15 @@ def main():
     if multi_thread:
         dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
         dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
-        np.save(sys.argv[1]+ '/distbatch_' + sys.argv[4] + '.npy', np.array(dists_neg1_batch))
-        np.save(sys.argv[1]+ '/distbatch__' + sys.argv[4] + '.npy', np.array(dists_neg1_batch_))
-        np.save(sys.argv[1]+ '/accuraciesbatch_' + sys.argv[4] + '.npy', np.array(accuracies_neg1_batch))
-        np.save(sys.argv[1]+ '/lossesbatch_' + sys.argv[4] + '.npy', np.array(losses_neg1_batch))
+        np.save(directory + '/distbatch_' + random_seed + '.npy', np.array(dists_neg1_batch))
+        np.save(directory + '/distbatch__' + random_seed + '.npy', np.array(dists_neg1_batch_))
+        np.save(directory + '/accuraciesbatch_' + random_seed + '.npy', np.array(accuracies_neg1_batch))
+        np.save(directory + '/lossesbatch_' + random_seed + '.npy', np.array(losses_neg1_batch))
 
-        np.save(sys.argv[1]+ '/distsgd_' + sys.argv[4] + '.npy', np.array(dists_neg1_sgd))
-        np.save(sys.argv[1]+ '/distsgd__' + sys.argv[4] + '.npy', np.array(dists_neg1_sgd_))
-        np.save(sys.argv[1]+ '/accuraciessgd_' + sys.argv[4] + '.npy', np.array(accuracies_neg1_sgd))
-        np.save(sys.argv[1]+ '/lossessgd_' + sys.argv[4] + '.npy', np.array(losses_neg1_sgd))
+        np.save(directory + '/distsgd_' + random_seed + '.npy', np.array(dists_neg1_sgd))
+        np.save(directory + '/distsgd__' + random_seed + '.npy', np.array(dists_neg1_sgd_))
+        np.save(directory + '/accuraciessgd_' + random_seed + '.npy', np.array(accuracies_neg1_sgd))
+        np.save(directory + '/lossessgd_' + random_seed + '.npy', np.array(losses_neg1_sgd))
     else:
         learnerM = LearnerSM(sess, config_LS)
 

@@ -388,18 +388,17 @@ def plot(setting_name):
         axes[1].set_ylabel('')
 
 
-    elif setting_name == 'cifar': #to be modified to add more settings 
+    elif setting_name == 'cifar_coop' or setting_name == 'cifar_adv': #to be modified to add more settings 
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dists'+'_omni_'+setting_name))
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
 
         imit_dim = ['9','12']
-        imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
         results0_imit = {}
         results1_imit = {}
         results2_imit = {}
         for dim in imit_dim:      
-            results0_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('dists'+'_imit' + dim + '_'+setting_name))
-            results1_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('accuracies'+'_imit' + dim + '_'+setting_name))
+            results0_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('dists'+'_imit' + dim + '_'+setting_name))
+            results1_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('accuracies'+'_imit' + dim + '_'+setting_name))
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
@@ -422,9 +421,6 @@ def plot(setting_name):
 
             df0_imit = {dim : results0_imit[dim].loc[results0_imit[dim]['method'] == method] for dim in imit_dim}
             df1_imit = {dim : results1_imit[dim].loc[results1_imit[dim]['method'] == method] for dim in imit_dim}
-
-            if method == 'cont_prag':
-                method = 'ITAL'
 
             df0_omni['method'] = 'Omniscient ' + method
             df1_omni['method'] = 'Omniscient ' + method
@@ -553,17 +549,13 @@ def plot_supp(setting_name):
         results0_imit = pd.read_csv(imit_path + '%s.csv' % ('losses'+'_imit_'+setting_name))
   
         df1 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
-        df1['method'] = 'Batch' 
 
         sgd1 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
-        sgd1['method'] = 'SGD'
 
         for method in display_methods[2:]:
             df1_omni = results0_omni.loc[results0_omni['method'] == method]
             df1_imit = results0_imit.loc[results0_imit['method'] == method]
             
-            if method == 'cont_prag':
-                method = 'ITAL'
             df1_omni['method'] = 'Omniscient ' + method
             df1_imit['method'] = 'Imitate ' + method
 
@@ -575,18 +567,7 @@ def plot_supp(setting_name):
                  hue="method", data=df1, ax=axes, palette=palette)
       
         axes.set_title('Cross Entropy Loss', fontweight="bold", size=29)
-        '''
-        if setting_name in classification:
-            plt0 = sns.lineplot(x="iteration", y="data",
-                 hue="method", style = 'method',data=df0, ax=axes[2], palette=palette, dashes = dash)
-            plt0.set(xlabel='training iteration', ylabel='')
-            if setting_name == 'class4':
-                axes[2].set_title('4-Class Classification Accuracy')
-            else:
-                axes[2].set_title('10-Class Classification Accuracy')
-            plt2.legend_.remove()
-            axes[1].set_title('Cross Entropy Loss')
-        '''
+
         plt1.legend_.remove()
         plt1.set(xlabel='Training Iteration', ylabel='')
 
@@ -601,10 +582,8 @@ def plot_supp(setting_name):
             results1_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
 
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
-        df1['method'] = 'Batch'
         
         sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
-        sgd1['method'] = 'SGD'
         
         df1 = pd.concat([df1, sgd1])
 
@@ -613,11 +592,43 @@ def plot_supp(setting_name):
 
             df1_imit = {dim : results1_imit[dim].loc[results1_imit[dim]['method'] == method] for dim in imit_dim}
 
-            if method == 'cont_prag':
-                method = 'ITAL'
+            df1_omni['method'] = 'Omniscient ' + method
+            df1 = pd.concat([df1, df1_omni])
+            
+            for dim in imit_dim:
+                df1_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
+
+                df1 = pd.concat([df1, df1_imit[dim]])
+        
+        plt1 = sns.lineplot(x="iteration", y="data",
+                 hue="method",data=df1, ax=axes, palette=palette)
+        plt1.legend_.remove()
+
+        plt1.set(xlabel='Training Iteration')
+        axes.set_title('Cross Entropy Loss')
+        axes.set_ylabel('')
+
+    elif setting_name == 'cifar_coop' or setting_name == 'cifar_adv':
+        results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
+
+        imit_dim = ['9', '12']
+        results0_imit = {}
+        results1_imit = {}
+        results2_imit = {}
+        for dim in imit_dim:      
+            results1_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
+
+        df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
+        
+        sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]     
+        df1 = pd.concat([df1, sgd1])
+
+        for method in display_methods[2:]:
+            df1_omni = results1_omni.loc[results1_omni['method'] == method]
+
+            df1_imit = {dim : results1_imit[dim].loc[results1_imit[dim]['method'] == method] for dim in imit_dim}
 
             df1_omni['method'] = 'Omniscient ' + method
-
             df1 = pd.concat([df1, df1_omni])
             
             for dim in imit_dim:
@@ -685,6 +696,17 @@ def CollectDataAndPlot(setting_name):
         collect_data(setting_name, 'imit', random_seeds, arguments, type_)
         remove_npy(setting_name)
     
+    elif setting_name == 'cifar_coop' or setting_name == 'cifar_adv':
+        arguments = ['python3', 'main_multi.py', setting_name, 'omni', '-1']
+        collect_data(setting_name, 'omni', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_multi.py', setting_name, 'imit', '9']
+        collect_data(setting_name, 'imit9', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_multi.py', setting_name, 'imit', '12']
+        collect_data(setting_name, 'imit12', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+
     else:
         print('Invalid setting')
         return
