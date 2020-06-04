@@ -229,7 +229,7 @@ class Map:
             reward = 0
             while not death:
                 if greedy:
-                    aidx = np.argmin(action_prob[s])
+                    aidx = np.argmax(action_prob[s])
                 else:
                     aidx = np.random.choice(len(self.actions_), p = action_prob[s])
                 sidx = np.random.choice(self.num_states_ + 1, p = list(self.transition_map_[aidx, s, :]) + [self.death_prob_])

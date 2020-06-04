@@ -225,9 +225,14 @@ class LearnerSM:
                 self.current_mean_ -= self.config_.lr * current_w_losses_gradient[data_idx: data_idx + 1, ...]
                 current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
                 exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
+                # if np.argmin(exp_cache) != data_idx:
+                #     print(np.argmin(exp_cache), data_idx, self.config_.beta)
                 lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
                 self.current_mean_ += self.config_.lr * lle_gradient
                 current_w_losses_gradient, _, _ = self.get_grads(data_pool, data_y)
+                # if step % 500 == 0:
+                #     print(exp_cache / np.sum(exp_cache))
+                #     pdb.set_trace()
             # while True:
             #     loss, gradient_tf = self.sess_.run([self.loss_, self.gradient_w_],
             #                                         {self.X_: data_pool[data_idx: data_idx + 1, ...],
@@ -239,6 +244,9 @@ class LearnerSM:
             #         break
             #     else:
             #         total_lle = current_lle
+        # if (step + 1) % 500 == 0:#np.max(exp_cache / np.sum(exp_cache)) < 0.8:
+        # self.config_.beta *= (2 - np.power(1 + 3e-6, i))
+        self.config_.beta *= np.power(1 - 3e-6, step)
         return self.current_mean_, -1, -1
 
     def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss, step, gt_w):

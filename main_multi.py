@@ -9,13 +9,14 @@ import matplotlib.pyplot as plt
 import sys
 import time
 from tqdm import tqdm
+import importlib
+config = importlib.import_module(".config", sys.argv[1])
 
 from learner import Learner
 from learnerM import LearnerSM
 from teacherM import TeacherM
 
 import pdb
-
 
 def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     sess.run(init)
@@ -166,10 +167,10 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-
-    beta = -30001
+    '''
+    beta = -5000
     K = 1
-    np.random.seed(int(sys.argv[8]))
+    np.random.seed(int(sys.argv[2]))
 
     multi_thread = True
 
@@ -199,13 +200,22 @@ def main():
     else:
         title += 'gaussian'
     title += '_'
-    title += sys.argv[8]
+    title += sys.argv[9]
 
     dps = 3 * dd if task == 'classification' else 6 * dd
     num_particles = 1
-    train_iter_simple = 2000
-    train_iter_smart = 2000
+    train_iter_simple = 50
+    train_iter_smart = 50
     reg_coef = 0
+    '''
+    np.random.seed(int(sys.argv[4]))
+    dd_ = int(sys.argv[3])
+    dd = config.dd
+    multi_thread = config.multi_thread
+    mode = sys.argv[2]
+
+    train_iter_simple = config.train_iter_simple
+    train_iter_smart = config.train_iter_smart
 
     dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
     dy = None if dd != 24 else np.load("MNIST/mnist_train_labels.npy")
@@ -219,24 +229,38 @@ def main():
     tx_tea = np.load("MNIST/mnist_test_features_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
     ty_tea = np.load("MNIST/mnist_test_labels_tea_%d.npy" % dim_tea) if dd == 24 and mode == 'imit' else None
 
-    dd_ = 50
-    if dd == 45:
-        dx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
-        dy_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
-        gt_w_tea = (np.load("Equation_data/equation_gt_weights_cnn_3var_%d_6layers.npy" % dd_))
-        tx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
-        ty_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
+    #dd_ = int(sys.argv[8])
 
-    config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
-                      'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
-                      'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w, 'beta': beta,
+    if (dd == 45):
+        dx = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd))[:50000]
+        dy = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd))[:50000].reshape((50000, 1))
+        gt_w = (np.load("Equation_data/equation_gt_weights_cnn_3var_%d_6layers.npy" % dd))
+        tx = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd))[50000:100000]
+        ty = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd))[50000:100000].reshape((50000, 1))
+        if mode == 'omni' or mode == 'surr':
+            dx_tea = None
+            dy_tea = None
+            gt_w_tea = None
+            tx_tea = None
+            ty_tea = None
+        else:
+            print("load equation %d", dd_)
+            dx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
+            dy_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
+            gt_w_tea = (np.load("Equation_data/equation_gt_weights_cnn_3var_%d_6layers.npy" % dd_))
+            tx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[50000:100000]
+            ty_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[50000:100000].reshape((50000, 1))
+
+    config_T = edict({'data_pool_size_class': config.dps, 'data_dim': config.dd,'lr': config.lr, 'sample_size': 20,
+                      'transform': mode == 'imit', 'num_classes': config.num_classes, 'task': config.task,
+                      'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w, 'beta': config.beta,
                       'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
-    config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task,
-                       'num_classes': num_classes, 'noise_scale_min': float(sys.argv[3]), 'noise_scale_max': float(sys.argv[4]), 'beta': beta, 'cont_K': K,
-                       'noise_scale_decay': float(sys.argv[5]), 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
+    config_LS = edict({'particle_num': config.num_particles, 'data_dim': config.dd, 'reg_coef': config.reg_coef, 'lr': config.lr, 'task': config.task,
+                       'num_classes': config.num_classes, 'noise_scale_min': config.noise_scale_min[mode], 'noise_scale_max': config.noise_scale_max[mode], 'beta': config.beta, 'cont_K': config.K,
+                       'noise_scale_decay': config.noise_scale_decay[mode], 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
     print(config_LS, config_T)
-    config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
-    init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, dd]),
+    config_L =  edict({'data_dim': config.dd, 'reg_coef': config.reg_coef, 'lr': config.lr, 'loss_type': 0, 'num_classes': config.num_classes, 'task': config.task})
+    init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, config.dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
     init_w = np.mean(init_ws, 0)
 
@@ -262,16 +286,16 @@ def main():
             j.join()
 
         dists1, dists1_, accuracies1, losses1, _ = return_dict[1]
-        np.save('dist1_' + title + '.npy', np.array(dists1))
-        np.save('dist1__' + title + '.npy', np.array(dists1_))
-        np.save('accuracies1_' + title + '.npy', np.array(accuracies1))
-        np.save('losses1_' + title + '.npy', np.array(losses1))
+        np.save(sys.argv[1] + '/dist1_' + sys.argv[4] + '.npy', np.array(dists1))
+        np.save(sys.argv[1]+ '/dist1__' + sys.argv[4] + '.npy', np.array(dists1_))
+        np.save(sys.argv[1]+ '/accuracies1_' + sys.argv[4] + '.npy', np.array(accuracies1))
+        np.save(sys.argv[1]+ '/losses1_' + sys.argv[4] + '.npy', np.array(losses1))
         
         dists8, dists8_, accuracies8, losses8, _ = return_dict['%s_cont' % mode]
-        np.save('dist8_' + title + '.npy', np.array(dists8))
-        np.save('dist8__' + title + '.npy', np.array(dists8_))
-        np.save('accuracies8_' + title + '.npy', np.array(accuracies8))
-        np.save('losses8_' + title + '.npy', np.array(losses8))
+        np.save(sys.argv[1]+ '/dist8_' + sys.argv[4] + '.npy', np.array(dists8))
+        np.save(sys.argv[1]+ '/dist8__' + sys.argv[4] + '.npy', np.array(dists8_))
+        np.save(sys.argv[1]+ '/accuracies8_' + sys.argv[4] + '.npy', np.array(accuracies8))
+        np.save(sys.argv[1]+ '/losses8_' + sys.argv[4] + '.npy', np.array(losses8))
         
 
     
@@ -286,15 +310,15 @@ def main():
     if multi_thread:
         dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
         dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
-        np.save('distbatch_' + title + '.npy', np.array(dists_neg1_batch))
-        np.save('distbatch__' + title + '.npy', np.array(dists_neg1_batch_))
-        np.save('accuraciesbatch_' + title + '.npy', np.array(accuracies_neg1_batch))
-        np.save('lossesbatch_' + title + '.npy', np.array(losses_neg1_batch))
+        np.save(sys.argv[1]+ '/distbatch_' + sys.argv[4] + '.npy', np.array(dists_neg1_batch))
+        np.save(sys.argv[1]+ '/distbatch__' + sys.argv[4] + '.npy', np.array(dists_neg1_batch_))
+        np.save(sys.argv[1]+ '/accuraciesbatch_' + sys.argv[4] + '.npy', np.array(accuracies_neg1_batch))
+        np.save(sys.argv[1]+ '/lossesbatch_' + sys.argv[4] + '.npy', np.array(losses_neg1_batch))
 
-        np.save('distsgd_' + title + '.npy', np.array(dists_neg1_sgd))
-        np.save('distsgd__' + title + '.npy', np.array(dists_neg1_sgd_))
-        np.save('accuraciessgd_' + title + '.npy', np.array(accuracies_neg1_sgd))
-        np.save('lossessgd_' + title + '.npy', np.array(losses_neg1_sgd))
+        np.save(sys.argv[1]+ '/distsgd_' + sys.argv[4] + '.npy', np.array(dists_neg1_sgd))
+        np.save(sys.argv[1]+ '/distsgd__' + sys.argv[4] + '.npy', np.array(dists_neg1_sgd_))
+        np.save(sys.argv[1]+ '/accuraciessgd_' + sys.argv[4] + '.npy', np.array(accuracies_neg1_sgd))
+        np.save(sys.argv[1]+ '/lossessgd_' + sys.argv[4] + '.npy', np.array(losses_neg1_sgd))
     else:
         learnerM = LearnerSM(sess, config_LS)
 

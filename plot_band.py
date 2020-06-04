@@ -7,44 +7,17 @@ import subprocess
 from easydict import EasyDict as edict
 import multiprocessing
 import time
+import glob, os
 
 def get_path(data_cate, arguments, type_ = 'd'):
     #add dist or dist_ or ... as argyment
     #note data_cate in different main functions are different
     titles = []
     methods = edict()
-    title = '_'
     
-    if type_ == 'd':
-        lines = ['0', '1', '2', '3', '4', '5', '6', 'batch', 'sgd']
-        
-        mode_idx = int(arguments[3])
-        modes = ['omni', 'surr', 'imit']
-        mode = modes[mode_idx]
-        title += mode
-        title += '_'
-        task = 'classification' if 'regression' not in  arguments else 'regression'
-        title += task
-        title += '_'
-
-        dd = int(arguments[2])
-        num_classes = 10 if dd == 24 or dd == 30 else 4
-        if task == 'regression':
-            num_classes = 1
-        title += 'num_classes'
-        title += '_'
-        title += str(num_classes)
-        title += '_'
-        if dd == 48:
-            title += 'equation'
-        elif dd == 24:
-            title += 'mnist'
-        else:
-            title += 'gaussian'
-    
-    elif type_ == 'c':
+    if type_ != 'irl':
         lines = ['1', '8', 'batch', 'sgd']
-        
+        '''
         mode_idx = int(arguments[3])
         modes = ['omni', 'surr', 'imit']
         mode = modes[mode_idx]
@@ -62,13 +35,13 @@ def get_path(data_cate, arguments, type_ = 'd'):
         title += '_'
         title += str(num_classes)
         title += '_'
-        if dd == 48:
+        if dd == 45:
             title += 'equation'
         elif dd == 24:
             title += 'mnist'
         else:
             title += 'gaussian'
-
+        '''
     else:
         lines = ['batch', 'sgd', '4', '5']
 
@@ -83,7 +56,7 @@ def get_path(data_cate, arguments, type_ = 'd'):
         title += '_'
         title += 'beta'
         title += '_'
-        title += arguments[8]
+        title += arguments[9]
         
     for l in lines:
             '''
@@ -93,27 +66,24 @@ def get_path(data_cate, arguments, type_ = 'd'):
             titles.append('accuracies'+l+title)
             '''
             if data_cate == 'dist_':
-                t = 'dist'+l+'_'+title
+                t = 'dist'+l+'_'
             else:
-                t = data_cate+l+title
+                t = data_cate+l
             titles.append(t)
             methods[t] = l 
 
     return titles, methods
 
-def save_csv(data_cate, setting_name, random_seeds, arguments, type_ = 'd'):
-    if type_ == 'd' or type_ == 'c':
-        methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', \
-                    '7': 'cont_sgd', '8': 'cont_prag', '6': 'Expert', 'batch': 'batch', 'sgd': 'sgd'} 
-    else:
-        methods_code = {'0': 'zero', '1': 'one', '2': 'random', '3': 'pragmatic', '4': 'ITAL', '5': 'IMT', 'batch': 'Batch', 'sgd': 'SGD'}
+def save_csv(data_cate, setting_name, mode, random_seeds, arguments, type_ = 'd'):
+    methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', \
+                    '7': 'cont_sgd', '8': 'ITAL', '6': 'Expert', 'batch': 'Batch', 'sgd': 'SGD'} 
     titles, methods = get_path(data_cate, arguments, type_)
     data = []
     method = []
     iterations = []
     for t in titles:
         for s in random_seeds:
-            filename = t + '_' + str(s) + '.npy'
+            filename = setting_name + '/' + t + '_' + str(s) + '.npy'
             d = np.load(filename, allow_pickle = True)
             #d = d[:int(len(d)/4)]
             length = len(d)
@@ -123,7 +93,9 @@ def save_csv(data_cate, setting_name, random_seeds, arguments, type_ = 'd'):
             iterations += [j for j in range(length)]
     data = np.array(data).flatten()
 
-    save_name = setting_name + '_csv/' + data_cate + '_' + setting_name + '.csv'
+    #save_name = setting_name + '_csv/' + mode + '_' + setting_name + '_csv/' + data_cate + '_' + mode + '_' + setting_name + '.csv'
+    save_name = setting_name + '/' + data_cate + '_' + mode + '_' + setting_name + '.csv'
+
     df = pd.DataFrame({'method': method,
                        'iteration': iterations,
                        'data': data})
@@ -135,7 +107,7 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-def collect_data(setting_name, random_seeds, arguments, type_):
+def collect_data(setting_name, mode, random_seeds, arguments, type_):
     #child_processes = []
     
     cpu_cnt = int(multiprocessing.cpu_count()/10) + 1
@@ -158,29 +130,31 @@ def collect_data(setting_name, random_seeds, arguments, type_):
         #p.wait()
     
     if type_ == 'd' or type_ == 'c':
-        save_csv('dist', setting_name, random_seeds, arguments, type_)
-        save_csv('dist_', setting_name, random_seeds, arguments, type_)
-        save_csv('losses', setting_name, random_seeds, arguments, type_)
-        save_csv('accuracies', setting_name, random_seeds, arguments, type_)
+        save_csv('dist', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('dist_', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('losses', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('accuracies', setting_name, mode, random_seeds, arguments, type_)
     else:
-        save_csv('dists', setting_name, random_seeds, arguments, type_)
-        save_csv('dist_', setting_name, random_seeds, arguments, type_)
-        save_csv('distsq', setting_name, random_seeds, arguments, type_)
-        save_csv('ar', setting_name, random_seeds, arguments, type_)
+        save_csv('dists', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('dist_', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('distsq', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('ar', setting_name, mode, random_seeds, arguments, type_)
     print('collected data\n')
 
 
 def plot(setting_name):
-    main_multi_settings = {'regression', 'class4', 'class10'}
-    classification = {'class4', 'class10', 'mnist'}
+    main_multi_settings = {'regression_coop', 'regression_adv', 'class10_coop', 'class10_adv'}
+    classification = {'class10_coop', 'class10_adv', 'mnist'}
 
     paper_rc = {'lines.linewidth': 2.5}
     sns.set(style="darkgrid")
     sns.set(font_scale=1.95, rc = paper_rc)
     
-    directory = setting_name + '_csv/'
-    omni_path = directory + 'omni_' + directory
-    imit_path = directory + 'imit_' + directory
+    directory = setting_name + '/'
+    #omni_path = directory + 'omni_' + directory
+    #imit_path = directory + 'imit_' + directory
+    omni_path = directory 
+    imit_path = directory 
 
     palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate Dim-30 ITAL":sns.xkcd_rgb["orange"], \
                 "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
@@ -194,7 +168,7 @@ def plot(setting_name):
     dash = {"Omniscient ITAL": '',"Imitate ITAL": (5, 5),"Batch":'', "SGD": '', \
             'Omniscient IMT': '', 'Imitate IMT': (5, 5)}
 
-    display_methods = [ 'batch', 'sgd', 'IMT', 'cont_prag']
+    display_methods = [ 'Batch', 'SGD', 'IMT', 'ITAL']
 
     plt.figure() 
     f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(20, 6))   
@@ -283,22 +257,23 @@ def plot(setting_name):
         plt2.set(xlabel='', ylabel='')
         axes[0].set_title('L2 Distance', fontweight="bold", size=29)
 
-    elif setting_name == 'equation':  
+    elif setting_name == 'equation_coop' or setting_name == 'equation_adv':  
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
 
+        print(results0_omni)
         imit_dim = ['50','40']
-        imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
+        #imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
         results0_imit = {}
         results1_imit = {}
         results2_imit = {}
         for dim in imit_dim:      
-            results0_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('dist'+'_imit' + dim + '_'+setting_name))
-            results1_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
+            results0_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('dist'+'_imit' + dim + '_'+setting_name))
+            results1_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
-        
+        print(df0)
         df0['method'] = 'Batch'
         df1['method'] = 'Batch'
         
@@ -333,7 +308,7 @@ def plot(setting_name):
 
                 df0 = pd.concat([df0, df0_imit[dim]])
                 df1 = pd.concat([df1, df1_imit[dim]])
-        
+        print(df0)
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method",data=df0, ax=axes[0], palette=palette) 
         plt1.legend_.remove()
@@ -348,18 +323,17 @@ def plot(setting_name):
         axes[0].set_xlabel('Training Iteration', fontweight="bold", size=29)
         axes[1].set_xlabel('Training Iteration', fontweight="bold", size=29)
 
-    elif setting_name == 'mnist':  
+    elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv' :  
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist'+'_omni_'+setting_name))
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies'+'_omni_'+setting_name))
 
         imit_dim = ['30','20']
-        imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
         results0_imit = {}
         results1_imit = {}
         results2_imit = {}
         for dim in imit_dim:      
-            results0_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('dist'+'_imit' + dim + '_'+setting_name))
-            results1_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('accuracies'+'_imit' + dim + '_'+setting_name))
+            results0_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('dist'+'_imit' + dim + '_'+setting_name))
+            results1_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('accuracies'+'_imit' + dim + '_'+setting_name))
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
@@ -543,20 +517,22 @@ def plot(setting_name):
         axes[0].set_xlabel('Training Iteration', fontweight="bold", size=29)
         axes[1].set_xlabel('Training Iteration', fontweight="bold", size=29)
 
-    plt.savefig(setting_name + '-main.pdf', dpi=300)
-    plt.show()
+    plt.savefig(setting_name + '/' + setting_name + '-main.pdf', dpi=300)
 
 def plot_supp(setting_name):
-    classification = {'class4', 'class10'}
+    classification = {'class10_coop', 'class10_adv'}
     irl_settings = {'random', 'peak'}
 
     paper_rc = {'lines.linewidth': 2.5}
     sns.set(style="darkgrid")
     sns.set(font_scale=1.95, rc = paper_rc)
     
-    directory = setting_name + '_csv/'
-    omni_path = directory + 'omni_' + directory
-    imit_path = directory + 'imit_' + directory
+    directory = setting_name + '/'
+    #omni_path = directory + 'omni_' + directory
+    #imit_path = directory + 'imit_' + directory
+
+    omni_path = directory 
+    imit_path = directory 
 
     palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate Dim-30 ITAL":sns.xkcd_rgb["orange"], \
                 "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
@@ -567,7 +543,7 @@ def plot_supp(setting_name):
                 'Imitate Dim-50 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["burnt orange"], \
                 'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green']}
 
-    display_methods = [ 'batch', 'sgd', 'IMT', 'cont_prag']
+    display_methods = [ 'Batch', 'SGD', 'IMT', 'ITAL']
 
     plt.figure()     
     f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6)) 
@@ -614,16 +590,15 @@ def plot_supp(setting_name):
         plt1.legend_.remove()
         plt1.set(xlabel='Training Iteration', ylabel='')
 
-    elif setting_name == 'mnist':  
+    elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv' :  
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses'+'_omni_'+setting_name))
 
         imit_dim = ['30','20']
-        imit_path = {dim : directory + 'imit' + dim +'_' + directory for dim in imit_dim}
         results0_imit = {}
         results1_imit = {}
         results2_imit = {}
         for dim in imit_dim:      
-            results1_imit[dim] = pd.read_csv(imit_path[dim] + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
+            results1_imit[dim] = pd.read_csv(imit_path + '%s.csv' % ('losses'+'_imit' + dim + '_'+setting_name))
 
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
         df1['method'] = 'Batch'
@@ -658,22 +633,84 @@ def plot_supp(setting_name):
         axes.set_title('Cross Entropy Loss')
         axes.set_ylabel('')
 
-    plt.savefig(setting_name + '-supp.pdf', dpi=300)
+    plt.savefig(setting_name + '/' + setting_name + '-supp.pdf', dpi=300)
+
+def remove_npy(dir):
+    for f in glob.glob(dir + "/*.npy"):
+        os.remove(f)
+            #os.remove(os.path.join(dir, f))
+
+def CollectDataAndPlot(setting_name):
+    type_ = 'irl'
+    random_seeds = [j for j in range(1)]
+    irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10', 'omni_peak_8', 'omni_random_8'}
+    
+    if setting_name not in irl_settings:
+        type_ = 'c'  
+    if setting_name == 'regression_coop' or setting_name == 'regression_adv':
+        arguments = ['python3', 'main_multi.py', setting_name, 'omni', '-1']
+        collect_data(setting_name, 'omni', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_multi.py', setting_name, 'imit', '-1']
+        collect_data(setting_name, 'imit', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+
+    elif setting_name == 'equation_coop' or setting_name == 'equation_adv':
+        arguments = ['python3', 'main_multi.py', setting_name, 'omni', '-1']
+        collect_data(setting_name, 'omni', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_multi.py', setting_name, 'imit', '40']
+        collect_data(setting_name, 'imit40', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_multi.py', setting_name, 'imit', '50']
+        collect_data(setting_name, 'imit50', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+
+    elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv':
+        arguments = ['python3', 'main_multi.py', setting_name, 'omni', '-1']
+        collect_data(setting_name, 'omni', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_multi.py', setting_name, 'imit', '20']
+        collect_data(setting_name, 'imit20', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_multi.py', setting_name, 'imit', '30']
+        collect_data(setting_name, 'imit30', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+
+    elif setting_name == 'class10_coop' or setting_name == 'class10_adv':
+        arguments = ['python3', 'main_multi.py', setting_name, 'omni', '-1']
+        collect_data(setting_name, 'omni', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+        arguments = ['python3', 'main_multi.py', setting_name, 'imit', '-1']
+        collect_data(setting_name, 'imit', random_seeds, arguments, type_)
+        remove_npy(setting_name)
+    
+    else:
+        print('Invalid setting')
+        return
+    
+    plot(setting_name)
+    plot_supp(setting_name)
+
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots;')
         print('\tuse python3 plotband.py plot "setting_name" use get supplementary plots')
         exit()
 
+    setting_name = sys.argv[1]
+    CollectDataAndPlot(setting_name)
+    '''
     type_ = 'irl'
-    random_seeds = [j for j in range(1)]
+    random_seeds = [j for j in range(2)]
     setting_name = sys.argv[2]
     irl_settings = {'imit_peak_8', 'imit_random_8', 'imit_peak_10', 'imit_random_10', 'omni_peak_8', 'omni_random_8'}
     
     if setting_name not in irl_settings:
         type_ = 'c'
     if sys.argv[1] == 'data':
+        
         if setting_name == 'omni_equation':
             arguments = ['python3', 'main_multi.py', '45', '0', '0', '0.05', '1000', '0.001', '0.01', 'regression']
         elif setting_name == 'imit_equation':
@@ -712,8 +749,8 @@ def main():
             print('possible setting_names are omni_equation, imit_equation, omni_class10, imit_class10, ')
             print('omni_class4, imit_class4, omni_regression, imit_regression, omni_mnist, imit_mnist')
             exit()
-        collect_data(setting_name, random_seeds, arguments, type_)
         
+
     elif sys.argv[1] == 'plot':
         plot(setting_name)
 
@@ -723,6 +760,6 @@ def main():
         print('--Invalid arguments; use python3 plotband.py data "setting_name" to collect data; use python3 plotband.py plot "setting_name" to get plots')
         print('\tuse python3 plotband.py plot "setting_name" use get supplementary plots')
         print()
-
+    '''
 if __name__ == '__main__':
     main()
