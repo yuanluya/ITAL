@@ -138,7 +138,6 @@ class TeacherM:
 
     def sample(self):
         indices = np.random.choice(self.data_pool_full_.shape[0], self.config_.sample_size)
-
         self.data_pool_ = self.data_pool_full_[indices, :]
         self.gt_y_ = self.gt_y_full_[indices, :]
         self.gt_loss_ = self.gt_loss_full_[indices]

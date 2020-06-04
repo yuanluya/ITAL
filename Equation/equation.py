@@ -161,18 +161,20 @@ class Equation:
             seq_tuple[1][pos] = '%d/%d' % (nominator/g, denominator/g)
             return seq_tuple, True
         
-    def remove_gcd(self, seq_tuple):
+    def cancel_gcd(self, seq_tuple):
         int_coefs = []
         for n in seq_tuple[1]:
             if '/' in n:
-                return seq_tuple, False
-            if n != '':
+                int_coefs.append(int(n[:n.index('/')]))
+            elif n != '':
                 int_coefs.append(int(n))
         g = np.gcd.reduce(int_coefs)
         if g == 1:
             return seq_tuple, False
         for i in range(len(seq_tuple[1])):
-            if seq_tuple[1][i] != '':
+            if '/' in seq_tuple[1][i]:
+                seq_tuple[1][i] = '%d%s'  % (int(seq_tuple[1][i][:seq_tuple[1][i].index('/')]) / g, seq_tuple[1][i][seq_tuple[1][i].index('/'):])
+            elif seq_tuple[1][i] != '':
                 seq_tuple[1][i] = '%d'  % (int(seq_tuple[1][i]) / g)
         return seq_tuple, True
 
@@ -362,6 +364,9 @@ class Equation:
         
     def simplify(self, seq_tuple):
         history = [self.tuple2str(seq_tuple)+'e']
+        seq_tuple, valid = self.cancel_gcd(seq_tuple)
+        if valid:
+            history += [self.tuple2str(seq_tuple)+'r']
         # 1. merge terms with same denominator
         while True:
             new_hist = self.merge_helper(seq_tuple, True)

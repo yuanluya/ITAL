@@ -29,7 +29,7 @@ class LearnerS:
         elif self.loss_type_ == 'SVM':
             self.losses_ = tf.maximum(1 - self.y_ * self.linear_val_, 0)
             self.loss_ = tf.reduce_sum(self.losses_ + 0.5 * self.config_.reg_coef * tf.reduce_sum(tf.square(self.W_[:, 0: -1]), 1))
-        
+
         self.gradient_w_ = tf.gradients(self.loss_, [self.W_])
         self.gradient_lv_ = tf.gradients(self.loss_, [self.linear_val_])
 
@@ -94,7 +94,7 @@ class LearnerS:
         if not self.use_tf_:
             move_dists = []
             for i in range(self.config_.particle_num):
-                
+
                 gradient = np.matmul(data_pool[data_idx: data_idx + 1, :].T,
                                     (np.sum(data_pool[data_idx: data_idx + 1, :] * self.particles_[i: i + 1, :], 1, keepdims = True) - data_y[data_idx]))
                 self.particles_[i, :] -= self.config_.lr * gradient[:, 0]
@@ -167,7 +167,7 @@ class LearnerS:
 
         # losses = self.sess_.run(self.losses_, {self.X_: data_pool, self.W_: self.current_mean_, self.y_: np.expand_dims(data_y, 1)})
         return gradient_tf, np.array(losses)
-        
+
 
 def main():
     return

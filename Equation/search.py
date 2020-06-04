@@ -44,19 +44,21 @@ def reduction(seq_tuple, pos):
         seq_tuple[1][pos] = '%d/%d' % (nominator/g, denominator/g)
         return seq_tuple, True
 
-def remove_gcd(seq_tuple):
+def cancel_gcd(seq_tuple):
     seq_tuple = deepcopy(seq_tuple)
     int_coefs = []
     for n in seq_tuple[1]:
         if '/' in n:
-            return seq_tuple, False
-        if n != '':
+            int_coefs.append(int(n[:n.index('/')]))
+        elif n != '':
             int_coefs.append(int(n))
     g = np.gcd.reduce(int_coefs)
     if g == 1:
         return seq_tuple, False
     for i in range(len(seq_tuple[1])):
-        if seq_tuple[1][i] != '':
+        if '/' in seq_tuple[1][i]:
+            seq_tuple[1][i] = '%d%s'  % (int(seq_tuple[1][i][:seq_tuple[1][i].index('/')]) / g, seq_tuple[1][i][seq_tuple[1][i].index('/'):])
+        elif seq_tuple[1][i] != '':
             seq_tuple[1][i] = '%d'  % (int(seq_tuple[1][i]) / g)
     return seq_tuple, True
 
@@ -270,7 +272,10 @@ def next_states(seq_tuple):
         states.extend([(seq_t[:], 'c')])
         #print('call constant_multiply')                                                                                                                                       
         #print(equation_str(seq_t))
-
+    seq_t, valid = cancel_gcd(seq_tuple)
+    if valid:
+        count += 1
+        states.extend([seq_t[:]])
     return states
         
 def equation_str(seq_tuple):
