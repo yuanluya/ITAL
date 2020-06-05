@@ -17,6 +17,7 @@ where _detailed_setting_name_ is specified by ${experiment}\_${type of teacher}\
 ## Settings
 
 
+
 |Experiment|experiment| 
 |-------|-------|  
 |Linear Regression on Synthesized Data|regression|
