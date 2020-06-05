@@ -15,3 +15,18 @@ python3 main_multi.py detailed_setting_name random_seed
 ```
 where _detailed_setting_name_ is specified by ${experiment}\_${type of teacher}\_${mode of teacher} followed by '_' and the imitate teacher's data dimension(MNIST, Equation) or data type(CIFAR).
 ## Settings
+
+
+|Experiment|experiment| 
+|-------|-------|  
+|Linear Regression on Synthesized Data|regression|
+|Linear Classifiers on Synthesized Data|class10|
+|Linear Classifiers on CIFAR-10|cifar|
+|Linear Regression for Equation Simplification|equation|
+|Online Inverse Reinforcement Learning|irlH/irlE|
+
+|Experiment|Imitate Setting 1|Imitate Setting 2|     
+|-------|-------|  -------|   
+|mnist|20|30|
+|equation|40|50|
+|cifar|9|12|
