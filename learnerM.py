@@ -246,7 +246,7 @@ class LearnerSM:
             #         total_lle = current_lle
         # if (step + 1) % 500 == 0:#np.max(exp_cache / np.sum(exp_cache)) < 0.8:
         # self.config_.beta *= (2 - np.power(1 + 3e-6, i))
-        self.config_.beta *= np.power(1 - 3e-6, step)
+        self.config_.beta *= np.power(self.config_.beta_decay, step)
         return self.current_mean_, -1, -1
 
     def learn_sur(self, data_pool, data_y, data_idx, gradients, prev_loss, step, gt_w):
