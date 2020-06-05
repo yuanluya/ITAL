@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import sys
 import time
 from tqdm import tqdm
-import importlib
-config = importlib.import_module(".config", sys.argv[1])
+#import importlib
+#config = importlib.import_module(".config", sys.argv[1])
 
 from learner import Learner
 from learnerM import LearnerSM
@@ -167,119 +167,32 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-    '''
-    beta = -5000
-    K = 1
-    np.random.seed(int(sys.argv[2]))
 
-    multi_thread = True
+    exp_folder = sys.argv[1]
+    if not os.path.isdir(os.path.join('./Experiments', exp_folder)):
+        print('Cannot find target folder')
+        exit()
+    if not os.path.exists(os.path.join('./Experiments', exp_folder, 'config.py')):
+        print('Cannot find config.py in target folder')
+        exit()
+    exec('from Experiments.%s import config' % exp_folder, globals())
+    exec('from Experiments.%s.config import config_T' % exp_folder, globals())
+    exec('from Experiments.%s.config import config_LS' % exp_folder, globals())
+    exec('from Experiments.%s.config import config_L' % exp_folder, globals())
 
-    title = ''
-    mode_idx = int(sys.argv[2])
-    modes = ['omni', 'surr', 'imit']
-    mode = modes[mode_idx]
-    title += mode
-    title += '_'
-    task = 'classification' if 'regression' not in  sys.argv else 'regression'
-    title += task
-    title += '_'
-
-    lr = 1e-3
-    dd = int(sys.argv[1])
-    num_classes = 10 if dd == 24 or dd == 30 else 4
-    if task == 'regression':
-        num_classes = 1
-    title += 'num_classes'
-    title += '_'
-    title += str(num_classes)
-    title += '_'
-    if dd == 48:
-        title += 'equation'
-    elif dd == 24:
-        title += 'mnist'
-    else:
-        title += 'gaussian'
-    title += '_'
-    title += sys.argv[9]
-
-    dps = 3 * dd if task == 'classification' else 6 * dd
-    num_particles = 1
-    train_iter_simple = 50
-    train_iter_smart = 50
-    reg_coef = 0
-    '''
     directory = sys.argv[1]
-    random_seed = sys.argv[4]
+    random_seed = sys.argv[2]
     np.random.seed(int(random_seed))
-    dd_ = int(sys.argv[3])
-    dd = config.dd
     multi_thread = config.multi_thread
-    mode = sys.argv[2]
+    mode = config.mode
 
     train_iter_simple = config.train_iter_simple
     train_iter_smart = config.train_iter_smart
 
-    dx = None if dd != 24 else np.load("MNIST/mnist_train_features.npy")
-    dy = None if dd != 24 else np.load("MNIST/mnist_train_labels.npy")
-    gt_w = None if dd != 24 else np.load("MNIST/mnist_tf_gt_weights.npy")
-    tx = None if dd != 24 else np.load("MNIST/mnist_test_features.npy")
-    ty = None if dd != 24 else np.load("MNIST/mnist_test_labels.npy")
- 
-    dx_tea = np.load("MNIST/mnist_train_features_tea_%d.npy" % dd_) if dd == 24 and  'imit' in mode else None
-    dy_tea = np.load("MNIST/mnist_train_labels_tea_%d.npy" % dd_) if dd == 24 and 'imit' in mode else None
-    gt_w_tea = np.load("MNIST/mnist_tf_gt_weights_tea_%d.npy" % dd_) if dd == 24 and 'imit' in mode else None
-    tx_tea = np.load("MNIST/mnist_test_features_tea_%d.npy" % dd_) if dd == 24 and 'imit' in mode else None
-    ty_tea = np.load("MNIST/mnist_test_labels_tea_%d.npy" % dd_) if dd == 24 and  'imit' in mode else None
-
-    if (dd == 32):
-        dx = np.load("CIFAR/cifar_train_features6.npy")
-        dy = np.load("CIFAR/cifar_train_labels6.npy")
-        gt_w = np.load("CIFAR/cifar_tf_gt_weights6.npy")
-        tx = np.load("CIFAR/cifar_test_features6.npy")
-        ty = np.load("CIFAR/cifar_test_labels6.npy")
-
-        if 'imit' in mode:
-            dx_tea = np.load("CIFAR/cifar_train_features%d.npy" % dd_) 
-            dy_tea = np.load("CIFAR/cifar_train_labels%d.npy" % dd_)  
-            gt_w_tea = np.load("CIFAR/cifar_tf_gt_weights%d.npy" % dd_)  
-            tx_tea = np.load("CIFAR/cifar_test_features%d.npy" % dd_)  
-            ty_tea = np.load("CIFAR/cifar_test_labels%d.npy" % dd_)  
-        else:
-            dx_tea = None
-            dy_tea = None
-            gt_w_tea = None
-            tx_tea = None
-            ty_tea = None
-
-    if (dd == 45):
-        dx = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd))[:50000]
-        dy = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd))[:50000].reshape((50000, 1))
-        gt_w = (np.load("Equation_data/equation_gt_weights_cnn_3var_%d_6layers.npy" % dd))
-        tx = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd))[50000:100000]
-        ty = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd))[50000:100000].reshape((50000, 1))
-        if 'imit' not in mode:
-            dx_tea = None
-            dy_tea = None
-            gt_w_tea = None
-            tx_tea = None
-            ty_tea = None
-        else:
-            print("load equation %d", dd_)
-            dx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[:50000]
-            dy_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[:50000].reshape((50000, 1))
-            gt_w_tea = (np.load("Equation_data/equation_gt_weights_cnn_3var_%d_6layers.npy" % dd_))
-            tx_tea = (np.load("Equation_data/equation_train_features_cnn_3var_%d_6layers.npy" % dd_))[50000:100000]
-            ty_tea = (np.load("Equation_data/equation_train_labels_cnn_3var_%d_6layers.npy" % dd_))[50000:100000].reshape((50000, 1))
-
-    config_T = edict({'data_pool_size_class': config.dps, 'data_dim': config.dd,'lr': config.lr, 'sample_size': 20,
-                      'transform': mode == 'imit', 'num_classes': config.num_classes, 'task': config.task,
-                      'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w, 'beta': config.beta,
-                      'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})
-    config_LS = edict({'particle_num': config.num_particles, 'data_dim': config.dd, 'reg_coef': config.reg_coef, 'lr': config.lr, 'task': config.task,
-                       'num_classes': config.num_classes, 'noise_scale_min': config.noise_scale_min[mode], 'noise_scale_max': config.noise_scale_max[mode], 'beta': config.beta, 'cont_K': config.K,
-                       'noise_scale_decay': config.noise_scale_decay[mode], 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
+    #config_T = config.config_T
+    #config_LS = config.config_LS
     print(config_LS, config_T)
-    config_L =  edict({'data_dim': config.dd, 'reg_coef': config.reg_coef, 'lr': config.lr, 'loss_type': 0, 'num_classes': config.num_classes, 'task': config.task})
+    #config_L =  config.config_L
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, config.dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
     init_w = np.mean(init_ws, 0)
@@ -291,22 +204,7 @@ def main():
 
         return_dict = manager.dict()
         jobs = []
-        '''
-        p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, None, None, return_dict))
-        jobs.append(p)
-        p.start()
 
-        # eliminates = return_dict[None][-1]
-        ratio = 0.85#np.mean(eliminates) / num_particles
-
-        random_probabilities = [ratio, 1, 0]
-
-        for rp in random_probabilities:
-            time.sleep(0.5)
-            p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, rp, rp, return_dict))
-            jobs.append(p)
-            p.start()
-        '''
         p = Process(target = learn_thread, args = (teacher, config_LS, mode, init_ws, train_iter_smart, 1, 1, return_dict))
         jobs.append(p)
         p.start()
@@ -316,30 +214,13 @@ def main():
         jobs.append(p)
         p.start()
 
-        '''
-        p = Process(target = learn_thread, args = (teacher, config_LS, 'sgd_%s_cont' % mode, init_ws, train_iter_smart,
-                                                   None, 'sgd_%s_cont' % mode, return_dict))
-        jobs.append(p)
-        p.start()
-        '''
         for j in jobs:
             print("joining", j)
             j.join()
-
+        
         dists1, dists1_, accuracies1, losses1, _ = return_dict[1]
-        np.save(directory + '/dist1_' + random_seed + '.npy', np.array(dists1))
-        np.save(directory + '/dist1__' + random_seed + '.npy', np.array(dists1_))
-        np.save(directory+ '/accuracies1_' + random_seed + '.npy', np.array(accuracies1))
-        np.save(directory + '/losses1_' + random_seed + '.npy', np.array(losses1))
-        
         dists8, dists8_, accuracies8, losses8, _ = return_dict['%s_cont' % mode]
-        np.save(directory + '/dist8_' + random_seed + '.npy', np.array(dists8))
-        np.save(directory + '/dist8__' + random_seed + '.npy', np.array(dists8_))
-        np.save(directory + '/accuracies8_' + random_seed + '.npy', np.array(accuracies8))
-        np.save(directory + '/losses8_' + random_seed + '.npy', np.array(losses8))
-        
 
-    
     import tensorflow as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
@@ -351,28 +232,34 @@ def main():
     if multi_thread:
         dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
         dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
-        np.save(directory + '/distbatch_' + random_seed + '.npy', np.array(dists_neg1_batch))
-        np.save(directory + '/distbatch__' + random_seed + '.npy', np.array(dists_neg1_batch_))
-        np.save(directory + '/accuraciesbatch_' + random_seed + '.npy', np.array(accuracies_neg1_batch))
-        np.save(directory + '/lossesbatch_' + random_seed + '.npy', np.array(losses_neg1_batch))
-
-        np.save(directory + '/distsgd_' + random_seed + '.npy', np.array(dists_neg1_sgd))
-        np.save(directory + '/distsgd__' + random_seed + '.npy', np.array(dists_neg1_sgd_))
-        np.save(directory + '/accuraciessgd_' + random_seed + '.npy', np.array(accuracies_neg1_sgd))
-        np.save(directory + '/lossessgd_' + random_seed + '.npy', np.array(losses_neg1_sgd))
+    
     else:
         learnerM = LearnerSM(sess, config_LS)
 
-        dists3, dists3_, accuracies3, logpdfs3, eliminates = learn(teacher, learnerM, mode, init_ws, train_iter_smart)
-        dists2, dists2_, accuracies2, logpdfs2, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, np.mean(eliminates) / num_particles)
-        dists1, dists1_, accuracies1, logpdfs1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
-        dists0, dists0_, accuracies0, logpdfs0, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 0)
-        dists4, dists4_, accuracies4, logpdfs4, _ = learn(teacher, learnerM, 'sgd_%s_cont' % mode, init_ws, train_iter_smart)
-        dists5, dists5_, accuracies5, logpdfs5, _ = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
-        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, logpdf_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, logpdf_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+        dists1, dists1_, accuracies1, losses1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
+        dists8, dists8_, accuracies8, losses8, _ = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
+        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
 
+    np.save('Experiments/' + directory + '/dist1_' + random_seed + '.npy', np.array(dists1))
+    np.save('Experiments/' + directory + '/dist1__' + random_seed + '.npy', np.array(dists1_))
+    np.save('Experiments/' + directory+ '/accuracies1_' + random_seed + '.npy', np.array(accuracies1))
+    np.save('Experiments/' + directory + '/losses1_' + random_seed + '.npy', np.array(losses1))
     
+    np.save('Experiments/' + directory + '/dist8_' + random_seed + '.npy', np.array(dists8))
+    np.save('Experiments/' + directory + '/dist8__' + random_seed + '.npy', np.array(dists8_))
+    np.save('Experiments/' + directory + '/accuracies8_' + random_seed + '.npy', np.array(accuracies8))
+    np.save('Experiments/' + directory + '/losses8_' + random_seed + '.npy', np.array(losses8))    
+    
+    np.save('Experiments/' + directory + '/distbatch_' + random_seed + '.npy', np.array(dists_neg1_batch))
+    np.save('Experiments/' + directory + '/distbatch__' + random_seed + '.npy', np.array(dists_neg1_batch_))
+    np.save('Experiments/' + directory + '/accuraciesbatch_' + random_seed + '.npy', np.array(accuracies_neg1_batch))
+    np.save('Experiments/' + directory + '/lossesbatch_' + random_seed + '.npy', np.array(losses_neg1_batch))
+
+    np.save('Experiments/' + directory + '/distsgd_' + random_seed + '.npy', np.array(dists_neg1_sgd))
+    np.save('Experiments/' + directory + '/distsgd__' + random_seed + '.npy', np.array(dists_neg1_sgd_))
+    np.save('Experiments/' + directory + '/accuraciessgd_' + random_seed + '.npy', np.array(accuracies_neg1_sgd))
+    np.save('Experiments/' + directory + '/lossessgd_' + random_seed + '.npy', np.array(losses_neg1_sgd))    
 
 if __name__ == '__main__':
     main()

@@ -12,8 +12,8 @@ if plt.get_backend() == 'Qt5Agg':
     plt.matplotlib.rcParams['figure.dpi'] = qApp.desktop().physicalDpiX()
 import time
 
-import importlib
-config = importlib.import_module(".config", sys.argv[1])
+#import importlib
+#config = importlib.import_module(".config", sys.argv[1])
 
 from OIRL.map import Map
 from teacher_irl import TeacherIRL
@@ -22,7 +22,7 @@ from learner_irl import LearnerIRL
 import pdb
 
 def learn_basic(teacher, learner, train_iter, init_ws, test_set, batch = True):
-    np.random.seed((int(sys.argv[3]) + 1)* 503)
+    np.random.seed((int(sys.argv[2]) + 1)* 503)
     learner.reset(init_ws)
 
     ws = [learner.current_mean_]
@@ -49,7 +49,7 @@ def learn_basic(teacher, learner, train_iter, init_ws, test_set, batch = True):
     return dists, dists_, distsq, actual_rewards, ws
 
 def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = None):
-    np.random.seed((int(sys.argv[3]) + 1) * 503)
+    np.random.seed((int(sys.argv[2]) + 1) * 503)
 
     learner.reset(init_ws)
 
@@ -109,7 +109,7 @@ def learn_thread_tf(config_T, config_L, mode, train_iter, random_prob, return_ke
     map_l = Map(sess, config_L)
     map_t = Map(sess, config_T)
 
-    reward_type = sys.argv[2]
+    reward_type = config.reward_type
 
     gt_r_param_tea = map_l.reward_generate(3) if config.reward_type == 'E' else np.random.uniform(-2, 2, size = [1, config_L.shape ** 2])
     gt_r_param_stu = copy.deepcopy(gt_r_param_tea)
@@ -139,7 +139,7 @@ def teacher_run_tf(config_T, config_L, train_iter, thread_return):
     map_t = Map(sess, config_T)
 
 
-    reward_type = sys.argv[2]
+    reward_type = config.reward_type
     gt_r_param_tea = map_l.reward_generate(3) if config.reward_type == 'E' else np.random.uniform(-2, 2, size = [1, config_T.shape ** 2])
     gt_r_param_stu = copy.deepcopy(gt_r_param_tea)
     if config_L.shuffle_state_feat:
@@ -156,22 +156,26 @@ def teacher_run_tf(config_T, config_L, train_iter, thread_return):
     thread_return.append(teacher_rewards)
 
 def main():
+    exp_folder = sys.argv[1]
+    if not os.path.isdir(os.path.join('./Experiments', exp_folder)):
+        print('Cannot find target folder')
+        exit()
+    if not os.path.exists(os.path.join('./Experiments', exp_folder, 'config.py')):
+        print('Cannot find config.py in target folder')
+        exit()
+    exec('from Experiments.%s import config' % exp_folder, globals())
+    exec('from Experiments.%s.config import config_T' % exp_folder, globals())
+    exec('from Experiments.%s.config import config_L' % exp_folder, globals())
+
     use_tf = config.use_tf
     multi_thread = config.multi_thread
-    mode = sys.argv[2]
+    mode = config.mode
     directory = sys.argv[1] + '/'
 
     train_iter = config.train_iter
 
-    seed = int(sys.argv[3])
+    seed = int(sys.argv[2])
     np.random.seed((seed + 1) * 159)
-
-    config_T = edict({'shape': config.shape, 'approx_type': 'gsm', 'beta': config.beta, 'shuffle_state_feat': False,
-                      'lr': config.lr, 'sample_size': 20, 'use_tf': use_tf, 'approx_k': config.approx_k, 'beta_select': config.beta_select})
-    config_L = edict({'shape': config.shape, 'approx_type': 'gsm', 'beta': config.beta, 'lr': config.lr, "prob": 1,
-                      'shuffle_state_feat': mode == 'imit', 'particle_num': 1, 'replace_count': 1,
-                      'noise_scale_min': config.noise_scale_min[mode], 'noise_scale_max': config.noise_scale_max[mode], 'noise_scale_decay': config.noise_scale_decay[mode], 'cont_K': config.K,
-                      'target_ratio': 0, 'new_ratio': 1, 'use_tf': use_tf, 'approx_k': config.approx_k, 'beta_select': config.beta_select})
 
     np.set_printoptions(precision = 4)
 
@@ -294,11 +298,11 @@ def main():
         distsq = results[i][2]
         ar = results[i][3]
         mat = results[i][4]
-        np.save(directory + "action_dist%d_%d" % (i, seed), dists, allow_pickle=True)
-        np.save(directory + "reward_dist%d_%d" % (i, seed), np.sqrt(dists_), allow_pickle=True)
-        np.save(directory + "q_dist%d_%d" % (i, seed), distsq, allow_pickle=True)
-        np.save(directory + "rewards%d_%d" % (i, seed), ar, allow_pickle=True)
-        np.save(directory + "matrix%d_%d" % (i, seed), mat, allow_pickle = True)
+        np.save('Experiments/' + directory + "action_dist%d_%d" % (i, seed), dists, allow_pickle=True)
+        np.save('Experiments/' + directory + "reward_dist%d_%d" % (i, seed), np.sqrt(dists_), allow_pickle=True)
+        np.save('Experiments/' + directory + "q_dist%d_%d" % (i, seed), distsq, allow_pickle=True)
+        np.save('Experiments/' + directory + "rewards%d_%d" % (i, seed), ar, allow_pickle=True)
+        np.save('Experiments/' + directory + "matrix%d_%d" % (i, seed), mat, allow_pickle = True)
         
 
 
