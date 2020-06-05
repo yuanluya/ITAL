@@ -245,19 +245,11 @@ def main():
         p.start()
         jobs.append(p)
 
-        student = LearnerIRL(sess, map_l, config_L)
-        p = Process(target = learn_thread, args = (teacher, student, '%s_sgd_cont' % mode, init_ws, train_iter,
-                                                   test_set, None, '%s_sgd_cont' % mode, return_dict))
-        p.start()
-        jobs.append(p)
-
         for j in jobs:
             j.join()
 
         imt = return_dict[random_probs[0]]
         prag_cont = return_dict['%s_cont' % mode]
-        sgd_cont = return_dict['%s_sgd_cont' % mode]
-
 
     np.random.seed((seed + 1) * 157)
 

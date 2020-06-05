@@ -6,7 +6,7 @@ beta = -60001
 K = 1
 multi_thread = True
 dd = 32
-dd_ = -1
+dd_ = 12
 num_classes = 10
 dps = 3 * dd
 reg_coef = 0
@@ -20,7 +20,7 @@ noise_scale_max = 0.1
 noise_scale_decay = 1000
 
 task = 'classification'
-mode = 'omni'
+mode = 'imit'
 
 dx = np.load("Data/CIFAR/cifar_train_features6.npy")
 dy = np.load("Data/CIFAR/cifar_train_labels6.npy")
@@ -28,11 +28,11 @@ gt_w = np.load("Data/CIFAR/cifar_tf_gt_weights6.npy")
 tx = np.load("Data/CIFAR/cifar_test_features6.npy")
 ty = np.load("Data/CIFAR/cifar_test_labels6.npy")
 
-dx_tea = None
-dy_tea = None
-gt_w_tea = None
-tx_tea = None
-ty_tea = None
+dx_tea = np.load("Data/CIFAR/cifar_train_features%d.npy" % dd_) 
+dy_tea = np.load("Data/CIFAR/cifar_train_labels%d.npy" % dd_)  
+gt_w_tea = np.load("Data/CIFAR/cifar_tf_gt_weights%d.npy" % dd_)  
+tx_tea = np.load("Data/CIFAR/cifar_test_features%d.npy" % dd_)  
+ty_tea = np.load("Data/CIFAR/cifar_test_labels%d.npy" % dd_)  
 
 config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                   'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
@@ -45,5 +45,4 @@ config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': re
 
 
 config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
-
 
