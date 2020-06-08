@@ -1,12 +1,16 @@
 from functools import cmp_to_key
 import numpy as np
 from equation import Equation
-from eq_value import EqValue
+from eq_value_cnn import EqValue
 import tensorflow as tf
 
 from easydict import EasyDict as edict
 from copy import deepcopy
 import pdb
+from tqdm import tqdm
+import matplotlib
+matplotlib.use('tkagg')
+import matplotlib.pyplot as plt
 
 def scale(seq_tuple, pos, scale):
     seq_tuple = deepcopy(seq_tuple)
@@ -16,12 +20,7 @@ def scale(seq_tuple, pos, scale):
         return seq_tuple, False
     dash_pos = seq_tuple[1][pos].find('/')
     nominator = int(seq_tuple[1][pos][0: dash_pos])
-    try:
-        denominator = int(seq_tuple[1][pos][dash_pos + 1:])
-    except ValueError:
-        print(tuple2str(seq_tuple))
-        print(seq_tuple)
-        exit()
+    denominator = int(seq_tuple[1][pos][dash_pos + 1:])
     seq_tuple[1][pos] = '%d/%d' % (nominator * scale, denominator * scale)
     return seq_tuple, True
 
@@ -44,30 +43,16 @@ def reduction(seq_tuple, pos):
         seq_tuple[1][pos] = '%d/%d' % (nominator/g, denominator/g)
         return seq_tuple, True
 
-def cancel_gcd(seq_tuple):
-    seq_tuple = deepcopy(seq_tuple)
-    int_coefs = []
-    for n in seq_tuple[1]:
-        if '/' in n:
-            int_coefs.append(int(n[:n.index('/')]))
-        elif n != '':
-            int_coefs.append(int(n))
-    g = np.gcd.reduce(int_coefs)
-    if g == 1:
-        return seq_tuple, False
-    for i in range(len(seq_tuple[1])):
-        if '/' in seq_tuple[1][i]:
-            seq_tuple[1][i] = '%d%s'  % (int(seq_tuple[1][i][:seq_tuple[1][i].index('/')]) / g, seq_tuple[1][i][seq_tuple[1][i].index('/'):])
-        elif seq_tuple[1][i] != '':
-            seq_tuple[1][i] = '%d'  % (int(seq_tuple[1][i]) / g)
-    return seq_tuple, True
-
 def check0(seq_tuple):
     seq_tuple = deepcopy(seq_tuple)
     if seq_tuple[2].index('=') == 0:
         seq_tuple[0].insert(0, '')
         seq_tuple[1].insert(0, '')
         seq_tuple[2].insert(0, '0')
+        if seq_tuple[2].index('=') == len(seq_tuple[2]) - 1:
+            seq_tuple[0].append('')
+            seq_tuple[1].append('')
+            seq_tuple[2].append('0')
         return seq_tuple, True
     if seq_tuple[2].index('=') == len(seq_tuple[2]) - 1:
         seq_tuple[0].append('')
@@ -115,8 +100,6 @@ def merge(seq_tuple, pos1, pos2):
     seq_tuple = deepcopy(seq_tuple)
     if seq_tuple[2][pos1] != seq_tuple[2][pos2] or pos1 == pos2:
         return seq_tuple, False
-    #assert(seq_tuple[2][pos1] != '=')
-    #assert(seq_tuple[2][pos2] != '=')
     if seq_tuple[2][pos1] == '=' or seq_tuple[2][pos2] == '=':
         return seq_tuple, False
     if seq_tuple[2][pos1] == '0' or seq_tuple[2][pos2] == '0':
@@ -208,8 +191,6 @@ def constant_multiply(seq_tuple):
             else:
                 noms.append(int(seq_tuple[1][idx][0:]))
     i = 0
-    if denoms == []:
-        return seq_tuple, False
     lcm = np.lcm.reduce(denoms)
     if lcm == 1:
         return seq_tuple, False
@@ -217,6 +198,24 @@ def constant_multiply(seq_tuple):
         if seq_tuple[2][idx] != '=' and seq_tuple[2][idx] != '0':
             seq_tuple[1][idx] = '%d' % (noms[i] * lcm / denoms[i])
             i += 1
+    return seq_tuple, True
+
+def cancel_gcd(seq_tuple):
+    seq_tuple = deepcopy(seq_tuple)
+    int_coefs = []
+    for n in seq_tuple[1]:
+        if '/' in n:
+            int_coefs.append(int(n[:n.index('/')]))
+        elif n != '':
+            int_coefs.append(int(n))
+    g = np.gcd.reduce(int_coefs)
+    if g == 1:
+        return seq_tuple, False
+    for i in range(len(seq_tuple[1])):
+        if '/' in seq_tuple[1][i]:
+            seq_tuple[1][i] = '%d%s'  % (int(seq_tuple[1][i][:seq_tuple[1][i].index('/')]) / g, seq_tuple[1][i][seq_tuple[1][i].index('/'):])
+        elif seq_tuple[1][i] != '':
+            seq_tuple[1][i] = '%d'  % (int(seq_tuple[1][i]) / g)
     return seq_tuple, True
 
 def sort_var(seq_tuple, eq):
@@ -242,40 +241,36 @@ def next_states(seq_tuple):
             if s > 1:
                 seq_t, valid = scale(seq_tuple, pos, s)
                 if valid:
-                    states.extend([(seq_t[:], 's')])
+                    states.extend([seq_t[:]])
                     count += 1
-                    #print('call scale', pos)
-                    #print(equation_str(seq_t))
+
         seq_t, valid = reduction(seq_tuple, pos)
         if valid:
-            states.extend([(seq_t[:], 'r')])
+            states.extend([seq_t[:]])
             count += 1
-            #print('call reduction', pos)
-            #print(equation_str(seq_t))
+
         for pos2 in range(length):
             seq_t, valid = move(seq_tuple, pos, pos2)
             if valid:
                 count += 1
-                states.extend([(seq_t[:], 'o')])
-                #print('call move', pos, pos2)
-                #print(equation_str(seq_t))
+                states.extend([seq_t[:]])
+
         for pos2 in range(length)[pos+1:]:
             seq_t, valid = merge(seq_tuple, pos, pos2)
             if valid:
                 count += 1
-                states.extend([(seq_t[:], 'm')])
-                #print('call merge', pos, pos2)
-                #print(equation_str(seq_t))
+                states.extend([seq_t[:]])
+
     seq_t, valid = constant_multiply(seq_tuple)
     if valid:
         count += 1
-        states.extend([(seq_t[:], 'c')])
-        #print('call constant_multiply')                                                                                                                                       
-        #print(equation_str(seq_t))
+        states.extend([seq_t[:]])
+
     seq_t, valid = cancel_gcd(seq_tuple)
     if valid:
         count += 1
         states.extend([seq_t[:]])
+
     return states
         
 def equation_str(seq_tuple):
@@ -290,152 +285,206 @@ def tuple2str(seq_tuple):
     return ' '.join([''.join(tup) for tup in merge_seq])
     
 def encode(string):
-    codebook_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y'] + [' ']
+    codebook_ = [str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y', 'z'] + [' ']
     digits = [codebook_.index(s) for s in string]
     return digits
 
-
-def greedy_search(seq_tuple, eqv, c):
-    states = next_states(seq_tuple)
-    states = [s[0] for s in states] + [seq_tuple]
-    encoded_states = [encode(tuple2str(tup)) for tup in states]
-    #print(len(encoded_states))
-
-    encoding_idx = []
-    for i in range(len(encoded_states)):
-        encoding_idx.append([i, len(encoded_states[i])-1])
-    encoding_idx = np.array(encoding_idx)
-    
-    M = max(len(s) for s in encoded_states)
-    equations = np.array([s + [eqv.config_.num_character] * (M - len(s)) for s in encoded_states])
-    eqs_idx = np.expand_dims(equations, axis=-1)
-    
-    states_vals_ = eqv.sess_.run([eqv.lower_vals_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([len(encoded_states), eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
-    states_vals_ = states_vals_[0]
-    max_val = np.amax(states_vals_)
-    print('equation is', tuple2str(seq_tuple))
-    print('current state value is', states_vals_[-1])
-    print('max state value is', max_val)
-    print()
-
-    if states_vals_[-1] == max_val:
-        return seq_tuple, c+1
-    index = np.where(states_vals_ == max_val)[0]
-    next_index = np.random.choice(index, 1)[0]
-    #next_index = np.random.choice(len(states), 1)[0]
-    return greedy_search(states[next_index], eqv, c+1)
-
-def beam_search_(current_states, width, eqv):
+def beam_search_(current_states, width, eqv, M, w, maxd):
+    maxd += 1
     states = deepcopy(current_states)
     for s in current_states:
-        print('current equation', tuple2str(s))
         for ss in next_states(s):
-            if ss[0] not in states:
-                states.append(ss[0])
+            if ss not in states:
+                states.append(ss)
 
     encoded_states = [encode(tuple2str(tup)) for tup in states]
-    encoding_idx = []
-    for i in range(len(encoded_states)):
-        encoding_idx.append([i, len(encoded_states[i])-1])
-    encoding_idx = np.array(encoding_idx)
-    
-    M = max(len(s) for s in encoded_states)
     equations = np.array([s + [eqv.config_.num_character] * (M - len(s)) for s in encoded_states])
     eqs_idx = np.expand_dims(equations, axis=-1)
+    encoding_idx = np.expand_dims(list(range(len(encoded_states))), axis = 1)
 
-    states_vals_ = eqv.sess_.run([eqv.lower_vals_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([len(encoded_states), eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
-    states_vals_ = states_vals_[0]
-    max_val = np.amax(states_vals_)
+
+    states_vals = eqv.sess_.run([eqv.lower_encodings_], {eqv.lower_eqs_idx_: eqs_idx, eqv.higher_eqs_idx_: eqs_idx,
+        eqv.lower_encoding_idx_: encoding_idx, eqv.higher_encoding_idx_: encoding_idx})
+    states_vals = np.sum(states_vals[0] * w, axis = 1)
+
+    max_val = np.max(states_vals)
     
-    print('current state values', states_vals_[0:width])
-    print('max state value is', max_val)
-    print()
+    if states_vals[0] == max_val or maxd > 30:
+        results = []
+        results.append(current_states[0])
+        return current_states[0], [max_val], results, maxd
+
+    indices = np.argsort(-1 * states_vals)
     
-    for i in range(width):
-        if states_vals_[i] == max_val:
-            return current_states[i]
+    nexts = []
+    strs = []
+    vals = []
+    rs = []
+    vals_ = []
+    for i in range(min(width, len(indices))):
+        s, v, r, _ = beam_search_([states[indices[i]]], width, eqv, M, w, maxd)
+        nexts.append(s)
+        strs.append(tuple2str(s))
+        vals.append(v)
+        vals_.append(v[0])
+        rs.append(r)
 
-    indices = np.argsort(states_vals_)
-    index = len(indices) - 1
-    next_states_ = []
-    for i in range(width):
-        next_states_.append(states[indices[index-i]])
-    return beam_search_(next_states_, width ,eqv)
+    chosen = np.argmax(vals_)
+    rlist = rs[chosen]
+    results = []
+    vs = []
+    for r in rlist:
+        results.append(r)
+    for v in vals[chosen]:
+        vs.append(v)
+    results.append(states[indices[chosen]])
+    vs.append(max_val)
+    return nexts[chosen], vs, results, maxd
 
-def beam_search(seq_tuple, width, eqv):
+def beam_search(seq_tuple, width, eqv, M, w):
     current_states = []
-    for i in range(width):
-        current_states.append(deepcopy(seq_tuple))
-    return beam_search_(current_states, width, eqv)
+    current_states.append(deepcopy(seq_tuple))
+    return beam_search_(current_states, width, eqv, M, w, 0)
 
 def main():
-    eqv_config = edict({'encoding_dims': 20, 'rnn_dim': 30, 'C': 1, 'lr': 5e-5, 'num_character': 18, 'batch_size': 100})
-    init_w = np.random.uniform(size = [1, eqv_config.rnn_dim])
-    sess = tf.Session()
+    np.random.seed(1234)
+
+    M = 173 #148
+    eqv_config = edict({'input_dim': M, 'encoding_dim': 30, 'output_dim': 45, 'C': 1, 'reg_param': 1e-5, 'batch_size': 128,'lr': 1e-4, 
+        'num_character': 19,
+        'layer_info': [(64, 5, 1, False), (64, 5, 1, True), (32, 3, 1, False), (32, 3, 1, True),(32, 3, 1, False), (32, 3, 1, True)]})
+    
+    init_w = np.random.uniform(size = [1, eqv_config.output_dim + 1])
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config)
+    np.random.seed(1234)
+
     eqv = EqValue(eqv_config, init_w, sess)
-    init = tf.global_variables_initializer()                                                                                                                                        
-    sess.run(init)   
-
-    ckpt_dir = 'CKPT_rnn_dim_30_lr_5e-5_encoding_dims_20_2_4_neg'
+    init = tf.global_variables_initializer()
+    sess.run(init)
+    ckpt_dir = 'CKPT_cnn_dim_%d_encoding_dim_%d_3_4_6layers' % (eqv_config.output_dim, eqv_config.encoding_dim)
     eqv.restore_ckpt(ckpt_dir)
-    width = 6
-    eq = Equation(2, 4, 20, 5)
+    
+    eq = Equation(3, 4, 20, 5)
+    
+    temp = []
     c = 0
-    steps = 0
-    for i in range(1000):
-        equation = eq.generate()
-        #print(equation_str(beam_search(equation, 6, eqv)))
-        #print(tuple2str(equation))
-        #greedy_search_equation, step = greedy_search(equation,eqv,0)
-        #greedy_search_equation = tuple2str(greedy_search_equation)
-        beam_search_equation = tuple2str(beam_search(equation,6,eqv))
-        history = eq.simplify(equation)
-        #print('rule based simpification', history[-1][:-1])
-        #print(greed_search_equation==history[-1][:-1])
-        if beam_search_equation==history[-1][:-1]:
-            c = c + 1
-        #steps = steps + step
-    print(c/1000)
-    print(steps/1000)
-    '''
-    encoded_equation = encode(history[-1][:-1]) 
-    encoded_equation_e = encode(history[-1][:-1]) + [eqv_config.num_character] * 10
-    eqs_idx = np.expand_dims(np.array([encoded_equation]), axis=-1)
-    eqs_idx_e = np.expand_dims(np.array([encoded_equation_e]), axis=-1)
+    w = np.load("equation_gt_weights_cnn_3var_45_6layers.npy")
+    for width in [1]:
+        for i in tqdm(range(1000)):
+            equation = eq.generate()
+            greedy_search_equation, v, rs, _  = beam_search(equation, width, eqv, M, w)
+            greedy_search_equation = tuple2str(greedy_search_equation)
+            history = eq.simplify(equation)
+            if greed_search_equation == history[-1][:-1]:
+                c = c + 1
+        temp.append(c/1000)
+        c = 0
+        print("ground truth %d %s" % (width, temp))
 
-    encoding_idx = np.array([[0, len(encoded_equation) - 1]]) 
+    np.save("gt_search_acc.npy" % (savename), np.mean(temp))
     
-    states_vals_, encoding1 = eqv.sess_.run([eqv.lower_vals_, eqv.lower_eq_encodings_], {eqv.lower_eqs_idx_: eqs_idx, eqv.initial_states_: np.zeros([1, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
+    for width in [1]:
+        for rd in range(20):
+            savename = "regression_1_45"
+            for m in ["omni_", "imit2_", "imit3_"]:
+                for s in ["batch_", "sgd_", "IMT_", "ITAL_"]:
+                    acc = []
+                    for d in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000]:
+                        w = np.load("%s%s%s_0_w.npy" % (s, m, savename))[d][0]                        
+                        np.random.seed(rd)
+                        for i in tqdm(range(1000)):
+                            equation = eq.generate()
+                            greedy_search_equation, v, rs, _ = beam_search(equation, width, eqv, M, w)
+                            greedy_search_equation = tuple2str(greedy_search_equation)
+                            history = eq.simplify(equation)
+                            if greed_search_equation == history[-1][:-1]:
+                                c = c + 1
+                        acc.append(c / 1000)
+                        c = 0
+                        
+                    # print("%s %s %s %s" % (m, s, savename, acc))
+                    np.save("%s%s%s_w_%d_curve_%d.npy" % (s, m, savename, width, rd), acc)
+    
+def plot():
+    import seaborn as sns
+    import csv, os
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    if plt.get_backend() == 'Qt5Agg':
+        from matplotlib.backends.qt_compat import QtWidgets
+        qApp = QtWidgets.QApplication(sys.argv)
+        plt.matplotlib.rcParams['figure.dpi'] = qApp.desktop().physicalDpiX()
 
-    states_vals_e, encoding1 = eqv.sess_.run([eqv.lower_vals_, eqv.lower_eq_encodings_], {eqv.lower_eqs_idx_: eqs_idx_e, eqv.initial_states_: np.zeros([1, eqv.config_.rnn_dim]), eqv.lower_encoding_idx_: encoding_idx})
+    palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate Dim-30 ITAL":sns.xkcd_rgb["orange"], \
+                "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
+                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate Dim-20 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-30 IMT': sns.xkcd_rgb['olive green'],\
+                "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate CNN-12 ITAL":sns.xkcd_rgb["orange"], \
+                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'], 'Imitate CNN-12 IMT': sns.xkcd_rgb['olive green'],\
+                "Imitate ITAL":sns.xkcd_rgb["orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
+                'Imitate Dim-50 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["burnt orange"], \
+                'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green'],'Teacher Rewards Truth':sns.xkcd_rgb['grey']}
+    dash = {"Omniscient ITAL": 'solid',"Imitate ITAL": 'solid',"Batch":'solid', "SGD": 'solid', \
+            'Omniscient IMT': 'solid', 'Imitate Dim-40 IMT': 'solid', 'Imitate Dim-40 ITAL':'solid','Imitate Dim-50 IMT':'solid','Imitate IMT': 'solid','Imitate Dim-50 ITAL':'solid',"Teacher Rewards Truth":'dashed'}
+
+    names = ["Batch", "SGD", "Omniscient IMT", "Omniscient ITAL", 'Imitate Dim-40 IMT', 'Imitate Dim-40 ITAL','Imitate Dim-50 IMT', 'Imitate Dim-50 ITAL']
+    savename = "regression_1_45"
     
-    #for e in encoding1[0]:
-        #print(e)
-    print(states_vals_)
-    print(states_vals_e)
-    '''
-    '''
-    for i in range(100):
-        equation = eq.generate()
-        #equation = [['-', '', '-', '-'], ['2/10', '', '34/2', '17'], ['x^3', '=', 'x^1z^1w^1', 'x^1z^1w^1']]
-        #print('equation is')
-        #print(equation_str(equation))
-        #print(equation)
+    with open('w_curve.csv', mode='w') as csv_file:
+        fieldnames = ['Method', 'Iteration', 'Accuracy']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        idx = 0
+        for m in ["omni_"]:
+            x = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000])
+            for s in ["batch_", "sgd_", "IMT_", "ITAL_"]:
+                for rd in range(20):
+                    l = np.load("%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
+
+                    for i in range(len(l)):
+                        writer.writerow({'Method': names[idx], 'Iteration': x[i],  'Accuracy': l[i]})
+                    
+                idx+=1
+
+
+        for m in ["imit2_", "imit3_"]:
+            x = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000])
+            for s in ["IMT_", "ITAL_"]:
+                for rd in range(20):
+                    l = np.load("%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
+
+                    for i in range(len(l)):
+                        writer.writerow({'Method': names[idx], 'Iteration': x[i],  'Accuracy': l[i]})
+                    
+                idx+=1
+
+
+        for i in range(len(x)):
+            writer.writerow({'Method': 'Teacher Rewards Truth', 'Iteration': x[i], 'Accuracy': np.load("gt_search_acc.npy")})
+
+
+    paper_rc = {'lines.linewidth': 2.5}
+    sns.set(style="darkgrid")
+    sns.set(font_scale=1.95, rc = paper_rc)
+
+    plt.figure() 
+    f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6)) 
+    df = pd.read_csv('w_curve.csv')
+    plt1 = sns.lineplot(x="Iteration", y="Accuracy",
+                 hue="Method",data=df, ax=axes, palette=palette)
+    # axes.axhline(np.load("gt_search_acc.npy"), color=sns.xkcd_rgb['grey'], linestyle='-')
     
-        states, count = next_states(equation)
-        count_all += count
-    print(count_all/100)
-    '''
-    '''
-    equation = eq.generate()
-    print('equation is')                                                                                                                                                                   
-    print(equation_str(equation))
-    states, count = next_states(equation)
-    print('next states are')
-    for state in states:
-        print(equation_str(state))
-        print()
-    '''
-    
+    plt1.legend_.remove()
+
+    axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
+    axes.set_title('Simplification Accuracy', fontweight="bold", size=29)
+    axes.set_ylabel('')
+    plt1.lines[8].set_linestyle('dashed')
+    # plt.show()
+    plt.savefig('%s_w.pdf' % (savename), dpi=300)
+
 if __name__ == '__main__':
     main()
+    # plot()
