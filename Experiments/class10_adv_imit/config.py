@@ -1,4 +1,4 @@
-lfrom easydict import EasyDict as edict
+from easydict import EasyDict as edict
 
 lr = 1e-3
 beta = -60001
