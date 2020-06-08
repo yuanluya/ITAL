@@ -558,7 +558,7 @@ def plot_supp(setting_name):
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('rewards'+'_omni_'+setting_name))
         results0_imit = pd.read_csv(imit_path + '%s.csv' % ('rewards'+'_imit_'+setting_name))
 
-        teacher_rewards = pd.read_csv("teacher_rewards%s.csv" % (setting_name[-1]))
+        teacher_rewards = pd.read_csv("teacher_rewards%s.csv" % (setting_name[3]))
         teacher_rewards['method'] = "Teacher Rewards"
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
