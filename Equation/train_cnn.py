@@ -23,11 +23,11 @@ def main():
     codebook_ = np.array([str(digit) for digit in range(10)] + ['+', '-', '/', '^', '='] + ['x', 'y'] + [' '] + [''])
     op_type = ["scale", "merge", "remove denominators", "sort"]
     
-    train_data = np.load('/home/Datasets/equation_3_4_20_5/equations_encoded_3_4_20_5.npy', allow_pickle = True)[:490000]
-    test_data = np.load('/home/Datasets/equation_3_4_20_5/equations_encoded_3_4_20_5.npy', allow_pickle = True)[490000:]
+    train_data = np.load('equations_encoded_3_4_20_5.npy', allow_pickle = True)[:490000]
+    test_data = np.load('equations_encoded_3_4_20_5.npy', allow_pickle = True)[490000:]
 
-    neg_train_data = np.load('/home/Datasets/equation_3_4_20_5/neg_training_set_3_4_20_5.npy', allow_pickle = True)[:490000]
-    neg_test_data = np.load('/home/Datasets/equation_3_4_20_5/neg_training_set_3_4_20_5.npy', allow_pickle = True)[490000:]
+    neg_train_data = np.load('neg_training_set_3_4_20_5.npy', allow_pickle = True)[:490000]
+    neg_test_data = np.load('neg_training_set_3_4_20_5.npy', allow_pickle = True)[490000:]
     print("Train data size pos: %d neg: %d" % (len(train_data), len(neg_train_data)))
     print("Test data size pos: %d neg: %d" % (len(test_data), len(neg_test_data)))  
 
@@ -121,12 +121,6 @@ def main():
         
         if (itr + 1) % 1000 == 0:
             eqv.save_ckpt(ckpt_dir, itr)
-            # print(lower_equations[0])
-            # print(higher_equations[0])
-            # print(codebook_[lower_equations[0]])
-            # print(codebook_[higher_equations[0]])
-            # print(lower_vals[0])
-            # print(higher_vals[0])
             print("Iteration %d loss: %f accuracy: %f\n" % (itr, np.mean(loss), np.mean(accuracy)))
             loss = []
             accuracy = []
