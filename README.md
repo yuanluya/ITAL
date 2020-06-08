@@ -27,7 +27,7 @@ python3 plot_band.py -s mnist_coop_imit_20 0
 
 ## Settings
 
-
+The ${experiment} part of a setting is specified by the table 
 |Experiment|command line| 
 |-------|-------|  
 |Linear Regression on Synthesized Data|regression|
@@ -37,18 +37,21 @@ python3 plot_band.py -s mnist_coop_imit_20 0
 |Linear Regression for Equation Simplification|equation|
 |Online Inverse Reinforcement Learning|irlH/irlE|
 
+The imitate teacher's data dimension(MNIST, Equation) or data type(CIFAR) part of a setting is specified by the table 
 |Experiment|Imitate Setting 1|Imitate Setting 2|     
 |-------|-------|  -------|   
 |mnist|20|30|
 |equation|40|50|
 |cifar|9|12|
 
+The ${type of teacher} part of a setting is specified by the table 
 |Type of Teacher|command line|    
 |-------|-------|  
 |cooperative|coop|
 |adversarial|adv|
 
+The ${mode of teacher} part of a setting is specified by the table 
 |Mode of Teacher|command line|    
-|-------|-------|  -------|   
+|-------|-------| 
 |omniscient|omni|
 |imitate|imit|
