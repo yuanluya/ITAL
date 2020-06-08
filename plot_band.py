@@ -141,10 +141,14 @@ def plot(setting_name):
 
     if setting_name in main_multi_settings:
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist_'+setting_name+'_omni'))
-        results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses_'+setting_name+'_omni'))
-
         results0_imit = pd.read_csv(imit_path + '%s.csv' % ('dist_'+setting_name+'_imit'))
-        results1_imit = pd.read_csv(imit_path + '%s.csv' % ('losses_'+setting_name+'_imit'))
+
+        if setting_name in classification:
+            results1_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies_'+setting_name+'_omni'))
+            results1_imit = pd.read_csv(imit_path + '%s.csv' % ('accuracies_'+setting_name+'_imit'))
+        else:
+            results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses_'+setting_name+'_omni'))
+            results1_imit = pd.read_csv(imit_path + '%s.csv' % ('losses_'+setting_name+'_imit'))
 
         df1 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df2 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
@@ -155,6 +159,7 @@ def plot(setting_name):
         df1 = pd.concat([df1, sgd1])
         df2 = pd.concat([df2, sgd2])
 
+        '''
         if setting_name in classification:
             results2_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies_'+setting_name+'_omni'))
             results2_imit = pd.read_csv(imit_path + '%s.csv' % ('accuracies_'+setting_name+'_imit'))
@@ -162,45 +167,42 @@ def plot(setting_name):
 
             sgd0 = results2_omni.loc[results2_omni['method'] == display_methods[1]]
             df0 = pd.concat([df0, sgd0])
-
+        '''
         for method in display_methods[2:]:
             df1_omni = results0_omni.loc[results0_omni['method'] == method]
             df2_omni = results1_omni.loc[results1_omni['method'] == method]
 
             df1_imit = results0_imit.loc[results0_imit['method'] == method]
             df2_imit = results1_imit.loc[results1_imit['method'] == method]
-            
+            '''
             if setting_name in classification:
                 df0_omni = results2_omni.loc[results2_omni['method'] == method]
                 df0_imit = results2_imit.loc[results2_imit['method'] == method]
-
+            '''
             df1_omni['method'] = 'Omniscient ' + method
             df2_omni['method'] = 'Omniscient ' + method
             df1_imit['method'] = 'Imitate ' + method
             df2_imit['method'] = 'Imitate ' + method
+            '''
             if setting_name in classification:
                 df0_omni['method'] = 'Omniscient ' + method
                 df0_imit['method'] = 'Imitate ' + method
-
+            '''
             df1 = pd.concat([df1, df1_omni])
             df2 = pd.concat([df2, df2_omni])
 
             df1 = pd.concat([df1, df1_imit])
             df2 = pd.concat([df2, df2_imit])
-
+            '''
             if setting_name in classification:
                 df0 = pd.concat([df0, df0_omni])
                 df0 = pd.concat([df0, df0_imit])
-
+            '''
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=df1, ax=axes[0], palette=palette)
 
-        if setting_name not in classification:
-            plt2 = sns.lineplot(x="iteration", y="data",
-                     hue="method", data=df2, ax=axes[1], palette=palette)
-        else:
-            plt2 = sns.lineplot(x="iteration", y="data",
-                     hue="method", data=df0, ax=axes[1], palette=palette)
+        plt2 = sns.lineplot(x="iteration", y="data",
+                hue="method", data=df2, ax=axes[1], palette=palette)
       
         
         axes[1].set_title('Square Loss', fontweight="bold", size=29)
@@ -578,9 +580,9 @@ def remove_npy(dir):
     for f in glob.glob(dir + "/*.npy"):
         os.remove(f)
 
-def CollectDataAndPlot(setting_name):
+def CollectDataAndPlot(setting_name, seed_range):
     type_ = 'irl'
-    random_seeds = [j for j in range(2)]
+    random_seeds = [j for j in range(seed_range)]
     irl_settings = {'irlH_coop', 'irlH_adv', 'irlE_coop', 'irlE_adv'}
 
     if setting_name not in irl_settings:
@@ -683,7 +685,7 @@ def main():
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name)
+    CollectDataAndPlot(args.setting_name, 2)
 
 if __name__ == '__main__':
     main()
