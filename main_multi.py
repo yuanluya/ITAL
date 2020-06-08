@@ -9,8 +9,6 @@ import matplotlib.pyplot as plt
 import sys
 import time
 from tqdm import tqdm
-#import importlib
-#config = importlib.import_module(".config", sys.argv[1])
 
 from learner import Learner
 from learnerM import LearnerSM
@@ -55,9 +53,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
 
 def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False):
     learner.reset(init_ws)
-    if mode == 'expt':
-        learner.particle_weights_ = np.ones(learner.config_.particle_num)
-        eta = np.sqrt(8 * np.log(learner.config_.particle_num) / 2000)
+
     w = learner.current_mean_
     ws = [w]
     dists = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
@@ -67,7 +63,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     particle_hist = []
     data_choices = []
     eliminates = []
-    logpdfs = []
     angles = []
     for i in tqdm(range(train_iter)):
         if teacher.config_.task == 'classification':
@@ -86,10 +81,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         gradients, _, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
         if mode == 'omni' or mode == 'expt':
             data_idx = teacher.choose(gradients, w, learner.config_.lr)
-        elif mode == 'omni_strt':
-            data_idx = teacher.choose_strt(gradients, w)
-        elif mode == 'sgd_omni_cont':
-            data_idx = teacher.choose(gradients, w, learner.config_.lr)
         elif mode == 'omni_cont':
             data_idx = teacher.choose(gradients, w, learner.config_.lr, hard = True)
         elif mode == 'imit' or mode == 'imit_cont' or mode == 'sgd_imit_cont':
@@ -105,12 +96,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr, hard = True)#(mode[-4: ] != 'cont'))
         data_choices.append(data_idx)
         
-        if mode == 'sgd_imit_cont' or mode == 'sgd_omni_cont':
-            # w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, i, teacher.gt_w_, random_prob=random_prob, strt = True)
-            w, eliminate, angle = learner.learn_cont(teacher.data_pool_, teacher.gt_y_,
-                                                     data_idx, gradients, i, teacher.gt_w_,
-                                                     K = -1 * learner.config_.cont_K if learner.config_.cont_K else None)
-        elif mode == 'omni_cont':
+        if mode == 'omni_cont':
             w, eliminate, angle = learner.learn_cont(teacher.data_pool_, teacher.gt_y_,
                                                      data_idx, gradients, i, teacher.gt_w_, K = learner.config_.cont_K)
         elif mode == 'imit_cont':
@@ -189,10 +175,7 @@ def main():
     train_iter_simple = config.train_iter_simple
     train_iter_smart = config.train_iter_smart
 
-    #config_T = config.config_T
-    #config_LS = config.config_LS
     print(config_LS, config_T)
-    #config_L =  config.config_L
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, config.dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
     init_w = np.mean(init_ws, 0)

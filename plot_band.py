@@ -159,45 +159,24 @@ def plot(setting_name):
         df1 = pd.concat([df1, sgd1])
         df2 = pd.concat([df2, sgd2])
 
-        '''
-        if setting_name in classification:
-            results2_omni = pd.read_csv(omni_path + '%s.csv' % ('accuracies_'+setting_name+'_omni'))
-            results2_imit = pd.read_csv(imit_path + '%s.csv' % ('accuracies_'+setting_name+'_imit'))
-            df0 = results2_omni.loc[results2_omni['method'] == display_methods[0]]
-
-            sgd0 = results2_omni.loc[results2_omni['method'] == display_methods[1]]
-            df0 = pd.concat([df0, sgd0])
-        '''
         for method in display_methods[2:]:
             df1_omni = results0_omni.loc[results0_omni['method'] == method]
             df2_omni = results1_omni.loc[results1_omni['method'] == method]
 
             df1_imit = results0_imit.loc[results0_imit['method'] == method]
             df2_imit = results1_imit.loc[results1_imit['method'] == method]
-            '''
-            if setting_name in classification:
-                df0_omni = results2_omni.loc[results2_omni['method'] == method]
-                df0_imit = results2_imit.loc[results2_imit['method'] == method]
-            '''
+
             df1_omni['method'] = 'Omniscient ' + method
             df2_omni['method'] = 'Omniscient ' + method
             df1_imit['method'] = 'Imitate ' + method
             df2_imit['method'] = 'Imitate ' + method
-            '''
-            if setting_name in classification:
-                df0_omni['method'] = 'Omniscient ' + method
-                df0_imit['method'] = 'Imitate ' + method
-            '''
+
             df1 = pd.concat([df1, df1_omni])
             df2 = pd.concat([df2, df2_omni])
 
             df1 = pd.concat([df1, df1_imit])
             df2 = pd.concat([df2, df2_imit])
-            '''
-            if setting_name in classification:
-                df0 = pd.concat([df0, df0_omni])
-                df0 = pd.concat([df0, df0_imit])
-            '''
+
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=df1, ax=axes[0], palette=palette)
 

@@ -82,30 +82,7 @@ class LearnerSM:
                                                         self.W_: self.current_mean_,
                                                         self.y_: data_y[data_idx: data_idx + 1, :]})
                 self.current_mean_ -= self.config_.lr * gradient_tf[0]
-            # while True:
-            #     loss, gradient_tf = self.sess_.run([self.loss_, self.gradient_w_],
-            #                                         {self.X_: data_pool[data_idx: data_idx + 1, ...],
-            #                                             self.W_: self.current_mean_,
-            #                                             self.y_: data_y[data_idx: data_idx + 1, :]})
-            #     self.current_mean_ -= self.config_.lr * gradient_tf[0]
-            #     current_lle = - loss
-            #     if total_lle >= current_lle:
-            #         break
-            #     else:
-            #         total_lle = current_lle
-        return self.current_mean_, -1, -1
 
-    def learn_expt(self, data_pool, data_y, data_idx, eta):
-        gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
-                                                        self.W_: self.particles_,
-                                                        self.y_: data_y[data_idx: data_idx + 1, :]})
-        self.particles_ -= self.config_.lr * gradient_tf[0]
-        losses = self.sess_.run(self.losses_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
-                                               self.W_: self.particles_,
-                                               self.y_: data_y[data_idx: data_idx + 1, :]})
-        self.particle_weights_ *= np.exp(-1 * eta * losses)
-        self.current_mean_ = np.sum((self.particles_.T * self.particle_weights_).T, axis = 0, keepdims = True)\
-                             / np.sum(self.particle_weights_)
         return self.current_mean_, -1, -1
 
     def learn(self, data_pool, data_y, data_idx, gradients, step, gt_w, random_prob = None, strt = False):      
@@ -167,8 +144,7 @@ class LearnerSM:
             else:
                 new_center = target_center
             replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
-            # kept_dist = np.sum(np.square(new_center - gt_w))
-            # replace_dist = np.sum(np.square(replace_center - gt_w))
+
             prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
             norm = np.sum(np.square((gt_w - new_center)))
             cosine = prod - norm
@@ -225,27 +201,11 @@ class LearnerSM:
                 self.current_mean_ -= self.config_.lr * current_w_losses_gradient[data_idx: data_idx + 1, ...]
                 current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
                 exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
-                # if np.argmin(exp_cache) != data_idx:
-                #     print(np.argmin(exp_cache), data_idx, self.config_.beta)
+
                 lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
                 self.current_mean_ += self.config_.lr * lle_gradient
                 current_w_losses_gradient, _, _ = self.get_grads(data_pool, data_y)
-                # if step % 500 == 0:
-                #     print(exp_cache / np.sum(exp_cache))
-                #     pdb.set_trace()
-            # while True:
-            #     loss, gradient_tf = self.sess_.run([self.loss_, self.gradient_w_],
-            #                                         {self.X_: data_pool[data_idx: data_idx + 1, ...],
-            #                                             self.W_: self.current_mean_,
-            #                                             self.y_: data_y[data_idx: data_idx + 1, :]})
-            #     self.current_mean_ -= self.config_.lr * gradient_tf[0]
-            #     current_lle = - loss
-            #     if total_lle >= current_lle:
-            #         break
-            #     else:
-            #         total_lle = current_lle
-        # if (step + 1) % 500 == 0:#np.max(exp_cache / np.sum(exp_cache)) < 0.8:
-        # self.config_.beta *= (2 - np.power(1 + 3e-6, i))
+
         self.config_.beta *= np.power(self.config_.beta_decay, step)
         return self.current_mean_, -1, -1
 
@@ -296,8 +256,7 @@ class LearnerSM:
                 new_center = target_center
 
             replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
-            # kept_dist = np.sum(np.square(new_center - gt_w))
-            # replace_dist = np.sum(np.square(replace_center - gt_w))
+
             prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
             norm = np.sum(np.square((gt_w - new_center)))
             cosine = prod - norm
@@ -334,7 +293,6 @@ class LearnerSM:
         gradient_tf = np.concatenate(gradient_tfs, 0)
         gradient_lv = np.concatenate(gradient_lvs, 0)
 
-        # losses = self.sess_.run(self.losses_, {self.X_: data_pool, self.W_: self.current_mean_, self.y_: np.expand_dims(data_y, 1)})
         return gradient_tf, gradient_lv, np.array(losses)
 
 

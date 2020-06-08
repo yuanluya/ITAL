@@ -12,9 +12,6 @@ if plt.get_backend() == 'Qt5Agg':
     plt.matplotlib.rcParams['figure.dpi'] = qApp.desktop().physicalDpiX()
 import time
 
-#import importlib
-#config = importlib.import_module(".config", sys.argv[1])
-
 from OIRL.map import Map
 from teacher_irl import TeacherIRL
 from learner_irl import LearnerIRL
@@ -73,10 +70,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
         elif mode == 'omni_cont':
             eliminate, _ = learner.learn_cont(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
                                          gradients, i, teacher.stu_gt_reward_param_, learner.config_.cont_K)
-        elif mode == 'imit_sgd_cont' or mode == 'omni_sgd_cont':
-            eliminate, _ = learner.learn_cont(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
-                                         gradients, i, teacher.stu_gt_reward_param_,
-                                         -1 * learner.config_.cont_K if learner.config_.cont_K else -100)
         elif mode == 'imit':
             eliminate, _ = learner.learn_imit(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
                                               l_stu, i, teacher.stu_gt_reward_param_)
@@ -295,9 +288,6 @@ def main():
         np.save('Experiments/' + directory + "q_dist%d_%d" % (i, seed), distsq, allow_pickle=True)
         np.save('Experiments/' + directory + "rewards%d_%d" % (i, seed), ar, allow_pickle=True)
         np.save('Experiments/' + directory + "matrix%d_%d" % (i, seed), mat, allow_pickle = True)
-        
-
-
 
 if __name__ == '__main__':
     main()
