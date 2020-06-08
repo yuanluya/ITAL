@@ -28,8 +28,7 @@ python3 plot_band.py -s mnist_coop_imit_20 0
 ## Settings
 
 
-
-|Experiment|experiment| 
+|Experiment|command line| 
 |-------|-------|  
 |Linear Regression on Synthesized Data|regression|
 |Linear Classifiers on Synthesized Data|class10|
@@ -43,3 +42,13 @@ python3 plot_band.py -s mnist_coop_imit_20 0
 |mnist|20|30|
 |equation|40|50|
 |cifar|9|12|
+
+|Type of Teacher|command line|    
+|-------|-------|  
+|cooperative|coop|
+|adversarial|adv|
+
+|Mode of Teacher|command line|    
+|-------|-------|  -------|   
+|omniscient|omni|
+|imitate|imit|
