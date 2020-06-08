@@ -23,14 +23,18 @@ class EqValue:
         self.higher_eqs_ = tf.expand_dims(tf.squeeze(tf.nn.embedding_lookup(self.codebook_0_, self.higher_eqs_idx_), 2), 1)
 
         self.layers_ = [tf.concat([self.lower_eqs_, self.higher_eqs_], axis = 0)]
-        for _, (out_dim, kernel_size, stride) in enumerate(self.config_.layer_info):
+        for _, (out_dim, kernel_size, stride, pool) in enumerate(self.config_.layer_info):
             out = tf.layers.conv2d(self.layers_[-1], out_dim, kernel_size = kernel_size, strides = stride, padding = 'same', 
                                       activation = tf.nn.leaky_relu, kernel_initializer = tf.random_normal_initializer(mean = 0.0, stddev = 5e-2))
+            if pool:
+                out = tf.nn.max_pool(out, [1, 2, 2, 1], [1, 2, 2, 1], padding = 'SAME')
             self.layers_.append(out)
 
-        self.encodings_ = tf.layers.dense(tf.layers.flatten(self.layers_[-1]), units = self.config_.output_dim, activation = tf.nn.leaky_relu)
-        self.lower_encodings_ = tf.gather_nd(self.encodings_, self.lower_encoding_idx_)
-        self.higher_encodings_ = tf.gather_nd(self.encodings_, self.higher_encoding_idx_)
+        self.encodings_ = tf.layers.dense(tf.layers.flatten(self.layers_[-1]), units = self.config_.output_dim, activation = tf.nn.tanh)
+        self.lower_encodings_0_ = tf.gather_nd(self.encodings_, self.lower_encoding_idx_)
+        self.lower_encodings_ = tf.concat([self.lower_encodings_0_, tf.ones([tf.shape(self.lower_encodings_0_)[0], 1])], 1)
+        self.higher_encodings_0_ = tf.gather_nd(self.encodings_, self.higher_encoding_idx_)
+        self.higher_encodings_ = tf.concat([self.higher_encodings_0_, tf.ones([tf.shape(self.higher_encodings_0_)[0], 1])], 1)
 
         self.weight_ = tf.Variable(initial_value = self.init_w_, name = 'weight', dtype = tf.float32)
         self.lower_vals_ = tf.reduce_sum(self.lower_encodings_ * self.weight_, 1)
