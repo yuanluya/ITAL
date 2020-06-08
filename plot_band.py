@@ -483,9 +483,7 @@ def plot_supp(setting_name):
 
         imit_dim = ['30','20']
 
-        results0_imit = {}
         results1_imit = {}
-        results2_imit = {}
         for dim in imit_dim:
             results1_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/' + '%s.csv' % ('losses'+ '_'+setting_name+'_imit_' + dim ))
 
@@ -520,9 +518,7 @@ def plot_supp(setting_name):
         results1_omni = pd.read_csv(omni_path + '%s.csv' % ('losses_'+setting_name+'_omni'))
 
         imit_dim = ['9', '12']
-        results0_imit = {}
         results1_imit = {}
-        results2_imit = {}
         for dim in imit_dim:
             results1_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/' + '%s.csv' % ('losses'+ '_'+setting_name+'_imit_' + dim ))
 
@@ -550,6 +546,45 @@ def plot_supp(setting_name):
 
         plt1.set(xlabel='Training Iteration')
         axes.set_title('Cross Entropy Loss')
+        axes.set_ylabel('')
+        
+    elif setting_name == 'equation_coop' or setting_name == 'equation_adv':
+        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('search_acc_'+setting_name+'_omni'))
+
+        imit_dim = ['50','40']
+        
+        results0_imit = {}
+        for dim in imit_dim:
+            results0_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/'  + '%s.csv' % ('dist' + '_'+setting_name+'_imit_' + dim))
+
+        df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
+
+        sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
+
+        df0 = pd.concat([df0, sgd0])
+
+        for method in display_methods[2:]:
+            df0_omni = results0_omni.loc[results0_omni['method'] == method]
+
+            df0_imit = {dim : results0_imit[dim].loc[results0_imit[dim]['method'] == method] for dim in imit_dim}
+
+            df0_omni['method'] = 'Omniscient ' + method
+
+            df0 = pd.concat([df0, df0_omni])
+
+            for dim in imit_dim:
+                df0_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
+
+                df0 = pd.concat([df0, df0_imit[dim]])
+
+        plt1 = sns.lineplot(x="iteration", y="data",
+                 hue="method",data=df0, ax=axes[0], palette=palette)
+        # axes.axhline(np.load(omni_path + 'gt_search_acc.npy'), color=sns.xkcd_rgb['grey'], linestyle='-')
+        # plt1.lines[8].set_linestyle('dashed')
+        plt1.legend_.remove()
+
+        axes.set_title('Simplification Accuracy', fontweight="bold", size=29)
+        axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
         axes.set_ylabel('')
 
     elif setting_name in irl_settings:
@@ -589,8 +624,6 @@ def plot_supp(setting_name):
         df0 = pd.concat([df0, teacher_rewards])
         plt1 = sns.lineplot(x="iteration", y="data",
                  hue="method", data=df0, ax=axes, palette=palette)
-
-
 
         plt1.legend_.remove()
         plt1.set(ylabel='')
