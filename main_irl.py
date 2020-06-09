@@ -205,19 +205,15 @@ def main():
         test_set = np.random.choice(teacher.map_.num_states_, size = [train_iter + 1, teacher.map_.num_states_ * 20])
 
     manager = Manager()
-    """
-    return_list = manager.list()
+    
+    if mode == 'omni':
+        '''return_list = manager.list()'''
 
-    teacher_rewards = []
-    for i in tqdm(range(0, train_iter, 20)):
-        teacher_rewards = teacher_rewards.append(teacher.map_.test_walk(teacher.reward_param_, teacher.action_probs_, test_set[i + 1], greedy = True))
-
-    teacher_reward = np.asarray([np.mean(teacher_rewards)])
-
-
-    np.save("DataCollect/teacher_rewards%d" % (seed) + reward_type + ".npy", teacher_reward)
-    """
-
+        teacher_rewards = []
+        for i in tqdm(range(0, train_iter, 20)):
+            teacher_rewards.append(teacher.map_.test_walk(teacher.reward_param_, teacher.action_probs_, test_set[i + 1], greedy = True))
+        teacher_reward = np.asarray([np.mean(teacher_rewards)])
+        np.save('Experiments/' + directory + "teacher_rewards_%d" % (seed), teacher_rewards, allow_pickle=True)
 
     random_probs = [1]
     if multi_thread:

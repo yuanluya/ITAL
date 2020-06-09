@@ -11,7 +11,7 @@ approx_k = 220
 
 beta_select = 10000
 K = 1
-train_iter = 21
+train_iter = 50
 
 mode = 'omni'
 

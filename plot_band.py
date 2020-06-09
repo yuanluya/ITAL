@@ -9,8 +9,8 @@ import multiprocessing
 import time
 import glob, os
 import argparse
-
-def get_path(data_cate, arguments, type_ = 'd'):
+import pdb
+def get_path(data_cate, type_ = 'd'):
     #add dist or dist_ or ... as argyment
     #note data_cate in different main functions are different
     titles = []
@@ -20,7 +20,8 @@ def get_path(data_cate, arguments, type_ = 'd'):
         lines = ['1', '8', 'batch', 'sgd']
     else:
         lines = ['0', '1', '2', '3']
-
+    if data_cate == 'teacher_rewards':
+        lines = ['']
     for l in lines:
             '''
             titles.append('dist'+l+title)
@@ -37,13 +38,13 @@ def get_path(data_cate, arguments, type_ = 'd'):
 
     return titles, methods
 
-def save_csv(data_cate, setting_name, mode, random_seeds, arguments, type_ = 'd'):
+def save_csv(data_cate, setting_name, mode, random_seeds, type_ = 'd'):
     methods_code = {'0': 'No Rep', '1': 'IMT', '2': 'Rand Rep', '3': 'prag', '4': 'Prag (Strt Lin)', '5': 'IMT (Strt Lin)', \
                     '7': 'cont_sgd', '8': 'ITAL', '6': 'Expert', 'batch': 'Batch', 'sgd': 'SGD'}
     if type_ == 'irl':
-        methods_code = {'0': 'IMT', '1': 'ITAL', '2': 'Batch', '3': 'SGD'}
+        methods_code = {'0': 'IMT', '1': 'ITAL', '2': 'Batch', '3': 'SGD', '': ''}
 
-    titles, methods = get_path(data_cate, arguments, type_)
+    titles, methods = get_path(data_cate, type_)
     data = []
     method = []
     iterations = []
@@ -82,10 +83,7 @@ def collect_data(setting_name, mode, random_seeds, arguments, type_):
     for ss in random_seed:
         child_processes = []
         for s in ss:
-            if 'regression' in  arguments:
-                arguments_ = arguments[0:-1] + [str(s)] + [arguments[-1]]
-            else:
-                arguments_ = arguments[:] + [str(s)]
+            arguments_ = arguments[:] + [str(s)]
 
             p = subprocess.Popen(arguments_)
             child_processes.append(p)
@@ -96,15 +94,17 @@ def collect_data(setting_name, mode, random_seeds, arguments, type_):
         #p.wait()
 
     if type_ == 'd' or type_ == 'c':
-        save_csv('dist', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('dist_', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('losses', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('accuracies', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('dist', setting_name, mode, random_seeds, type_)
+        save_csv('dist_', setting_name, mode, random_seeds, type_)
+        save_csv('losses', setting_name, mode, random_seeds, type_)
+        save_csv('accuracies', setting_name, mode, random_seeds, type_)
     else:
-        save_csv('action_dist', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('reward_dist', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('q_dist', setting_name, mode, random_seeds, arguments, type_)
-        save_csv('rewards', setting_name, mode, random_seeds, arguments, type_)
+        save_csv('action_dist', setting_name, mode, random_seeds, type_)
+        save_csv('reward_dist', setting_name, mode, random_seeds, type_)
+        save_csv('q_dist', setting_name, mode, random_seeds, type_)
+        save_csv('rewards', setting_name, mode, random_seeds, type_)
+        if mode == 'omni':
+            save_csv('teacher_rewards', setting_name, mode, random_seeds, type_)
     print('collected data\n')
 
 
@@ -447,7 +447,8 @@ def plot_supp(setting_name):
                 'Teacher Rewards': sns.xkcd_rgb['grey']}
 
     display_methods = [ 'Batch', 'SGD', 'IMT', 'ITAL']
-
+    dash = {"Omniscient ITAL": '',"Imitate ITAL": '',"Batch":'', "SGD": '', \
+            'Omniscient IMT': '', 'Imitate IMT': '', 'Teacher Rewards': (5, 5)}    
     plt.figure()
     f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6))
 
@@ -588,31 +589,20 @@ def plot_supp(setting_name):
         axes.set_ylabel('')
 
     elif setting_name in irl_settings:
-        display_methods = [ 'batch', 'sgd', 'IMT', 'cont_prag']
+        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('rewards_'+setting_name+'_omni'))
+        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('rewards_'+setting_name+'_imit'))
 
-        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('rewards'+'_omni_'+setting_name))
-        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('rewards'+'_imit_'+setting_name))
-
-        teacher_rewards = pd.read_csv("teacher_rewards%s.csv" % (setting_name[3]))
+        teacher_rewards = pd.read_csv(omni_path + "%s.csv" % ('teacher_rewards_'+setting_name+'_omni'))
         teacher_rewards['method'] = "Teacher Rewards"
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
-
-        df0['method'] = 'Batch'
-
         sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
-
-        sgd0['method'] = 'SGD'
-
         df0 = pd.concat([df0, sgd0])
 
         for method in display_methods[2:]:
             df0_omni = results0_omni.loc[results0_omni['method'] == method]
 
             df0_imit = results0_imit.loc[results0_imit['method'] == method]
-
-            if method == 'cont_prag':
-                method = 'ITAL'
 
             df0_omni['method'] = 'Omniscient ' + method
 
@@ -747,7 +737,7 @@ def main():
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, 2)
+    CollectDataAndPlot(args.setting_name, 1)
 
 if __name__ == '__main__':
     main()
