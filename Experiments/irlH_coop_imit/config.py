@@ -9,7 +9,7 @@ beta = 5
 reward_type = 'H'
 approx_k = 220
 
-beta_select = 10000
+beta_select = 25000
 K = 1
 train_iter = 50
 

@@ -2,8 +2,8 @@ from easydict import EasyDict as edict
 import numpy as np
 
 lr = 1e-3
-beta = -60001
-beta_decay = 1
+beta = -50001
+beta_decay = 1- 5*10^-6
 
 K = 1
 multi_thread = True
