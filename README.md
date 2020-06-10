@@ -60,7 +60,7 @@ The ${mode of teacher} part of a setting is specified by the table
 
 ## Versions
 
-In this project, we the following version of libraries:<br /> 
+In this project, we used the following version of libraries:<br /> 
 
 Tensorflow v1.15<br /> 
 scikit-learn v0.22.1<br /> 
