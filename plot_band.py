@@ -550,36 +550,9 @@ def plot_supp(setting_name):
         axes.set_ylabel('')
         
     elif setting_name == 'equation_coop' or setting_name == 'equation_adv':
-        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('search_acc_'+setting_name+'_omni'))
-
-        imit_dim = ['50','40']
-        
-        results0_imit = {}
-        for dim in imit_dim:
-            results0_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/'  + '%s.csv' % ('search_acc' + '_'+setting_name+'_imit_' + dim))
-
-        df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
-
-        sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
-
-        df0 = pd.concat([df0, sgd0])
-
-        for method in display_methods[2:]:
-            df0_omni = results0_omni.loc[results0_omni['method'] == method]
-
-            df0_imit = {dim : results0_imit[dim].loc[results0_imit[dim]['method'] == method] for dim in imit_dim}
-
-            df0_omni['method'] = 'Omniscient ' + method
-
-            df0 = pd.concat([df0, df0_omni])
-
-            for dim in imit_dim:
-                df0_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
-
-                df0 = pd.concat([df0, df0_imit[dim]])
-
+        df0 = pd.read_csv('Experiments/%s.csv' % ('search_acc_'+setting_name))
         plt1 = sns.lineplot(x="iteration", y="data",
-                 hue="method",data=df0, ax=axes[0], palette=palette)
+                 hue="method",data=df0, ax=axes, palette=palette)
         # axes.axhline(np.load(omni_path + 'gt_search_acc.npy'), color=sns.xkcd_rgb['grey'], linestyle='-')
         # plt1.lines[8].set_linestyle('dashed')
         plt1.legend_.remove()
@@ -653,6 +626,7 @@ def CollectDataAndPlot(setting_name, seed_range):
         remove_npy('Experiments/' + imit_setting)
 
     elif setting_name == 'equation_coop' or setting_name == 'equation_adv':
+        
         omni_setting = setting_name + '_omni'
         imit_setting1 = setting_name + '_imit_40'
         imit_setting2 = setting_name + '_imit_50'
@@ -668,6 +642,12 @@ def CollectDataAndPlot(setting_name, seed_range):
         arguments = ['python3', 'main_multi.py', imit_setting2]
         collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting2)
+        
+        
+        from Equation import search
+        search.main()
+        search.npy2csv(setting_name)
+        remove_npy('Experiments')
 
     elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv':
         omni_setting = setting_name + '_omni'

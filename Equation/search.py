@@ -1,7 +1,7 @@
 from functools import cmp_to_key
 import numpy as np
-from equation import Equation
-from eq_value_cnn import EqValue
+from Equation.equation import Equation
+from Equation.eq_value_cnn import EqValue
 import tensorflow as tf
 
 from easydict import EasyDict as edict
@@ -360,17 +360,18 @@ def main():
     sess = tf.Session(config=config)
     np.random.seed(1234)
 
+    directory = 'Data/Equation_data/'
     eqv = EqValue(eqv_config, init_w, sess)
     init = tf.global_variables_initializer()
     sess.run(init)
-    ckpt_dir = 'CKPT_cnn_dim_%d_encoding_dim_%d_3_4_6layers' % (eqv_config.output_dim, eqv_config.encoding_dim)
+    ckpt_dir = directory + 'CKPT_cnn_dim_%d_encoding_dim_%d_3_4_6layers' % (eqv_config.output_dim, eqv_config.encoding_dim)
     eqv.restore_ckpt(ckpt_dir)
     
     eq = Equation(3, 4, 20, 5)
     
     temp = []
     c = 0
-    w = np.load("equation_gt_weights_cnn_3var_45_6layers.npy")
+    w = np.load(directory + "equation_gt_weights_cnn_3var_45_6layers.npy")
     for width in [1]:
         for i in tqdm(range(1000)):
             equation = eq.generate()
@@ -383,7 +384,7 @@ def main():
         c = 0
         print("ground truth %d %s" % (width, temp))
 
-    np.save("gt_search_acc.npy", np.mean(temp))
+    np.save("Experiments/gt_search_acc.npy", np.mean(temp))
     
     for width in [1]:
         for rd in range(20):
@@ -392,7 +393,7 @@ def main():
                 for s in ["batch_", "sgd_", "IMT_", "ITAL_"]:
                     acc = []
                     for d in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000]:
-                        w = np.load("%s%s%s_0_w.npy" % (s, m, savename))[d][0]                        
+                        w = np.load(directory + "%s%s%s_0.npy" % (s, m, savename))[d][0]                        
                         np.random.seed(rd)
                         for i in tqdm(range(1000)):
                             equation = eq.generate()
@@ -405,9 +406,9 @@ def main():
                         c = 0
                         
                     # print("%s %s %s %s" % (m, s, savename, acc))
-                    np.save("%s%s%s_w_%d_curve_%d.npy" % (s, m, savename, width, rd), acc)
+                    np.save("Experiments/%s%s%s_w_%d_curve_%d.npy" % (s, m, savename, width, rd), acc)
     
-def npy2csv():
+def npy2csv(setting_name):
 #     import seaborn as sns
 #     import pandas as pd
 #     import matplotlib.pyplot as plt
@@ -432,7 +433,7 @@ def npy2csv():
     names = ["Batch", "SGD", "Omniscient IMT", "Omniscient ITAL", 'Imitate Dim-40 IMT', 'Imitate Dim-40 ITAL','Imitate Dim-50 IMT', 'Imitate Dim-50 ITAL']
     savename = "regression_1_45"
     
-    with open('search_acc_%s.csv' % setting_name, mode='w') as csv_file:
+    with open('Experiments/search_acc_%s.csv' % setting_name, mode='w') as csv_file:
         fieldnames = ['method', 'iteration', 'data']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
@@ -442,7 +443,7 @@ def npy2csv():
             x = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000])
             for s in ["batch_", "sgd_", "IMT_", "ITAL_"]:
                 for rd in range(20):
-                    l = np.load("%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
+                    l = np.load("Experiments/%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
 
                     for i in range(len(l)):
                         writer.writerow({'method': names[idx], 'iteration': x[i],  'data': l[i]})
@@ -453,7 +454,7 @@ def npy2csv():
             x = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000])
             for s in ["IMT_", "ITAL_"]:
                 for rd in range(20):
-                    l = np.load("%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
+                    l = np.load("Experiments/%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
 
                     for i in range(len(l)):
                         writer.writerow({'method': names[idx], 'iteration': x[i],  'data': l[i]})
