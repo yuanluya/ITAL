@@ -55,3 +55,11 @@ The ${mode of teacher} part of a setting is specified by the table
 |-------|-------| 
 |omniscient|omni|
 |imitate|imit|
+
+## Versions
+
+In this project, we the following version of libraries:
+
+Tensorflow v1.15
+scikit-learn v0.22.1
+numpy v1.18.2
