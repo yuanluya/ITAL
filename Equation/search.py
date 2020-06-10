@@ -383,7 +383,7 @@ def main():
         c = 0
         print("ground truth %d %s" % (width, temp))
 
-    np.save("gt_search_acc.npy" % (savename), np.mean(temp))
+    np.save("gt_search_acc.npy", np.mean(temp))
     
     for width in [1]:
         for rd in range(20):
