@@ -408,31 +408,32 @@ def main():
                     np.save("%s%s%s_w_%d_curve_%d.npy" % (s, m, savename, width, rd), acc)
     
 def plot():
-    import seaborn as sns
+#     import seaborn as sns
+#     import pandas as pd
+#     import matplotlib.pyplot as plt
+#     if plt.get_backend() == 'Qt5Agg':
+#         from matplotlib.backends.qt_compat import QtWidgets
+#         qApp = QtWidgets.QApplication(sys.argv)
+#         plt.matplotlib.rcParams['figure.dpi'] = qApp.desktop().physicalDpiX()
+
+#     palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate Dim-30 ITAL":sns.xkcd_rgb["orange"], \
+#                 "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
+#                 'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate Dim-20 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-30 IMT': sns.xkcd_rgb['olive green'],\
+#                 "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate CNN-12 ITAL":sns.xkcd_rgb["orange"], \
+#                 'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'], 'Imitate CNN-12 IMT': sns.xkcd_rgb['olive green'],\
+#                 "Imitate ITAL":sns.xkcd_rgb["orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
+#                 'Imitate Dim-50 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["burnt orange"], \
+#                 'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green'],'Teacher Rewards Truth':sns.xkcd_rgb['grey']}
+#     dash = {"Omniscient ITAL": 'solid',"Imitate ITAL": 'solid',"Batch":'solid', "SGD": 'solid', \
+#             'Omniscient IMT': 'solid', 'Imitate Dim-40 IMT': 'solid', 'Imitate Dim-40 ITAL':'solid','Imitate Dim-50 IMT':'solid','Imitate IMT': 'solid','Imitate Dim-50 ITAL':'solid',"Teacher Rewards Truth":'dashed'}
+
     import csv, os
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    if plt.get_backend() == 'Qt5Agg':
-        from matplotlib.backends.qt_compat import QtWidgets
-        qApp = QtWidgets.QApplication(sys.argv)
-        plt.matplotlib.rcParams['figure.dpi'] = qApp.desktop().physicalDpiX()
-
-    palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate Dim-30 ITAL":sns.xkcd_rgb["orange"], \
-                "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
-                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate Dim-20 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-30 IMT': sns.xkcd_rgb['olive green'],\
-                "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate CNN-12 ITAL":sns.xkcd_rgb["orange"], \
-                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'], 'Imitate CNN-12 IMT': sns.xkcd_rgb['olive green'],\
-                "Imitate ITAL":sns.xkcd_rgb["orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
-                'Imitate Dim-50 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["burnt orange"], \
-                'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green'],'Teacher Rewards Truth':sns.xkcd_rgb['grey']}
-    dash = {"Omniscient ITAL": 'solid',"Imitate ITAL": 'solid',"Batch":'solid', "SGD": 'solid', \
-            'Omniscient IMT': 'solid', 'Imitate Dim-40 IMT': 'solid', 'Imitate Dim-40 ITAL':'solid','Imitate Dim-50 IMT':'solid','Imitate IMT': 'solid','Imitate Dim-50 ITAL':'solid',"Teacher Rewards Truth":'dashed'}
-
+    
     names = ["Batch", "SGD", "Omniscient IMT", "Omniscient ITAL", 'Imitate Dim-40 IMT', 'Imitate Dim-40 ITAL','Imitate Dim-50 IMT', 'Imitate Dim-50 ITAL']
     savename = "regression_1_45"
     
-    with open('w_curve.csv', mode='w') as csv_file:
-        fieldnames = ['Method', 'Iteration', 'Accuracy']
+    with open('search_acc_%s.csv' % setting_name, mode='w') as csv_file:
+        fieldnames = ['method', 'iteration', 'data']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
 
@@ -444,10 +445,9 @@ def plot():
                     l = np.load("%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
 
                     for i in range(len(l)):
-                        writer.writerow({'Method': names[idx], 'Iteration': x[i],  'Accuracy': l[i]})
+                        writer.writerow({'method': names[idx], 'iteration': x[i],  'data': l[i]})
                     
                 idx+=1
-
 
         for m in ["imit2_", "imit3_"]:
             x = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000])
@@ -456,35 +456,33 @@ def plot():
                     l = np.load("%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
 
                     for i in range(len(l)):
-                        writer.writerow({'Method': names[idx], 'Iteration': x[i],  'Accuracy': l[i]})
+                        writer.writerow({'method': names[idx], 'iteration': x[i],  'data': l[i]})
                     
                 idx+=1
 
+#         for i in range(len(x)):
+#             writer.writerow({'method': 'Teacher Rewards Truth', 'iteration': x[i], 'data': np.load("gt_search_acc.npy")})
 
-        for i in range(len(x)):
-            writer.writerow({'Method': 'Teacher Rewards Truth', 'Iteration': x[i], 'Accuracy': np.load("gt_search_acc.npy")})
 
+#     paper_rc = {'lines.linewidth': 2.5}
+#     sns.set(style="darkgrid")
+#     sns.set(font_scale=1.95, rc = paper_rc)
 
-    paper_rc = {'lines.linewidth': 2.5}
-    sns.set(style="darkgrid")
-    sns.set(font_scale=1.95, rc = paper_rc)
-
-    plt.figure() 
-    f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6)) 
-    df = pd.read_csv('w_curve.csv')
-    plt1 = sns.lineplot(x="Iteration", y="Accuracy",
-                 hue="Method",data=df, ax=axes, palette=palette)
-    # axes.axhline(np.load("gt_search_acc.npy"), color=sns.xkcd_rgb['grey'], linestyle='-')
+#     plt.figure() 
+#     f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6)) 
+#     df = pd.read_csv('w_curve.csv')
+#     plt1 = sns.lineplot(x="Iteration", y="Accuracy",
+#                  hue="Method",data=df, ax=axes, palette=palette)
+#     # axes.axhline(np.load("gt_search_acc.npy"), color=sns.xkcd_rgb['grey'], linestyle='-')
     
-    plt1.legend_.remove()
+#     plt1.legend_.remove()
 
-    axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
-    axes.set_title('Simplification Accuracy', fontweight="bold", size=29)
-    axes.set_ylabel('')
-    plt1.lines[8].set_linestyle('dashed')
-    # plt.show()
-    plt.savefig('%s_w.pdf' % (savename), dpi=300)
+#     axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
+#     axes.set_title('Simplification Accuracy', fontweight="bold", size=29)
+#     axes.set_ylabel('')
+#     plt1.lines[8].set_linestyle('dashed')
+#     # plt.show()
+#     plt.savefig('%s_w.pdf' % (savename), dpi=300)
 
 if __name__ == '__main__':
     main()
-    # plot()
