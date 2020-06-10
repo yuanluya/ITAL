@@ -326,7 +326,7 @@ def plot(setting_name):
         results2_imit = {}
         for dim in imit_dim:
             results0_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/'  + '%s.csv' % ('dist' + '_'+setting_name+'_imit_' + dim))
-            results1_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/'  + '%s.csv' % ('accuracies'+'_imit' + '_'+setting_name+'_imit_' + dim))
+            results1_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/'  + '%s.csv' % ('accuracies'+'_'+setting_name+'_imit_' + dim))
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
         df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
@@ -537,7 +537,7 @@ def plot_supp(setting_name):
             df1 = pd.concat([df1, df1_omni])
 
             for dim in imit_dim:
-                df1_imit[dim]['method'] = 'Imitate Dim-' + dim + ' ' + method
+                df1_imit[dim]['method'] = 'Imitate CNN-' + dim + ' ' + method
 
                 df1 = pd.concat([df1, df1_imit[dim]])
 
@@ -737,7 +737,7 @@ def main():
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, 1)
+    CollectDataAndPlot(args.setting_name, seed_range = 20)
 
 if __name__ == '__main__':
     main()

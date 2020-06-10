@@ -13,8 +13,8 @@ reg_coef = 0
 num_particles = 1
 mode = 'imit'
 
-train_iter_simple = 500
-train_iter_smart = 500
+train_iter_simple = 2000
+train_iter_smart = 2000
 
 noise_scale_min = 0.01
 noise_scale_max = 0.1
