@@ -377,7 +377,7 @@ def main():
             greedy_search_equation, v, rs, _  = beam_search(equation, width, eqv, M, w)
             greedy_search_equation = tuple2str(greedy_search_equation)
             history = eq.simplify(equation)
-            if greed_search_equation == history[-1][:-1]:
+            if greedy_search_equation == history[-1][:-1]:
                 c = c + 1
         temp.append(c/1000)
         c = 0
@@ -399,7 +399,7 @@ def main():
                             greedy_search_equation, v, rs, _ = beam_search(equation, width, eqv, M, w)
                             greedy_search_equation = tuple2str(greedy_search_equation)
                             history = eq.simplify(equation)
-                            if greed_search_equation == history[-1][:-1]:
+                            if greedy_search_equation == history[-1][:-1]:
                                 c = c + 1
                         acc.append(c / 1000)
                         c = 0
