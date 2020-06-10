@@ -407,7 +407,7 @@ def main():
                     # print("%s %s %s %s" % (m, s, savename, acc))
                     np.save("%s%s%s_w_%d_curve_%d.npy" % (s, m, savename, width, rd), acc)
     
-def plot():
+def npy2csv():
 #     import seaborn as sns
 #     import pandas as pd
 #     import matplotlib.pyplot as plt
