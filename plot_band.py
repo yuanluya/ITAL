@@ -556,7 +556,7 @@ def plot_supp(setting_name):
         
         results0_imit = {}
         for dim in imit_dim:
-            results0_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/'  + '%s.csv' % ('search_acc_' + '_'+setting_name+'_imit_' + dim))
+            results0_imit[dim] = pd.read_csv(imit_path[:-1] + '_' + dim + '/'  + '%s.csv' % ('search_acc' + '_'+setting_name+'_imit_' + dim))
 
         df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
 
