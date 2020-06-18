@@ -50,7 +50,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
 
     learner.reset(init_ws)
 
-    eliminates = []
     dists_ = [np.sum(np.square(learner.current_mean_ - teacher.stu_gt_reward_param_))]
     dists = [np.mean(np.max(abs(learner.current_action_prob() - teacher.action_probs_), axis = 1))]
     distsq = [np.mean(np.square(learner.q_map_ - teacher.q_map_))]
@@ -65,22 +64,22 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
             data_idx, gradients, l_stu = teacher.choose_imit(stu_rewards, learner.lr_, hard = True)
 
         if mode == 'omni' or random_prob is not None:
-            eliminate, _ = learner.learn(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
+            w = learner.learn(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
                                          gradients, i, teacher.stu_gt_reward_param_, random_prob)
         elif mode == 'omni_cont':
-            eliminate, _ = learner.learn_cont(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
+            w = learner.learn_cont(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
                                          gradients, i, teacher.stu_gt_reward_param_, learner.config_.cont_K)
         elif mode == 'imit':
-            eliminate, _ = learner.learn_imit(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
+            w = learner.learn_imit(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
                                               l_stu, i, teacher.stu_gt_reward_param_)
         elif mode == 'imit_cont':
-            eliminate, _ = learner.learn_imit_cont(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
+            w = learner.learn_imit_cont(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
                                                    l_stu, i, teacher.stu_gt_reward_param_, learner.config_.cont_K)
         dists_.append(np.sum(np.square(learner.current_mean_ - teacher.stu_gt_reward_param_)))
         dists.append(np.mean(np.max(abs(learner.current_action_prob() - teacher.action_probs_), axis = 1)))
         distsq.append(np.mean(np.square(learner.q_map_ - teacher.q_map_)))
-        eliminates.append(eliminate)
-        ws.append(copy.deepcopy(learner.current_mean_))
+
+        ws.append(copy.deepcopy(w))
         if (i + 1) % 20 == 0:
             actual_rewards.append(teacher.map_.test_walk(teacher.reward_param_, learner.action_probs_, test_set[i + 1], greedy = True))
     learner.lr_ = learner.config_.lr
@@ -117,8 +116,8 @@ def learn_thread_tf(config_T, config_L, mode, train_iter, random_prob, return_ke
     #pdb.set_trace()
     learner = LearnerIRL(sess, map_l, config_L)
 
-    dists, dists_, distsq, actual_rewards, eliminates = learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob)
-    thread_return[return_key] = [dists, dists_, distsq, actual_rewards, eliminates]
+    dists, dists_, distsq, actual_rewards, ws = learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob)
+    thread_return[return_key] = [dists, dists_, distsq, actual_rewards, ws]
 
 def teacher_run_tf(config_T, config_L, train_iter, thread_return):
 
