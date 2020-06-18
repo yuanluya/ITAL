@@ -717,7 +717,7 @@ def main():
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, seed_range = 20)
+    CollectDataAndPlot(args.setting_name, seed_range = 1)
 
 if __name__ == '__main__':
     main()

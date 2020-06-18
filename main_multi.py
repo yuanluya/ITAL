@@ -60,10 +60,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     dists_ = [np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2))))]
     accuracies = []
     losses_list = []
-    particle_hist = []
-    data_choices = []
     eliminates = []
-    angles = []
+
     for i in tqdm(range(train_iter)):
         if teacher.config_.task == 'classification':
             accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
@@ -94,7 +92,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
                     gradients_tea.append(np.expand_dims(np.matmul(gradients_lv[j: j + 1, ...].T, teacher.data_pool_tea_[j: j + 1, ...]), 0))
                 gradients_tea = np.concatenate(gradients_tea, 0)
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr, hard = True)#(mode[-4: ] != 'cont'))
-        data_choices.append(data_idx)
         
         if mode == 'omni_cont':
             w, eliminate, angle = learner.learn_cont(teacher.data_pool_, teacher.gt_y_,
@@ -107,8 +104,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
                                                 data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
         else:
             w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
-        angles.append(angle)
-        #particle_hist.append(copy.deepcopy(learner.particles_))
         eliminates.append(eliminate)
         dists.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
         dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
@@ -127,16 +122,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         teacher_dim = teacher.config_.data_x_tea.shape[1]
     else:
         teacher_dim = teacher.config_.data_dim
-    if random_prob is None and plot_condition:
-        num_bad = np.sum(np.array(angles) < 0)
-        plt.plot(angles, 'bo', markersize=4)
-        plt.plot(np.zeros(train_iter), 'r-')
-        plt.title('Mode: %s, Student Dimension: %d, Teacher_Dimension: %d, Classes: %d \n bad: %d, ratio of good: %f' %
-                (mode, learner.config_.data_dim, teacher_dim, learner.config_.num_classes,
-                 num_bad, 1 - num_bad / train_iter))
-        plt.ylabel("Projection Length")
-        plt.xlabel("Iterations")
-        plt.show()
     return dists, dists_, accuracies, losses_list, eliminates
 
 def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
