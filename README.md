@@ -26,7 +26,7 @@ python3 main_multi.py mnist_coop_omni 0
 ```bash
 python3 main_multi.py mnist_coop_imit_20 0
 ```
-
+The results will be saved as `pdf` in the corresponding folder inside the `Experiments` folder.
 ## Settings
 
 The ${experiment} part of a setting is specified by the table 
@@ -60,7 +60,7 @@ The ${mode of teacher} part of a setting is specified by the table
 
 ## Versions
 
-In this project, we the following version of libraries:<br /> 
+In this project, we used the following version of libraries:<br /> 
 
 Tensorflow v1.15<br /> 
 scikit-learn v0.22.1<br /> 
