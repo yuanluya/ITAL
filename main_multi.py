@@ -60,7 +60,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     dists_ = [np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2))))]
     accuracies = []
     losses_list = []
-    eliminates = []
 
     for i in tqdm(range(train_iter)):
         if teacher.config_.task == 'classification':
@@ -77,11 +76,11 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         accuracies.append(accuracy)
         teacher.sample()
         gradients, _, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
-        if mode == 'omni' or mode == 'expt':
+        if mode == 'omni':
             data_idx = teacher.choose(gradients, w, learner.config_.lr)
         elif mode == 'omni_cont':
             data_idx = teacher.choose(gradients, w, learner.config_.lr, hard = True)
-        elif mode == 'imit' or mode == 'imit_cont' or mode == 'sgd_imit_cont':
+        elif mode == 'imit' or mode == 'imit_cont':
             if hasattr(teacher, 't_mat_') and teacher.t_mat_ is not None:
                 stu2tea = np.concatenate([np.matmul(w[0, :, 0: -1], teacher.t_mat_.T), w[0, :, -1:] * np.ones([learner.config_.num_classes, 1])], 1)
                 gradients_tea, _, _ = learner.get_grads(teacher.data_pool_tea_, teacher.gt_y_, np.expand_dims(stu2tea, 0))
@@ -94,17 +93,14 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr, hard = True)#(mode[-4: ] != 'cont'))
         
         if mode == 'omni_cont':
-            w, eliminate, angle = learner.learn_cont(teacher.data_pool_, teacher.gt_y_,
+            w = learner.learn_cont(teacher.data_pool_, teacher.gt_y_,
                                                      data_idx, gradients, i, teacher.gt_w_, K = learner.config_.cont_K)
         elif mode == 'imit_cont':
-            w, eliminate, angle = learner.learn_sur_cont(teacher.data_pool_, teacher.gt_y_,
+            w = learner.learn_sur_cont(teacher.data_pool_, teacher.gt_y_,
                                                          data_idx, gradients, losses, i, teacher.gt_w_, K = learner.config_.cont_K)
         elif mode == 'omni' or random_prob is not None:
-            w, eliminate, angle = learner.learn(teacher.data_pool_, teacher.gt_y_,
+            w = learner.learn(teacher.data_pool_, teacher.gt_y_,
                                                 data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
-        else:
-            w, eliminate, angle = learner.learn_sur(teacher.data_pool_, teacher.gt_y_, data_idx, gradients, losses, i, teacher.gt_w_)
-        eliminates.append(eliminate)
         dists.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
         dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
         ws.append(w)
@@ -114,15 +110,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
         print('smart test accuracy: %f' % accuracy, random_prob)
 
-    if (teacher.config_.transform):
-        mode = "imit"
-    else:
-        mode = "omni"
-    if teacher.config_.data_x_tea is not None:
-        teacher_dim = teacher.config_.data_x_tea.shape[1]
-    else:
-        teacher_dim = teacher.config_.data_dim
-    return dists, dists_, accuracies, losses_list, eliminates
+    return dists, dists_, accuracies, losses_list
 
 def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
     import tensorflow as tf
@@ -132,9 +120,9 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
     init = tf.global_variables_initializer()
 
     learnerM = LearnerSM(sess, learner)
-    dists, dists_, accuracies, logpdfs, eliminate = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
+    dists, dists_, accuracies, logpdfs = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
 
-    thread_return[key] = [dists, dists_, accuracies, logpdfs, eliminate]
+    thread_return[key] = [dists, dists_, accuracies, logpdfs]
 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -186,8 +174,8 @@ def main():
             print("joining", j)
             j.join()
         
-        dists1, dists1_, accuracies1, losses1, _ = return_dict[1]
-        dists8, dists8_, accuracies8, losses8, _ = return_dict['%s_cont' % mode]
+        dists1, dists1_, accuracies1, losses1 = return_dict[1]
+        dists8, dists8_, accuracies8, losses8 = return_dict['%s_cont' % mode]
 
     import tensorflow as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
@@ -204,8 +192,8 @@ def main():
     else:
         learnerM = LearnerSM(sess, config_LS)
 
-        dists1, dists1_, accuracies1, losses1, _ = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
-        dists8, dists8_, accuracies8, losses8, _ = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
+        dists1, dists1_, accuracies1, losses1 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
+        dists8, dists8_, accuracies8, losses8 = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
         dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
         dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
 
