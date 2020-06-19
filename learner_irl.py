@@ -103,7 +103,7 @@ class LearnerIRL:
                 gradient_tf = get_grad()
                 self.current_mean_ += self.config_.lr * gradient_tf
 
-        return self.current_mean_
+        return self.current_mean_, -1
 
     def learn(self, mini_batch_indices, opt_actions, data_idx, gradients, step, gt_w, random_prob = None):
         particle_gradients = []
@@ -129,6 +129,7 @@ class LearnerIRL:
         if np.sum(np.isnan(particle_gradients)) > 0:
             pdb.set_trace()
         self.particles_ += self.lr_ * particle_gradients
+        eliminate = 0
 
         gradient = gradients[data_idx: data_idx + 1, ...]
         target_center = self.current_mean_ + self.lr_ * gradient
@@ -136,20 +137,71 @@ class LearnerIRL:
                             2 * self.lr_ * np.sum((self.current_mean_ - self.particles_) * gradient, axis = 1)
 
         gradients_cache = self.lr_ * self.lr_ * np.sum(np.square(gradients), axis = 1)
+        scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
+                np.exp (-1 * step / self.config_.noise_scale_decay)
+        #scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
 
-        new_val_map, new_q_map, _ = self.value_iter_op_(target_center, value_map_init = self.initial_val_maps_[self.config_.particle_num], hard_max = True)
-        if np.sum(np.isnan(new_val_map)) > 0:
-            pdb.set_trace()
-        self.initial_val_maps_[self.config_.particle_num] = new_val_map
-        new_valg_map, _, _ = self.gradient_iter_op_(new_q_map, value_map_init = self.initial_valg_maps_[self.config_.particle_num])
-        self.initial_valg_maps_[self.config_.particle_num] = new_valg_map
+        to_be_replaced = []
+        for i in range(self.config_.particle_num):
+            if random_prob is not None:
+                rd = np.random.choice(2, p = [1 - random_prob, random_prob])
+                if rd == 1:
+                    to_be_replaced.append(i)
+                continue
+            particle_cache = self.current_mean_ - self.particles_[i: i + 1, ...]
+            count = 0
+            for j in range(mini_batch_indices.shape[0]):
+                if j != data_idx:
+                    val_cmp = gradients_cache[j] + 2 * self.lr_ * np.sum(particle_cache * gradients[j: j + 1, ...])
+                    if val_target[i] - val_cmp > 1e-8:
+                        count += 1
+                    if count == self.config_.replace_count:
+                        to_be_replaced.append(i)
+                        break
 
-        self.particles_[0: 0 + 1, ...] = target_center
-        self.initial_val_maps_[0] = copy.deepcopy(new_val_map)
-        self.initial_valg_maps_[0] = copy.deepcopy(new_valg_map)
+        to_be_kept = list(set(range(self.config_.particle_num)) - set(to_be_replaced))
+        cosine = 0
+        #min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])] if len(to_be_kept) > 0 else None
+        if len(to_be_replaced) > 0:
+            if len(to_be_kept) > 0 and step > 2:
+                new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
+                             np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
+                # new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
+                #              self.particles_[min_idx: min_idx + 1, ...]
+            else:
+                new_center = target_center
 
+            new_val_map, new_q_map, _ = self.value_iter_op_(new_center, value_map_init = self.initial_val_maps_[self.config_.particle_num], hard_max = True)
+            if np.sum(np.isnan(new_val_map)) > 0:
+                pdb.set_trace()
+            self.initial_val_maps_[self.config_.particle_num] = new_val_map
+            new_valg_map, _, _ = self.gradient_iter_op_(new_q_map, value_map_init = self.initial_valg_maps_[self.config_.particle_num])
+            self.initial_valg_maps_[self.config_.particle_num] = new_valg_map
+
+            replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
+            # kept_dist = np.sum(np.square(new_center - gt_w))
+            # replace_dist = np.sum(np.square(replace_center - gt_w))
+            prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
+            norm = np.sum(np.square((gt_w - new_center)))
+            cosine = prod - norm
+
+        for i in to_be_replaced:
+            # if len(to_be_kept) > 0:
+            #     scale = 0.5 * abs(self.lr_ * np.mean(particle_gradients, axis = 0))
+            noise = np.random.normal(scale = scale, size = [1, self.config_.shape ** 2])
+                        # noise = t.rvs(df = 5, scale = scale,
+                        #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
+            #rd = np.random.choice(2, p = [1 - replace_ratio, replace_ratio])
+            rd = np.random.rand()
+            if rd < 1  - self.config_.prob:
+                self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
+            else:
+                self.particles_[i: i + 1, ...] = new_center + (noise if random_prob != 1 else 0)
+                self.initial_val_maps_[i] = copy.deepcopy(new_val_map)
+                self.initial_valg_maps_[i] = copy.deepcopy(new_valg_map)
+            eliminate += 1
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
-        return self.current_mean_
+        return eliminate, cosine
 
     def learn_imit_cont(self, mini_batch_indices, opt_actions, data_idx, lle, step, gt_w, K = None):
         def get_grads_lle():
@@ -212,7 +264,7 @@ class LearnerIRL:
                 self.current_mean_ += self.config_.lr * lle_gradient
                 current_w_losses_gradients, _ = get_grads_lle()
 
-        return self.current_mean_
+        return self.current_mean_, -1
 
     #lle is ok to share, because as long as the reward is the same, lle is the same
     # gradients should not be shared, as it depends on different state feature, which is private knowledge
@@ -248,41 +300,61 @@ class LearnerIRL:
                    np.log(np.sum(np.exp(self.config_.beta * q_map[mini_batch_indices, ...]), axis = 1))
             new_particle_lles.append(plle)
 
+        eliminate = 0 
         gradient = gradients[data_idx: data_idx + 1, ...]
         target_center = self.current_mean_ - self.lr_ * gradient
         val_target = self.lr_ * self.lr_ * np.sum(np.square(gradient))
         scale = self.config_.noise_scale_min + (self.config_.noise_scale_max - self.config_.noise_scale_min) *\
                 np.exp (-1 * step / self.config_.noise_scale_decay)
         #scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
-        to_be_replaced = False
+        to_be_replaced = []
         gradient_cache = self.lr_ * self.lr_ * np.sum(np.square(gradients), axis = 1)
+        for i in range(self.config_.particle_num):
+            val_target_temp = val_target + 2 * self.lr_ * (lle[data_idx] - new_particle_lles[i][data_idx])
+            val_cmps = gradient_cache + 2 * self.lr_ * (lle - new_particle_lles[i])
+            count = 0
+            for j in range(mini_batch_indices.shape[0]):
+                if j != data_idx and val_target_temp - val_cmps[j] > 1e-8:
+                    count += 1
+                if count == self.config_.replace_count:
+                    to_be_replaced.append(i)
+                    eliminate += 1
+                    break
 
-        val_target_temp = val_target + 2 * self.lr_ * (lle[data_idx] - new_particle_lles[i][data_idx])
-        val_cmps = gradient_cache + 2 * self.lr_ * (lle - new_particle_lles[i])
-        count = 0
-        for j in range(mini_batch_indices.shape[0]):
-            if j != data_idx and val_target_temp - val_cmps[j] > 1e-8:
-                count += 1
-            if count == self.config_.replace_count:
-                to_be_replaced = True
-
+        to_be_kept = list(set(range(0, self.config_.particle_num)) - set(to_be_replaced))
         cosine = 0
-        if to_be_replaced:
-            new_val_map, new_q_map, _ = self.value_iter_op_(target_center, value_map_init = self.initial_val_maps_[self.config_.particle_num], hard_max = True)
+        if len(to_be_replaced) > 0:
+            if len(to_be_kept) > 0 and step > 2:
+                new_center = self.config_.target_ratio * target_center + self.config_.new_ratio *\
+                             np.mean(self.particles_[np.array(to_be_kept), ...], axis = 0, keepdims = True)
+            else:
+                new_center = target_center
+
+            new_val_map, new_q_map, _ = self.value_iter_op_(new_center, value_map_init = self.initial_val_maps_[self.config_.particle_num], hard_max = True)
             self.initial_val_maps_[self.config_.particle_num] = new_val_map
             new_valg_map, _, _ = self.gradient_iter_op_(new_q_map, value_map_init = self.initial_valg_maps_[self.config_.particle_num])
             self.initial_valg_maps_[self.config_.particle_num] = new_valg_map
 
+            replace_center = np.mean(self.particles_[np.array(to_be_replaced), ...], axis = 0)
+            prod = np.sum((gt_w - new_center) * (gt_w - replace_center))
+            norm = np.sum(np.square((gt_w - new_center)))
+            cosine = prod - norm
+
+        for i in to_be_replaced:
             noise = noise = np.random.normal(scale = scale, size = [1, self.config_.shape ** 2])
                         # noise = t.rvs(df = 5, scale = scale,
                         #               size = [1, self.config_.num_classes, self.config_.data_dim + 1])
-            self.particles_[0: 0 + 1, ...] = target_center
-            self.initial_val_maps_[0] = copy.deepcopy(new_val_map)
-            self.initial_valg_maps_[0] = copy.deepcopy(new_valg_map)
+            rd = np.random.rand()
+            if rd < 1 - self.config_.prob:
+                self.particles_[i: i + 1, ...] += 0 #target_center + (noise if random_prob != 1 else 0)
+            else:
+                self.particles_[i: i + 1, ...] = new_center + noise
+                self.initial_val_maps_[i] = copy.deepcopy(new_val_map)
+                self.initial_valg_maps_[i] = copy.deepcopy(new_valg_map)
 
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
-        return self.current_mean_
+        return eliminate, cosine
 
     def current_action_prob(self):
         _, self.q_map_, _ = self.value_iter_op_(self.current_mean_, hard_max = True)
