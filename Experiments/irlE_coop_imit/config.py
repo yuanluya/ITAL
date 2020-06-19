@@ -6,7 +6,7 @@ multi_thread = True
 shape = 8
 lr = 1e-3
 beta = 1
-reward_type = 'H'
+reward_type = 'E'
 approx_k = 200
 
 beta_select = 30000
