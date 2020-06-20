@@ -5,13 +5,13 @@ multi_thread = True
 
 shape = 8
 lr = 1e-3
-beta = 5
+beta = 1
 reward_type = 'E'
 approx_k = 200
 
 beta_select = -30000
 K = 1
-train_iter = 2000
+train_iter = 1000
 
 mode = 'imit'
 

@@ -5,7 +5,7 @@ multi_thread = True
 
 shape = 8
 lr = 1e-3
-beta = 5
+beta = 1
 reward_type = 'H'
 approx_k = 220
 
