@@ -1,8 +1,5 @@
 # Iterative Teacher-Aware Learning
 
-## Note
-This is our experimental code. It can replicate our experiment results, but hasn’t been thoroughly cleaned. A version ready to be released and distributed will become available later.
-
 ## Usage
 
 To collect data and plots for a cooperative or adversarial teacher for a particular experiment, run with the command line
