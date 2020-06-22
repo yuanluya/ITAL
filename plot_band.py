@@ -109,7 +109,7 @@ def collect_data(setting_name, mode, random_seeds, arguments, type_):
 
 
 def plot(setting_name):
-    main_multi_settings = {'regression_coop', 'regression_adv', 'class10_coop', 'class10_adv'}
+    main_settings = {'regression_coop', 'regression_adv', 'class10_coop', 'class10_adv'}
     classification = {'class10_coop', 'class10_adv', 'mnist'}
     irl_settings = {'irlH_coop', 'irlH_adv', 'irlE_coop', 'irlE_adv'}
 
@@ -139,7 +139,7 @@ def plot(setting_name):
     plt.figure()
     f, axes = plt.subplots(1, 2, constrained_layout = True, figsize=(20, 6))
 
-    if setting_name in main_multi_settings:
+    if setting_name in main_settings:
         results0_omni = pd.read_csv(omni_path + '%s.csv' % ('dist_'+setting_name+'_omni'))
         results0_imit = pd.read_csv(imit_path + '%s.csv' % ('dist_'+setting_name+'_imit'))
 
@@ -617,11 +617,11 @@ def CollectDataAndPlot(setting_name, seed_range):
         omni_setting = setting_name + '_omni'
         imit_setting = setting_name + '_imit'
 
-        arguments = ['python3', 'main_multi.py', omni_setting]
+        arguments = ['python3', 'main.py', omni_setting]
         collect_data(omni_setting, 'omni', random_seeds, arguments, type_)
         remove_npy('Experiments/' + omni_setting)
 
-        arguments = ['python3', 'main_multi.py', imit_setting]
+        arguments = ['python3', 'main.py', imit_setting]
         collect_data(imit_setting, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting)
 
@@ -631,15 +631,15 @@ def CollectDataAndPlot(setting_name, seed_range):
         imit_setting1 = setting_name + '_imit_40'
         imit_setting2 = setting_name + '_imit_50'
 
-        arguments = ['python3', 'main_multi.py', omni_setting]
+        arguments = ['python3', 'main.py', omni_setting]
         collect_data(omni_setting, 'omni', random_seeds, arguments, type_)
         remove_npy('Experiments/' + omni_setting)
 
-        arguments = ['python3', 'main_multi.py', imit_setting1]
+        arguments = ['python3', 'main.py', imit_setting1]
         collect_data(imit_setting1, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting1)
 
-        arguments = ['python3', 'main_multi.py', imit_setting2]
+        arguments = ['python3', 'main.py', imit_setting2]
         collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting2)
         
@@ -654,15 +654,15 @@ def CollectDataAndPlot(setting_name, seed_range):
         imit_setting1 = setting_name + '_imit_20'
         imit_setting2 = setting_name + '_imit_30'
 
-        arguments = ['python3', 'main_multi.py', omni_setting]
+        arguments = ['python3', 'main.py', omni_setting]
         collect_data(omni_setting, 'omni', random_seeds, arguments, type_)
         remove_npy('Experiments/' + omni_setting)
 
-        arguments = ['python3', 'main_multi.py', imit_setting1]
+        arguments = ['python3', 'main.py', imit_setting1]
         collect_data(imit_setting1, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting1)
 
-        arguments = ['python3', 'main_multi.py', imit_setting2]
+        arguments = ['python3', 'main.py', imit_setting2]
         collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting2)
 
@@ -671,15 +671,15 @@ def CollectDataAndPlot(setting_name, seed_range):
         imit_setting1 = setting_name + '_imit_9'
         imit_setting2 = setting_name + '_imit_12'
 
-        arguments = ['python3', 'main_multi.py', omni_setting]
+        arguments = ['python3', 'main.py', omni_setting]
         collect_data(omni_setting, 'omni', random_seeds, arguments, type_)
         remove_npy('Experiments/' + omni_setting)
 
-        arguments = ['python3', 'main_multi.py', imit_setting1]
+        arguments = ['python3', 'main.py', imit_setting1]
         collect_data(imit_setting1, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting1)
 
-        arguments = ['python3', 'main_multi.py', imit_setting2]
+        arguments = ['python3', 'main.py', imit_setting2]
         collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting2)
 
