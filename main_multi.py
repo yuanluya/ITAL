@@ -94,10 +94,10 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         
         if mode == 'omni_cont':
             w = learner.learn_cont(teacher.data_pool_, teacher.gt_y_,
-                                                     data_idx, gradients, i, teacher.gt_w_, K = learner.config_.cont_K)
+                                                     data_idx, gradients, i, teacher.gt_w_)
         elif mode == 'imit_cont':
             w = learner.learn_sur_cont(teacher.data_pool_, teacher.gt_y_,
-                                                         data_idx, gradients, losses, i, teacher.gt_w_, K = learner.config_.cont_K)
+                                                         data_idx, gradients, losses, i, teacher.gt_w_)
         elif mode == 'omni' or random_prob is not None:
             w = learner.learn(teacher.data_pool_, teacher.gt_y_,
                                                 data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)

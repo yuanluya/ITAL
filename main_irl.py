@@ -74,7 +74,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
                                               l_stu, i, teacher.stu_gt_reward_param_)
         elif mode == 'imit_cont':
             w = learner.learn_imit_cont(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
-                                                   l_stu, i, teacher.stu_gt_reward_param_, learner.config_.cont_K)
+                                                   l_stu, i, teacher.stu_gt_reward_param_)
         dists_.append(np.sum(np.square(learner.current_mean_ - teacher.stu_gt_reward_param_)))
         dists.append(np.mean(np.max(abs(learner.current_action_prob() - teacher.action_probs_), axis = 1)))
         distsq.append(np.mean(np.square(learner.q_map_ - teacher.q_map_)))

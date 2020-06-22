@@ -76,23 +76,7 @@ class LearnerIRL:
                    np.log(np.sum(np.exp(self.config_.beta * q_map[mini_batch_indices, ...]), axis = 1))
             return plle
 
-        if K is None:
-            total_lle = -1 * np.inf
-            steps = 0
-            while True:
-                gradient_tf = get_grad()
-                self.current_mean_ += self.config_.lr * gradient_tf
-                lle_gradient = lle_gradient_func(exp_cache_func(exp_cache_prev_func(self.current_mean_)))
-                self.current_mean_ += self.config_.lr * lle_gradient
-                new_lle = get_new_lle()
-                exp_cache = exp_cache_func(exp_cache_prev_func(self.current_mean_))
-                current_lle = teacher_sample_lle_func(exp_cache) + new_lle[data_idx]
-                steps += 1
-                if total_lle >= current_lle:
-                    break
-                else:
-                    total_lle = current_lle
-        elif K > 0:
+        if K > 0:
             for i in range(K):
                 gradient_tf = get_grad()
                 self.current_mean_ += self.config_.lr * gradient_tf
@@ -151,7 +135,7 @@ class LearnerIRL:
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
         return self.current_mean_
 
-    def learn_imit_cont(self, mini_batch_indices, opt_actions, data_idx, lle, step, gt_w, K = None):
+    def learn_imit_cont(self, mini_batch_indices, opt_actions, data_idx, lle, step, gt_w):
         def get_grads_lle():
             val_map, q_map, _ = self.value_iter_op_(self.current_mean_, value_map_init = self.initial_val_maps_[0], hard_max = True)
             self.initial_val_maps_[0] = val_map
@@ -185,32 +169,13 @@ class LearnerIRL:
         current_w_losses_gradients = copy.deepcopy(gradients)
         current_lle_as_loss = copy.deepcopy(lle)          
         exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
-        if K is None:
-            total_lle = -1 * np.inf
-            exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
-            steps = 0
-            while True:
-                self.current_mean_ += self.config_.lr * current_w_losses_gradients[data_idx: data_idx + 1, ...]
-                current_w_losses_gradients, current_lle_as_loss = get_grads_lle()
-                exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
-                lle_gradient = lle_gradient_func(current_w_losses_gradients, exp_cache)
-                self.current_mean_ += self.config_.lr * lle_gradient
-                current_w_losses_gradients, current_lle_as_loss = get_grads_lle()
-                exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
-                current_lle = teacher_sample_lle_func(exp_cache) + current_lle_as_loss[data_idx]
-                steps += 1
-                if total_lle >= current_lle:
-                    break
-                else:
-                    total_lle = current_lle
-        elif K > 0:
-            for i in range(K):
-                self.current_mean_ += self.config_.lr * current_w_losses_gradients[data_idx: data_idx + 1, ...]
-                current_w_losses_gradients, current_lle_as_loss = get_grads_lle()
-                exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
-                lle_gradient = lle_gradient_func(current_w_losses_gradients, exp_cache)
-                self.current_mean_ += self.config_.lr * lle_gradient
-                current_w_losses_gradients, _ = get_grads_lle()
+
+        self.current_mean_ += self.config_.lr * current_w_losses_gradients[data_idx: data_idx + 1, ...]
+        current_w_losses_gradients, current_lle_as_loss = get_grads_lle()
+        exp_cache = exp_cache_func(exp_cache_prev_func(current_lle_as_loss))
+        lle_gradient = lle_gradient_func(current_w_losses_gradients, exp_cache)
+        self.current_mean_ += self.config_.lr * lle_gradient
+        current_w_losses_gradients, _ = get_grads_lle()
 
         return self.current_mean_
 

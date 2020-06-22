@@ -36,7 +36,7 @@ class LearnerSM:
         self.particles_ = copy.deepcopy(init_ws)
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
 
-    def learn_cont(self, data_pool, data_y, data_idx, gradients, step, gt_w, K = None):
+    def learn_cont(self, data_pool, data_y, data_idx, gradients, step, gt_w):
         prev_mean = copy.deepcopy(self.current_mean_)
         exp_cache_prev_func = lambda w_est: -1 * self.config_.beta *\
                                             ((self.config_.lr ** 2) * np.sum(np.square(gradients), axis = (1, 2)) -\
@@ -46,42 +46,13 @@ class LearnerSM:
         lle_gradient_func = lambda exps: -2 * self.config_.beta * self.config_.lr * gradients[data_idx: data_idx + 1, ...] +\
                                                 2 * self.config_.beta * self.config_.lr * np.sum(gradients *\
                                                 np.expand_dims(np.expand_dims(exps, -1), -1) / np.sum(exps), axis = 0, keepdims = True)
-        if K is None:
-            total_lle = -1 * np.inf
-            exp_cache = exp_cache_func(exp_cache_prev_func(self.current_mean_))
-            steps = 0
-            while True:
-                loss, gradient_tf = self.sess_.run([self.loss_, self.gradient_w_],
-                                                   {self.X_: data_pool[data_idx: data_idx + 1, ...],
-                                                    self.W_: self.current_mean_,
-                                                    self.y_: data_y[data_idx: data_idx + 1, :]})
-                self.current_mean_ -= self.config_.lr * gradient_tf[0]
-                exp_cache = exp_cache_func(exp_cache_prev_func(self.current_mean_))
-                lle_gradient = lle_gradient_func(exp_cache)
-                self.current_mean_ += self.config_.lr * lle_gradient
-                exp_cache = exp_cache_func(exp_cache_prev_func(self.current_mean_))
-                current_lle = teacher_sample_lle_func(exp_cache) - loss
-                steps += 1
-                if total_lle >= current_lle:
-                    break
-                else:
-                    total_lle = current_lle
-        elif K > 0:
-            for i in range(K):
-                gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
-                                                                    self.W_: self.current_mean_,
-                                                                    self.y_: data_y[data_idx: data_idx + 1, :]})
-                self.current_mean_ -= self.config_.lr * gradient_tf[0]
-                lle_gradient = lle_gradient_func(exp_cache_func(exp_cache_prev_func(self.current_mean_)))
-                self.current_mean_ += self.config_.lr * lle_gradient
-        else:
-            total_lle = -1 * np.inf
-            for i in range(abs(K)):
-                loss, gradient_tf = self.sess_.run([self.loss_, self.gradient_w_],
-                                                    {self.X_: data_pool[data_idx: data_idx + 1, ...],
-                                                        self.W_: self.current_mean_,
-                                                        self.y_: data_y[data_idx: data_idx + 1, :]})
-                self.current_mean_ -= self.config_.lr * gradient_tf[0]
+        
+        gradient_tf = self.sess_.run(self.gradient_w_, {self.X_: data_pool[data_idx: data_idx + 1, ...],
+                                                            self.W_: self.current_mean_,
+                                                            self.y_: data_y[data_idx: data_idx + 1, :]})
+        self.current_mean_ -= self.config_.lr * gradient_tf[0]
+        lle_gradient = lle_gradient_func(exp_cache_func(exp_cache_prev_func(self.current_mean_)))
+        self.current_mean_ += self.config_.lr * lle_gradient
 
         return self.current_mean_
 
@@ -99,15 +70,12 @@ class LearnerSM:
                             2 * self.config_.lr * np.sum((self.current_mean_ - self.particles_) * gradient, axis = (1, 2))
 
         gradients_cache = self.config_.lr * self.config_.lr * np.sum(np.square(gradients), axis = (1, 2))
-        #scale = np.power(0.5, int(1.0 * step / self.config_.noise_scale_decay)) * self.config_.noise_scale_max
-        #min_idx = to_be_kept[np.argmin(np.array(move_dists)[np.array(to_be_kept)])] if len(to_be_kept) > 0 else None
 
         self.particles_[0: 0 + 1, ...] = target_center 
-
         self.current_mean_ = np.mean(self.particles_, 0, keepdims = True)
         return self.current_mean_
 
-    def learn_sur_cont(self, data_pool, data_y, data_idx, gradients, prev_loss, step, gt_w, K = None):
+    def learn_sur_cont(self, data_pool, data_y, data_idx, gradients, prev_loss, step, gt_w):
         exp_cache_prev_func = lambda w_est_loss: -1 * self.config_.beta *\
                                                 ((self.config_.lr ** 2) * np.sum(np.square(gradients), axis = (1, 2)) -\
                                                 2 * self.config_.lr * (prev_loss - w_est_loss))
@@ -121,32 +89,14 @@ class LearnerSM:
         current_w_losses = copy.deepcopy(prev_loss)
         current_w_losses_gradient = copy.deepcopy(gradients)
         exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
-        if K is None:
-            total_lle = -1 * np.inf
-            steps = 0
-            while True:
-                self.current_mean_ -= self.config_.lr * current_w_losses_gradient[data_idx: data_idx + 1, ...]
-                current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
-                exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
-                lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
-                self.current_mean_ += self.config_.lr * lle_gradient
-                current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
-                exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
-                current_lle = teacher_sample_lle_func(exp_cache) - current_w_losses[data_idx]
-                steps += 1
-                if total_lle >= current_lle:
-                    break
-                else:
-                    total_lle = current_lle
-        elif K > 0:
-            for i in range(K):
-                self.current_mean_ -= self.config_.lr * current_w_losses_gradient[data_idx: data_idx + 1, ...]
-                current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
-                exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
 
-                lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
-                self.current_mean_ += self.config_.lr * lle_gradient
-                current_w_losses_gradient, _, _ = self.get_grads(data_pool, data_y)
+        self.current_mean_ -= self.config_.lr * current_w_losses_gradient[data_idx: data_idx + 1, ...]
+        current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
+        exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
+
+        lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
+        self.current_mean_ += self.config_.lr * lle_gradient
+        current_w_losses_gradient, _, _ = self.get_grads(data_pool, data_y)
 
         self.config_.beta *= np.power(self.config_.beta_decay, step)
         return self.current_mean_
