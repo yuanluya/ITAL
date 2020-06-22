@@ -10,9 +10,9 @@ import sys
 import time
 from tqdm import tqdm
 
-from learner import Learner
-from learnerM import LearnerSM
-from teacherM import TeacherM
+from Learners.learner_basic import Learner
+from Learners.learner import LearnerSM
+from Teachers.teacher import TeacherM
 
 import pdb
 

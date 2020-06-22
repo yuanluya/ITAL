@@ -13,8 +13,8 @@ if plt.get_backend() == 'Qt5Agg':
 import time
 
 from OIRL.map import Map
-from teacher_irl import TeacherIRL
-from learner_irl import LearnerIRL
+from Teachers.teacher_irl import TeacherIRL
+from Learners.learner_irl import LearnerIRL
 
 import pdb
 
