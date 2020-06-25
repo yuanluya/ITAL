@@ -94,13 +94,13 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         
         if mode == 'omni_cont':
             w = learner.learn_cont(teacher.data_pool_, teacher.gt_y_,
-                                                     data_idx, gradients, i, teacher.gt_w_)
+                                                     data_idx, gradients)
         elif mode == 'imit_cont':
             w = learner.learn_sur_cont(teacher.data_pool_, teacher.gt_y_,
-                                                         data_idx, gradients, losses, i, teacher.gt_w_)
+                                                         data_idx, gradients, losses, i)
         elif mode == 'omni' or random_prob is not None:
             w = learner.learn(teacher.data_pool_, teacher.gt_y_,
-                                                data_idx, gradients, i, teacher.gt_w_, random_prob = random_prob)
+                                                data_idx, gradients)
         dists.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
         dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
         ws.append(w)
