@@ -27,8 +27,12 @@ def learn_basic(teacher, learner, train_iter, init_ws, test_set, batch = True):
     dists_ = [np.sum(np.square(learner.current_mean_ - teacher.stu_gt_reward_param_))]
     distsq = [np.mean(np.square(learner.q_map_ - teacher.q_map_))]
     actual_rewards = [teacher.map_.test_walk(teacher.reward_param_, learner.action_probs_, test_set[0], greedy = True)]
+    mini_batch_indices = []
+    mini_batch_opt_acts = []
     for i in tqdm(range(train_iter)):
         teacher.sample()
+        mini_batch_indices.append(teacher.mini_batch_indices_)
+        mini_batch_opt_acts.append(teacher.mini_batch_opt_acts_)          
         if not batch:
             data_idx = np.random.randint(teacher.config_.sample_size)
         else:
@@ -43,7 +47,7 @@ def learn_basic(teacher, learner, train_iter, init_ws, test_set, batch = True):
         if (i + 1) % 20 == 0:
             actual_rewards.append(teacher.map_.test_walk(teacher.reward_param_, learner.action_probs_, test_set[i + 1], greedy = True))
     learner.lr_ = learner.config_.lr
-    return dists, dists_, distsq, actual_rewards, ws
+    return dists, dists_, distsq, actual_rewards, ws, mini_batch_indices, mini_batch_opt_acts
 
 def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = None):
     np.random.seed((int(sys.argv[2]) + 1) * 503)
@@ -55,8 +59,13 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
     distsq = [np.mean(np.square(learner.q_map_ - teacher.q_map_))]
     actual_rewards = [teacher.map_.test_walk(teacher.reward_param_, learner.action_probs_, test_set[0], greedy = True)]
     ws = []
+    mini_batch_indices = []
+    mini_batch_opt_acts = []
     for i in tqdm(range(train_iter)):
         teacher.sample()
+
+        mini_batch_indices.append(teacher.mini_batch_indices_)
+        mini_batch_opt_acts.append(teacher.mini_batch_opt_acts_)           
         if mode[0: 4] == 'omni':
             data_idx, gradients = teacher.choose(learner.current_mean_, learner.lr_, hard = True)
         elif mode[0: 4] == 'imit':
@@ -85,11 +94,11 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
     learner.lr_ = learner.config_.lr
     if (mode == "omni_cont"):
         np.save('action_probs.npy', learner.action_probs_)
-    return dists, dists_, distsq, actual_rewards, ws
+    return dists, dists_, distsq, actual_rewards, ws, mini_batch_indices, mini_batch_opt_acts
 
 def learn_thread(teacher, learner, mode, init_ws, train_iter, test_set, random_prob, dict_key, thread_return):
-    dists, dists_, distsq, actual_rewards, ws = learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob)
-    thread_return[dict_key] = [dists, dists_, distsq, actual_rewards, ws]
+    dists, dists_, distsq, actual_rewards, ws, mini_batch_indices, mini_batch_opt_acts = learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob)
+    thread_return[dict_key] = [dists, dists_, distsq, actual_rewards, ws, mini_batch_indices, mini_batch_opt_acts]
 
 def learn_thread_tf(config_T, config_L, mode, train_iter, random_prob, return_key, thread_return):
     import tensorflow as tf
@@ -116,8 +125,8 @@ def learn_thread_tf(config_T, config_L, mode, train_iter, random_prob, return_ke
     #pdb.set_trace()
     learner = LearnerIRL(sess, map_l, config_L)
 
-    dists, dists_, distsq, actual_rewards, ws = learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob)
-    thread_return[return_key] = [dists, dists_, distsq, actual_rewards, ws]
+    dists, dists_, distsq, actual_rewards, ws, mini_batch_indices, mini_batch_opt_acts = learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob)
+    thread_return[return_key] = [dists, dists_, distsq, actual_rewards, ws, mini_batch_indices, mini_batch_opt_acts]
 
 def teacher_run_tf(config_T, config_L, train_iter, thread_return):
 
@@ -278,11 +287,15 @@ def main():
         distsq = results[i][2]
         ar = results[i][3]
         mat = results[i][4]
+        mini_batch_indices = results[i][5]
+        mini_batch_opt_acts = results[i][6]
         np.save('Experiments/' + directory + "action_dist%d_%d" % (i, seed), dists, allow_pickle=True)
         np.save('Experiments/' + directory + "reward_dist%d_%d" % (i, seed), np.sqrt(dists_), allow_pickle=True)
         np.save('Experiments/' + directory + "q_dist%d_%d" % (i, seed), distsq, allow_pickle=True)
         np.save('Experiments/' + directory + "rewards%d_%d" % (i, seed), ar, allow_pickle=True)
         np.save('Experiments/' + directory + "matrix%d_%d" % (i, seed), mat, allow_pickle = True)
-
+        np.save('Experiments/' + directory + "mini_batch_indices%d_%d" % (i, seed), mini_batch_indices, allow_pickle=True)
+        np.save('Experiments/' + directory + "mini_batch_opt_acts%d_%d" % (i, seed), mini_batch_opt_acts, allow_pickle = True)
+        
 if __name__ == '__main__':
     main()

@@ -601,6 +601,7 @@ def plot_supp(setting_name):
     plt.savefig('Experiments/' + setting_name + '-supp.pdf', dpi=300)
 
 def remove_npy(dir):
+    return
     print(dir)
     for f in glob.glob(dir + "/*.npy"):
         os.remove(f)
@@ -716,7 +717,7 @@ def main():
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, seed_range = 20)
+    CollectDataAndPlot(args.setting_name, seed_range = 1)
 
 if __name__ == '__main__':
     main()

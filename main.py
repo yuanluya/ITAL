@@ -23,7 +23,8 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     dists_ = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     accuracies = []
     losses_list = []
-
+    data_pool = []
+    gt_y = []
     for _ in tqdm(range(train_iter)):
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
@@ -38,6 +39,8 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         accuracies.append(accuracy)
         losses_list.append(loss)
         teacher.sample()
+        data_pool.append(teacher.data_pool_)
+        gt_y.append(teacher.gt_y_)        
         if (sgd):
             data_idx = np.random.randint(teacher.data_pool_.shape[0])
             data_point = [teacher.data_pool_[data_idx: data_idx + 1], teacher.gt_y_[data_idx: data_idx + 1]]
@@ -49,7 +52,7 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
     if teacher.config_.task == 'classification':
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, w.T), 1) == teacher.gt_y_label_full_)
         print('basic test accuracy: %f' % accuracy)
-    return dists, dists_, accuracies, losses_list
+    return dists, dists_, accuracies, losses_list, data_pool, gt_y
 
 def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_condition = False):
     learner.reset(init_ws)
@@ -61,6 +64,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     accuracies = []
     losses_list = []
 
+    data_pool = []
+    gt_y = []
     for i in tqdm(range(train_iter)):
         if teacher.config_.task == 'classification':
             accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
@@ -91,7 +96,9 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
                     gradients_tea.append(np.expand_dims(np.matmul(gradients_lv[j: j + 1, ...].T, teacher.data_pool_tea_[j: j + 1, ...]), 0))
                 gradients_tea = np.concatenate(gradients_tea, 0)
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr, hard = True)#(mode[-4: ] != 'cont'))
-        
+
+        data_pool.append(teacher.data_pool_)
+        gt_y.append(teacher.gt_y_)            
         if mode == 'omni_cont':
             w = learner.learn_cont(teacher.data_pool_, teacher.gt_y_,
                                                      data_idx, gradients)
@@ -110,7 +117,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_, learned_w.T), 1) == teacher.gt_y_label_full_)
         print('smart test accuracy: %f' % accuracy, random_prob)
 
-    return dists, dists_, accuracies, losses_list
+    return dists, dists_, accuracies, losses_list, data_pool, gt_y
 
 def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
     import tensorflow as tf
@@ -174,8 +181,8 @@ def main():
             print("joining", j)
             j.join()
         
-        dists1, dists1_, accuracies1, losses1 = return_dict[1]
-        dists8, dists8_, accuracies8, losses8 = return_dict['%s_cont' % mode]
+        dists1, dists1_, accuracies1, losses1, data_poolIMT, gt_yIMT = return_dict[1]
+        dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = return_dict['%s_cont' % mode]
 
     import tensorflow as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
@@ -186,16 +193,18 @@ def main():
     init = tf.global_variables_initializer()
 
     if multi_thread:
-        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch, data_poolBatch, gt_yBatch \
+             = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd, data_poolSGD, gt_ySGD \
+             = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
     
     else:
         learnerM = LearnerSM(sess, config_LS)
 
-        dists1, dists1_, accuracies1, losses1 = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
-        dists8, dists8_, accuracies8, losses8 = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
-        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
+        dists1, dists1_, accuracies1, losses1, data_poolIMT, gt_yIMT = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
+        dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
+        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch, data_poolBatch, gt_yBatch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
+        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd, data_poolSGD, gt_ySGD = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
 
     np.save('Experiments/' + directory + '/dist1_' + random_seed + '.npy', np.array(dists1))
     np.save('Experiments/' + directory + '/dist1__' + random_seed + '.npy', np.array(dists1_))
@@ -217,5 +226,15 @@ def main():
     np.save('Experiments/' + directory + '/accuraciessgd_' + random_seed + '.npy', np.array(accuracies_neg1_sgd))
     np.save('Experiments/' + directory + '/lossessgd_' + random_seed + '.npy', np.array(losses_neg1_sgd))    
 
+    np.save('Experiments/' + directory + '/data_poolIMT_' + random_seed + '.npy', np.array(data_poolIMT))
+    np.save('Experiments/' + directory + '/data_poolITAL_' + random_seed + '.npy', np.array(data_poolITAL))
+    np.save('Experiments/' + directory + '/data_poolBatch_' + random_seed + '.npy', np.array(data_poolBatch))
+    np.save('Experiments/' + directory + '/data_poolSGD_' + random_seed + '.npy', np.array(data_poolSGD))    
+
+    np.save('Experiments/' + directory + '/gt_yIMT_' + random_seed + '.npy', np.array(gt_yIMT))
+    np.save('Experiments/' + directory + '/gt_yITAL_' + random_seed + '.npy', np.array(gt_yITAL))
+    np.save('Experiments/' + directory + '/gt_yBatch_' + random_seed + '.npy', np.array(gt_yBatch))
+    np.save('Experiments/' + directory + '/gt_ySGD_' + random_seed + '.npy', np.array(gt_ySGD))   
+    
 if __name__ == '__main__':
     main()
