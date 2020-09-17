@@ -71,6 +71,15 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
         elif mode[0: 4] == 'imit':
             stu_rewards = np.sum(learner.map_.state_feats_ * learner.current_mean_, axis = 1, keepdims = True)
             data_idx, gradients, l_stu = teacher.choose_imit(stu_rewards, learner.lr_, hard = True)
+        if mode == 'imit_cont':
+            teacher.config_['mini_batch_sample_size'] = 10
+            indices = np.random.choice(np.delete(np.arange(teacher.config_.sample_size), data_idx), teacher.config_.mini_batch_sample_size - 1, replace = False)
+            indices = np.insert(indices, 0, data_idx)
+            teacher.mini_batch_indices_ = teacher.mini_batch_indices_[indices]
+            teacher.mini_batch_opt_acts_ = teacher.mini_batch_opt_acts_[indices]
+            gradients = gradients[indices]
+            l_stu = l_stu[indices]
+            data_idx = 0
 
         if mode == 'omni' or random_prob is not None:
             w = learner.learn(teacher.mini_batch_indices_, teacher.mini_batch_opt_acts_, data_idx,
