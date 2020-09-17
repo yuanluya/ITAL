@@ -97,7 +97,6 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
                 gradients_tea = np.concatenate(gradients_tea, 0)
             data_idx = teacher.choose_sur(gradients_tea, losses, learner.config_.lr, hard = True)#(mode[-4: ] != 'cont'))
         if mode == 'imit_cont':
-            teacher.config_['mini_batch_sample_size'] = 10
             indices = np.random.choice(np.delete(np.arange(teacher.config_.sample_size), data_idx), teacher.config_.mini_batch_sample_size - 1, replace = False)
             indices = np.insert(indices, 0, data_idx)
             teacher.data_pool_ = teacher.data_pool_[indices]
