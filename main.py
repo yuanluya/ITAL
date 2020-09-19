@@ -79,7 +79,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
 
         losses_list.append(loss)
         accuracies.append(accuracy)
-        teacher.sample()
+        teacher.sample(step = (i if mode[-4:] == "cont" and teacher.config_.sample_size != teacher.config_.mini_batch_sample_size else None), save = (mode[-4:] == "cont" and teacher.config_.sample_size == teacher.config_.mini_batch_sample_size))
         gradients, _, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
         if mode == 'omni':
             data_idx = teacher.choose(gradients, w, learner.config_.lr)
@@ -165,6 +165,7 @@ def main():
 
     train_iter_simple = config.train_iter_simple
     train_iter_smart = config.train_iter_smart
+    config_T["mini_batch_sample_size"] = config_T["sample_size"]
 
     print(config_LS, config_T)
     init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, config.dd]),
@@ -219,7 +220,7 @@ def main():
 
     np.save('Experiments/' + directory + '/dist1_' + random_seed + '.npy', np.array(dists1))
     np.save('Experiments/' + directory + '/dist1__' + random_seed + '.npy', np.array(dists1_))
-    np.save('Experiments/' + directory+ '/accuracies1_' + random_seed + '.npy', np.array(accuracies1))
+    np.save('Experiments/' + directory + '/accuracies1_' + random_seed + '.npy', np.array(accuracies1))
     np.save('Experiments/' + directory + '/losses1_' + random_seed + '.npy', np.array(losses1))
     
     np.save('Experiments/' + directory + '/dist8_' + random_seed + '.npy', np.array(dists8))
@@ -245,7 +246,22 @@ def main():
     np.save('Experiments/' + directory + '/gt_yIMT_' + random_seed + '.npy', np.array(gt_yIMT))
     np.save('Experiments/' + directory + '/gt_yITAL_' + random_seed + '.npy', np.array(gt_yITAL))
     np.save('Experiments/' + directory + '/gt_yBatch_' + random_seed + '.npy', np.array(gt_yBatch))
-    np.save('Experiments/' + directory + '/gt_ySGD_' + random_seed + '.npy', np.array(gt_ySGD))   
+    np.save('Experiments/' + directory + '/gt_ySGD_' + random_seed + '.npy', np.array(gt_ySGD)) 
+    
+    np.save('Experiments/' + directory + '/indicesITAL_' + random_seed + '.npy', np.array(teacher.indices_)) 
+
+    for mini_size in [2, 5, 10, 15]:
+        config_T["mini_batch_sample_size"] = mini_size
+        teacher_ = TeacherM(config_T)
+        teacher_.indices_ = teacher.indices_
+        learnerM = LearnerSM(sess, config_LS)
+
+        dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = learn(teacher_, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
+
+        np.save('Experiments/' + directory + '/dist8_' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(dists8))
+        np.save('Experiments/' + directory + '/dist8__' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(dists8_))
+        np.save('Experiments/' + directory + '/accuracies8_' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(accuracies8))
+        np.save('Experiments/' + directory + '/losses8_' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(losses8))  
     
 if __name__ == '__main__':
     main()
