@@ -110,6 +110,7 @@ class TeacherM:
         self.data_pool_ = None
         self.gt_y_ = None
         self.gt_loss_ = None
+        self.indices_ = []
 
     def choose(self, gradients, prev_w, lr, hard = True):
         vals = -1 * self.config_.beta * (np.sum(lr * lr * np.square(gradients), axis = (1, 2)) - 2 * lr * np.sum((prev_w - self.gt_w_) * gradients, axis = (1, 2)))
@@ -131,13 +132,18 @@ class TeacherM:
         # return np.argmin(vals)
         return selected
 
-    def sample(self):
-        indices = np.random.choice(self.data_pool_full_.shape[0], self.config_.sample_size)
+    def sample(self, step = None, save = False):
+        if step is not None:
+            indices = self.indices_[step]
+        else:
+            indices = np.random.choice(self.data_pool_full_.shape[0], self.config_.sample_size)
         self.data_pool_ = self.data_pool_full_[indices, :]
         self.gt_y_ = self.gt_y_full_[indices, :]
         self.gt_loss_ = self.gt_loss_full_[indices]
         if self.config_.transform:
             self.data_pool_tea_ = self.data_pool_full_tea_[indices, :]
+        if save:
+            self.indices_.append(indices)
 
 def main():
     config = edict({'data_pool_full_size_class': 15, 'data_dim': 10, 'num_classes': 3, 'transform': True})
