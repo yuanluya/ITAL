@@ -29,7 +29,7 @@ class TeacherIRL:
         self.initial_valg_maps_ = np.random.uniform(-1, 1, size = [self.map_.num_states_, self.map_.num_states_])
         self.indices_ = []
 
-    def sample(self):
+    def sample(self, step = None, save = False):
         if step is not None:
             self.mini_batch_indices_ = self.indices_[step]
         else:
