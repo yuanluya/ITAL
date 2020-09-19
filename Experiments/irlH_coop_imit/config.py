@@ -20,7 +20,7 @@ noise_scale_max = 0.3
 noise_scale_decay = 200
 
 config_T = edict({'shape': shape, 'approx_type': 'gsm', 'beta': beta, 'shuffle_state_feat': False,
-                  'lr': lr, 'sample_size': 20, 'use_tf': use_tf, 'approx_k': approx_k, 'beta_select': beta_select})
+                  'lr': lr, 'sample_size': 20, 'mini_batch_sample_size': 2, 'use_tf': use_tf, 'approx_k': approx_k, 'beta_select': beta_select})
 config_L = edict({'shape': shape, 'approx_type': 'gsm', 'beta': beta, 'lr': lr, "prob": 1,
                   'shuffle_state_feat': mode == 'imit', 'particle_num': 1, 'replace_count': 1,
                   'noise_scale_min': noise_scale_min, 'noise_scale_max': noise_scale_max, 'noise_scale_decay': noise_scale_decay, 'cont_K': K,
