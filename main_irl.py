@@ -62,8 +62,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, test_set, random_prob = N
     mini_batch_indices = []
     mini_batch_opt_acts = []
     for i in tqdm(range(train_iter)):
-        teacher.sample()
-
+        teacher.sample(step = (i if mode[-4:] == "cont" and teacher.config_.sample_size != teacher.config_.mini_batch_sample_size else None), save = (mode[-4:] == "cont" and teacher.config_.sample_size == teacher.config_.mini_batch_sample_size))
+        
         mini_batch_indices.append(teacher.mini_batch_indices_)
         mini_batch_opt_acts.append(teacher.mini_batch_opt_acts_)           
         if mode[0: 4] == 'omni':
@@ -182,6 +182,7 @@ def main():
     directory = sys.argv[1] + '/'
 
     train_iter = config.train_iter
+    config_T["mini_batch_sample_size"] = config_T["sample_size"]
 
     seed = int(sys.argv[2])
     np.random.seed((seed + 1) * 159)
@@ -304,6 +305,23 @@ def main():
         np.save('Experiments/' + directory + "matrix%d_%d" % (i, seed), mat, allow_pickle = True)
         np.save('Experiments/' + directory + "mini_batch_indices%d_%d" % (i, seed), mini_batch_indices, allow_pickle=True)
         np.save('Experiments/' + directory + "mini_batch_opt_acts%d_%d" % (i, seed), mini_batch_opt_acts, allow_pickle = True)
+        if i == 1:
+            prag_cont_indices = mini_batch_indices
+       
+    i = 1
+    for mini_size in [2, 5, 10, 15]:
+        config_T["mini_batch_sample_size"] = mini_size
+        teacher_ = TeacherIRL(sess, map_t, config_T, gt_r_param_tea, gt_r_param_stu)
+        teacher_.indices_ = prag_cont_indices
+        learner = LearnerIRL(sess, map_l, config_L)
+
+        dists, dists_, distsq, ar, mat = learn(teacher_, learner, '%s_cont' % mode, init_ws, train_iter, test_set)
+
+        np.save('Experiments/' + directory + "action_dist%d_%d_%d" % (i, mini_size, seed), dists, allow_pickle=True)
+        np.save('Experiments/' + directory + "reward_dist%d_%d_%d" % (i, mini_size, seed), np.sqrt(dists_), allow_pickle=True)
+        np.save('Experiments/' + directory + "q_dist%d_%d_%d" % (i, mini_size, seed), distsq, allow_pickle=True)
+        np.save('Experiments/' + directory + "rewards%d_%d_%d" % (i, mini_size, seed), ar, allow_pickle=True)
+        np.save('Experiments/' + directory + "matrix%d_%d_%d" % (i, mini_size, seed), mat, allow_pickle = True)
         
 if __name__ == '__main__':
     main()
