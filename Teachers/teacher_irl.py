@@ -27,13 +27,19 @@ class TeacherIRL:
         self.l_ = self.config_.beta * self.q_map_ - np.log(np.sum(np.exp(self.config_.beta * self.q_map_), axis = 1, keepdims = True))
         self.initial_val_maps_ = np.random.uniform(0, 1, size = [self.map_.num_states_, 1])
         self.initial_valg_maps_ = np.random.uniform(-1, 1, size = [self.map_.num_states_, self.map_.num_states_])
+        self.indices_ = []
 
     def sample(self):
-        self.mini_batch_indices_ = np.random.randint(0, self.map_.num_states_, size = self.config_.sample_size)
+        if step is not None:
+            self.mini_batch_indices_ = self.indices_[step]
+        else:
+            self.mini_batch_indices_ = np.random.randint(0, self.map_.num_states_, size = self.config_.sample_size)
         self.mini_batch_opt_acts_ = []
         for idx in self.mini_batch_indices_:
             self.mini_batch_opt_acts_.append(np.random.choice(len(self.map_.actions_), p = self.action_probs_[idx, ...]))
         self.mini_batch_opt_acts_ = np.array(self.mini_batch_opt_acts_)
+        if save:
+            self.indices_.append(self.mini_batch_indices_)
         return
     
     def choose(self, learner_param, lr, hard = True):
