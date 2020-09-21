@@ -172,7 +172,7 @@ def main():
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
     init_w = np.mean(init_ws, 0)
 
-    teacher = TeacherM(config_T)
+    teacher = TeacherM(copy.deepcopy(config_T))
     manager = Manager()
 
     if multi_thread:
@@ -200,7 +200,7 @@ def main():
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
     sess = tf.Session(config = tfconfig)
-    learner = Learner(sess, init_w, config_L)
+    learner = Learner(sess, init_w, copy.deepcopy(config_L))
 
     init = tf.global_variables_initializer()
 
@@ -211,7 +211,7 @@ def main():
              = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
     
     else:
-        learnerM = LearnerSM(sess, config_LS)
+        learnerM = LearnerSM(sess, copy.deepcopy(config_LS))
 
         dists1, dists1_, accuracies1, losses1, data_poolIMT, gt_yIMT = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
         dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
@@ -252,9 +252,9 @@ def main():
 
     for mini_size in [2, 5, 10, 15]:
         config_T["mini_batch_sample_size"] = mini_size
-        teacher_ = TeacherM(config_T)
+        teacher_ = TeacherM(copy.deepcopy(config_T))
         teacher_.indices_ = teacher.indices_
-        learnerM = LearnerSM(sess, config_LS)
+        learnerM = LearnerSM(sess, copy.deepcopy(config_LS))
 
         dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = learn(teacher_, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
 
