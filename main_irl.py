@@ -213,7 +213,7 @@ def main():
         assert(np.max(abs(np.sum(gt_r_param_stu * map_l.state_feats_, axis = 1) - np.sum(gt_r_param_tea * map_t.state_feats_, axis = 1))) < 1e-9)
 
         np.random.seed((seed + 1) * 105)
-        teacher = TeacherIRL(sess, map_t, config_T, gt_r_param_tea, gt_r_param_stu)
+        teacher = TeacherIRL(sess, map_t, copy.deepcopy(config_T), gt_r_param_tea, gt_r_param_stu)
         init_ws = np.random.uniform(-2, 2, size = [config_L.particle_num, teacher.map_.num_states_])
         unshuffled_ws = copy.deepcopy(init_ws)
         if config_L.shuffle_state_feat:
@@ -239,13 +239,13 @@ def main():
         for rp in random_probs:
             time.sleep(0.5)
             if use_tf:
-                p = Process(target = learn_thread_tf, args=(config_T, config_L, mode, train_iter, rp, rp, return_dict))
+                p = Process(target = learn_thread_tf, args=(copy.deepcopy(config_T), copy.deepcopy(config_L), mode, train_iter, rp, rp, return_dict))
             else:
-                student = LearnerIRL(sess, map_l, config_L)
+                student = LearnerIRL(sess, map_l, copy.deepcopy(config_L))
                 p = Process(target = learn_thread, args = (teacher, student, mode, init_ws, train_iter, test_set, rp, rp, return_dict))
             p.start()
             jobs.append(p)
-        student = LearnerIRL(sess, map_l, config_L)
+        student = LearnerIRL(sess, map_l, copy.deepcopy(config_L))
         p = Process(target = learn_thread, args = (teacher, student, '%s_cont' % mode, init_ws, train_iter,
                                                    test_set, None, '%s_cont' % mode, return_dict))
         p.start()
@@ -273,12 +273,12 @@ def main():
 
     np.random.seed((seed + 1) * 105)
 
-    teacher = TeacherIRL(sess, map_t, config_T, gt_r_param_tea, gt_r_param_stu)
+    teacher = TeacherIRL(sess, map_t, copy.deepcopy(config_T), gt_r_param_tea, gt_r_param_stu)
 
     init_ws = np.random.uniform(-2, 2, size = [config_L.particle_num, teacher.map_.num_states_])
 
     test_set = np.random.choice(teacher.map_.num_states_, size = [train_iter + 1, teacher.map_.num_states_ * 20])
-    learner = LearnerIRL(sess, map_l, config_L)
+    learner = LearnerIRL(sess, map_l, copy.deepcopy(config_L))
 
     batch = []
     sgd = []
@@ -311,9 +311,9 @@ def main():
     i = 1
     for mini_size in [2, 5, 10, 15]:
         config_T["mini_batch_sample_size"] = mini_size
-        teacher_ = TeacherIRL(sess, map_t, config_T, gt_r_param_tea, gt_r_param_stu)
+        teacher_ = TeacherIRL(sess, map_t, copy.deepcopy(config_T), gt_r_param_tea, gt_r_param_stu)
         teacher_.indices_ = prag_cont_indices
-        learner = LearnerIRL(sess, map_l, config_L)
+        learner = LearnerIRL(sess, map_l, copy.deepcopy(config_L))
 
         dists, dists_, distsq, ar, mat = learn(teacher_, learner, '%s_cont' % mode, init_ws, train_iter, test_set)
 
