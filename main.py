@@ -58,7 +58,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     learner.reset(init_ws)
 
     w = learner.current_mean_
-    ws = [w]
+    ws = [copy.deepcopy(w)]
     dists = [np.sqrt(np.sum(np.square(w - teacher.gt_w_)))]
     dists_ = [np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2))))]
     accuracies = []
@@ -121,7 +121,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
                                                 data_idx, gradients)
         dists.append(np.sqrt(np.sum(np.square(w - teacher.gt_w_))))
         dists_.append(np.mean(np.sqrt(np.sum(np.square(learner.particles_ - teacher.gt_w_), axis = (1, 2)))))
-        ws.append(w)
+        ws.append(copy.deepcopy(w))
 
     if teacher.config_.task == 'classification':
         learned_w = copy.deepcopy(w[0, ...])
