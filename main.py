@@ -251,12 +251,10 @@ def main():
     np.save('Experiments/' + directory + '/indicesITAL_' + random_seed + '.npy', np.array(teacher.indices_)) 
 
     for mini_size in [2, 5, 10, 15]:
-        config_T["mini_batch_sample_size"] = mini_size
-        teacher_ = TeacherM(copy.deepcopy(config_T))
-        teacher_.indices_ = teacher.indices_
+        teacher.config_.mini_batch_sample_size = mini_size
         learnerM = LearnerSM(sess, copy.deepcopy(config_LS))
 
-        dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = learn(teacher_, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
+        dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
 
         np.save('Experiments/' + directory + '/dist8_' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(dists8))
         np.save('Experiments/' + directory + '/dist8__' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(dists8_))
