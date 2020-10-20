@@ -15,9 +15,9 @@ To use the main_multi.py or main_irl.py script, run with the command line
 ```bash
 python3 main_multi.py detailed_setting_name random_seed
 ```
-where _detailed_setting_name_ is specified by ${experiment}\_${type of teacher}\_${mode of teacher} followed by '_' and the imitate teacher's data dimension(MNIST, Equation) or data type(CIFAR). <br /> An example command to collect data for Linear Classifiers on MNIST Dataset with a cooperative omniscient teacher with data dimension 20 and random seed 0 is
+where _detailed_setting_name_ is specified by ${experiment}\_${type of teacher}\_${mode of teacher} followed by '_' and the imitate teacher's data dimension(MNIST, Equation) or data type(CIFAR). <br /> An example command to collect data for Linear Classifiers on MNIST Dataset with a cooperative imitate teacher with data dimension 20 and random seed 0 is
 ```bash
-python3 main_multi.py mnist_coop_omni 0
+python3 main_multi.py mnist_coop_imit 0
 ```
 <br /> And an example command to collect data for Linear Classifiers on MNIST Dataset with a cooperative imitate teacher with data dimension 20 and random seed 0 is
 ```bash
@@ -52,7 +52,6 @@ The ${type of teacher} part of a setting is specified by the table
 The ${mode of teacher} part of a setting is specified by the table 
 |Mode of Teacher|command line|    
 |-------|-------| 
-|omniscient|omni|
 |imitate|imit|
 
 ## Versions
