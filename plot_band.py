@@ -447,7 +447,6 @@ def CollectDataAndPlot(setting_name, seed_range):
             plot_supp(setting_name,imit_dim)        
         from Equation import search
         search.main()
-        search.npy2csv(setting_name)
         remove_npy('Experiments')
 
     elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv':

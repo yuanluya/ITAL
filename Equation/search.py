@@ -408,82 +408,42 @@ def main():
                     # print("%s %s %s %s" % (m, s, savename, acc))
                     np.save("Experiments/%s%s%s_w_%d_curve_%d.npy" % (s, m, savename, width, rd), acc)
     
-def npy2csv(setting_name):
-#     import seaborn as sns
-#     import pandas as pd
-#     import matplotlib.pyplot as plt
-#     if plt.get_backend() == 'Qt5Agg':
-#         from matplotlib.backends.qt_compat import QtWidgets
-#         qApp = QtWidgets.QApplication(sys.argv)
-#         plt.matplotlib.rcParams['figure.dpi'] = qApp.desktop().physicalDpiX()
-
-#     palette = {"Omniscient ITAL":sns.xkcd_rgb["red"],"Imitate Dim-20 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate Dim-30 ITAL":sns.xkcd_rgb["orange"], \
-#                 "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], \
-#                 'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate Dim-20 IMT': sns.xkcd_rgb['dark green'], 'Imitate Dim-30 IMT': sns.xkcd_rgb['olive green'],\
-#                 "Imitate CNN-9 ITAL":sns.xkcd_rgb["burnt orange"], "Imitate CNN-12 ITAL":sns.xkcd_rgb["orange"], \
-#                 'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'], 'Imitate CNN-12 IMT': sns.xkcd_rgb['olive green'],\
-#                 "Imitate ITAL":sns.xkcd_rgb["orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
-#                 'Imitate Dim-50 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["burnt orange"], \
-#                 'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green'],'Teacher Rewards Truth':sns.xkcd_rgb['grey']}
-#     dash = {"Omniscient ITAL": 'solid',"Imitate ITAL": 'solid',"Batch":'solid', "SGD": 'solid', \
-#             'Omniscient IMT': 'solid', 'Imitate Dim-40 IMT': 'solid', 'Imitate Dim-40 ITAL':'solid','Imitate Dim-50 IMT':'solid','Imitate IMT': 'solid','Imitate Dim-50 ITAL':'solid',"Teacher Rewards Truth":'dashed'}
-
+def npy2csv():
+    palette = {"ITAL":sns.xkcd_rgb["red"],"ITAL 2":sns.xkcd_rgb["bright yellow"], "ITAL 5":sns.xkcd_rgb["golden yellow"],  "ITAL 10":sns.xkcd_rgb["orange"],  "ITAL 15":sns.xkcd_rgb["burnt orange"], \
+                "Batch":sns.xkcd_rgb["blue"], "SGD":sns.xkcd_rgb["purple"], 'Teacher Rewards Truth':sns.xkcd_rgb['grey'],\
+                'IMT': sns.xkcd_rgb['green']}
     import csv, os
-    
-    names = ["Batch", "SGD", "Omniscient IMT", "Omniscient ITAL", 'Imitate Dim-40 IMT', 'Imitate Dim-40 ITAL','Imitate Dim-50 IMT', 'Imitate Dim-50 ITAL']
-    savename = "regression_1_45"
-    
-    with open('Experiments/search_acc_%s.csv' % setting_name, mode='w') as csv_file:
+    directory = sys.argv[1]
+    names = ["Batch", "SGD","IMT", "ITAL", "ITAL 2", "ITAL 5", "ITAL 10", "ITAL 15"]
+    with open('Experiments/' + ('search_acc_%s.csv' % directory), mode='w') as csv_file:
         fieldnames = ['method', 'iteration', 'data']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
-
-        idx = 0
-        for m in ["omni_"]:
+        if True:#for m in ["imit2_", "imit3_"]:
             x = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000])
-            for s in ["batch_", "sgd_", "IMT_", "ITAL_"]:
+            for s in ["/gt_yBatch_", "/gt_ySGD_", "/gt_yIMT_", "/gt_yITAL_", "/gt_yITAL_2_", "/gt_yITAL_5_", "/gt_yITAL_10_", "/gt_yITAL_15_"]:
                 for rd in range(20):
-                    l = np.load("Experiments/%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
-
+                    l = np.load('Experiments/' + directory + s + str(rd) + 'acc.npy')
                     for i in range(len(l)):
-                        writer.writerow({'method': names[idx], 'iteration': x[i],  'data': l[i]})
-                    
+                        writer.writerow({'method': names[idx], 'iteration': x[i],  'data': l[i]})      
                 idx+=1
-
-        for m in ["imit2_", "imit3_"]:
-            x = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 750, 1000])
-            for s in ["IMT_", "ITAL_"]:
-                for rd in range(20):
-                    l = np.load("Experiments/%s%s%s_w_1_curve_%d.npy" % (s, m, savename, rd))
-
-                    for i in range(len(l)):
-                        writer.writerow({'method': names[idx], 'iteration': x[i],  'data': l[i]})
-                    
-                idx+=1
-
-#         for i in range(len(x)):
-#             writer.writerow({'method': 'Teacher Rewards Truth', 'iteration': x[i], 'data': np.load("gt_search_acc.npy")})
-
-
-#     paper_rc = {'lines.linewidth': 2.5}
-#     sns.set(style="darkgrid")
-#     sns.set(font_scale=1.95, rc = paper_rc)
-
-#     plt.figure() 
-#     f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6)) 
-#     df = pd.read_csv('w_curve.csv')
-#     plt1 = sns.lineplot(x="Iteration", y="Accuracy",
-#                  hue="Method",data=df, ax=axes, palette=palette)
-#     # axes.axhline(np.load("gt_search_acc.npy"), color=sns.xkcd_rgb['grey'], linestyle='-')
+        for i in range(len(x)):
+            writer.writerow({'method': 'Teacher Rewards Truth', 'iteration': x[i], 'data': np.load("gt_search_acc.npy")})
+    paper_rc = {'lines.linewidth': 2.5}
+    sns.set(style="darkgrid")
+    sns.set(font_scale=1.95, rc = paper_rc)
+    plt.figure() 
+    f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6)) 
+    df = pd.read_csv('Experiments/' + ('search_acc_%s.csv' % directory))
+    plt1 = sns.lineplot(x="iteration", y="data", ci=68,
+                 hue="method",data=df, ax=axes, palette=palette)
+    plt1.legend_.remove()
+    axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
+    axes.set_title('Simplification Accuracy', fontweight="bold", size=29)
+    axes.set_ylabel('')
+    plt1.lines[8].set_linestyle('dashed')
+    plt.savefig('%s_acc.pdf' % (directory), dpi=300)
+    plt.show()
     
-#     plt1.legend_.remove()
-
-#     axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
-#     axes.set_title('Simplification Accuracy', fontweight="bold", size=29)
-#     axes.set_ylabel('')
-#     plt1.lines[8].set_linestyle('dashed')
-#     # plt.show()
-#     plt.savefig('%s_w.pdf' % (savename), dpi=300)
-
 if __name__ == '__main__':
     main()

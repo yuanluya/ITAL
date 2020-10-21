@@ -281,7 +281,7 @@ def main():
 
     #init_ws = np.random.uniform(-2, 2, size = [config_L.particle_num, teacher.map_.num_states_])
 
-    test_set = np.random.choice(teacher.map_.num_states_, size = [train_iter + 1, teacher.map_.num_states_ * 20])
+    #test_set = np.random.choice(teacher.map_.num_states_, size = [train_iter + 1, teacher.map_.num_states_ * 20])
     learner = LearnerIRL(sess, map_l, copy.deepcopy(config_L))
 
     batch = []
