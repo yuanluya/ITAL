@@ -43,7 +43,8 @@ def save_csv(data_cate, setting_name, mode, random_seeds, type_ = 'd'):
                     '7': 'cont_sgd', '8': 'ITAL', '6': 'Expert', 'batch': 'Batch', 'sgd': 'SGD', 'm2': 'ITAL 2', 'm5': 'ITAL 5',
                     'm10': 'ITAL 10', 'm15': 'ITAL 15'}
     if type_ == 'irl':
-        methods_code = {'0': 'IMT', '1': 'ITAL', '2': 'Batch', '3': 'SGD', '': ''}
+        methods_code = {'0': 'IMT', '1': 'ITAL', '2': 'Batch', '3': 'SGD', '': '', 'm2': 'ITAL 2', 'm5': 'ITAL 5',
+                    'm10': 'ITAL 10', 'm15': 'ITAL 15'}
 
     titles, methods = get_path(data_cate, type_)
     data = []
@@ -60,7 +61,7 @@ def save_csv(data_cate, setting_name, mode, random_seeds, type_ = 'd'):
             method += [methods_code[methods[t]] for j in range(length)]
             iterations += [j for j in range(length)]
 
-            if t[-1] == '8':
+            if t[-1] == '8' or (type_ == 'irl' and t[-1] == '1'):
                 for mini_size in [2, 5, 10, 15]:
                     filename = 'Experiments/' + setting_name + '/' + t + '_' + str(s) + '_' + str(mini_size) + '.npy'
                     d = np.load(filename, allow_pickle = True)
@@ -116,7 +117,7 @@ def collect_data(setting_name, mode, random_seeds, arguments, type_):
         save_csv('reward_dist', setting_name, mode, random_seeds, type_)
         save_csv('q_dist', setting_name, mode, random_seeds, type_)
         save_csv('rewards', setting_name, mode, random_seeds, type_)
-        if mode == 'omni':
+        if mode == 'imit':
             save_csv('teacher_rewards', setting_name, mode, random_seeds, type_)
     print('collected data\n')
 
@@ -278,55 +279,30 @@ def plot(setting_name, imit_dim=None):
 
 
     elif setting_name in irl_settings: #to be modified to add more settings
+        f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6))
 
-        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('reward_dist_'+setting_name+'_omni'))
-        results1_omni = pd.read_csv(omni_path + '%s.csv' % ('action_dist_'+setting_name+'_omni'))
-
-        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('reward_dist_'+setting_name+'_imit'))
-        results1_imit = pd.read_csv(imit_path + '%s.csv' % ('action_dist_'+setting_name+'_imit'))
-
-        df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
-        df1 = results1_omni.loc[results1_omni['method'] == display_methods[0]]
-
-        sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
-        sgd1 = results1_omni.loc[results1_omni['method'] == display_methods[1]]
-
-        df0 = pd.concat([df0, sgd0])
-        df1 = pd.concat([df1, sgd1])
-
-        for method in display_methods[2:]:
-            df0_omni = results0_omni.loc[results0_omni['method'] == method]
-            df1_omni = results1_omni.loc[results1_omni['method'] == method]
-
-            df0_imit = results0_imit.loc[results0_imit['method'] == method]
-            df1_imit = results1_imit.loc[results1_imit['method'] == method]
-
-            df0_omni['method'] = 'Omniscient ' + method
-            df1_omni['method'] = 'Omniscient ' + method
-
-            df0 = pd.concat([df0, df0_omni])
-            df1 = pd.concat([df1, df1_omni])
-
-            df0_imit['method'] = 'Imitate' + ' ' + method
-            df1_imit['method'] = 'Imitate' + ' ' + method
-
-            df0 = pd.concat([df0, df0_imit])
-            df1 = pd.concat([df1, df1_imit])
+        df1 = pd.read_csv(imit_path + '%s.csv' % ('reward_dist_'+setting_name+'_imit'))
+        df2 = pd.read_csv(imit_path + '%s.csv' % ('action_dist_'+setting_name+'_imit'))
 
         plt1 = sns.lineplot(x="iteration", y="data",
-                 hue="method", data=df0, ax=axes[0], palette=palette)
-
-        plt2 = sns.lineplot(x="iteration", y="data",
-                 hue="method", data=df1, ax=axes[1], palette=palette)
+                            hue="method", data=df1, ax=axes, palette=palette, ci=68)
 
         plt1.legend_.remove()
-        plt2.legend_.remove()
         plt1.set(ylabel='')
+        axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
+        axes.set_title('L2 Distance', fontweight="bold", size=29)
+        plt.savefig('Experiments/' + setting_name + '_l2.pdf', dpi=300)
+
+        plt.figure()
+        f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6))
+        plt2 = sns.lineplot(x="iteration", y="data",
+                            hue="method", data=df2, ax=axes, palette=palette, ci=68)
+
+        axes.set_title('Total Policy Variance', fontweight="bold", size=29)
+        plt2.legend_.remove()
         plt2.set(ylabel='')
-        axes[0].set_title('L2 Distance', fontweight="bold", size=29)
-        axes[1].set_title('Total Policy Variance', fontweight="bold", size=29)
-        axes[0].set_xlabel('Training Iteration', fontweight="bold", size=29)
-        axes[1].set_xlabel('Training Iteration', fontweight="bold", size=29)
+        axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
+        plt.savefig('Experiments/' + setting_name + '_accuracy.pdf', dpi=300)
 
 def plot_supp(setting_name, imit_dim=None):
     classification = {'class10_coop', 'class10_adv'}
@@ -350,7 +326,7 @@ def plot_supp(setting_name, imit_dim=None):
                'Omniscient IMT': sns.xkcd_rgb['green'], 'Imitate CNN-9 IMT': sns.xkcd_rgb['dark green'], 'Imitate CNN-12 IMT': sns.xkcd_rgb['olive green'],\
                "Imitate ITAL":sns.xkcd_rgb["burnt orange"], 'Imitate IMT': sns.xkcd_rgb['dark green'], \
                'Imitate Dim-50 ITAL':sns.xkcd_rgb["orange"], 'Imitate Dim-40 ITAL':sns.xkcd_rgb["burnt orange"], \
-               'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green']}
+               'Imitate Dim-50 IMT': sns.xkcd_rgb['olive green'], 'Imitate Dim-40 IMT': sns.xkcd_rgb['dark green'], 'Teacher Rewards': sns.xkcd_rgb["grey"]}
 
 
     display_methods = [ 'Batch', 'SGD', 'IMT', 'ITAL', 'ITAL 2', 'ITAL 5', 'ITAL 10', 'ITAL 15']
@@ -408,40 +384,24 @@ def plot_supp(setting_name, imit_dim=None):
         axes.set_ylabel('')
 
     elif setting_name in irl_settings:
-        results0_omni = pd.read_csv(omni_path + '%s.csv' % ('rewards_'+setting_name+'_omni'))
-        results0_imit = pd.read_csv(imit_path + '%s.csv' % ('rewards_'+setting_name+'_imit'))
+        df0 = pd.read_csv(imit_path + '%s.csv' % ('rewards_'+setting_name+'_imit'))
 
-        teacher_rewards = pd.read_csv(omni_path + "%s.csv" % ('teacher_rewards_'+setting_name+'_omni'))
+        teacher_rewards = pd.read_csv(imit_path + "%s.csv" % ('teacher_rewards_'+setting_name+'_imit'))
         teacher_rewards['method'] = "Teacher Rewards"
-
-        df0 = results0_omni.loc[results0_omni['method'] == display_methods[0]]
-        sgd0 = results0_omni.loc[results0_omni['method'] == display_methods[1]]
-        df0 = pd.concat([df0, sgd0])
-
-        for method in display_methods[2:]:
-            df0_omni = results0_omni.loc[results0_omni['method'] == method]
-
-            df0_imit = results0_imit.loc[results0_imit['method'] == method]
-
-            df0_omni['method'] = 'Omniscient ' + method
-
-            df0 = pd.concat([df0, df0_omni])
-
-            df0_imit['method'] = 'Imitate' + ' ' + method
-            df0 = pd.concat([df0, df0_imit])
 
         df0 = pd.concat([df0, teacher_rewards])
         plt1 = sns.lineplot(x="iteration", y="data",
-                 hue="method", data=df0, ax=axes, palette=palette)
+                 hue="method", data=df0, ax=axes, palette=palette, ci=68)
 
         plt1.legend_.remove()
         plt1.set(ylabel='')
-        plt1.lines[6].set_linestyle("dashed")
+
+        plt1.lines[9-1].set_linestyle("dashed")
         # plt1.set_xticks([0, 12.5, 25, 37.5, 50, 62.5, 75, 87.5, 100])
         # plt1.set_xticklabels([0, 250, 500, 750, 1000, 1250, 1500, 1750, 2000])
         axes.set_title('Actual Rewards', fontweight="bold", size=29)
         axes.set_xlabel('Training Iteration', fontweight="bold", size=29)
-
+        plt.savefig('Experiments/' + setting_name + '_rewards.pdf', dpi=300)
 
 
 def remove_npy(dir):
@@ -481,15 +441,15 @@ def CollectDataAndPlot(setting_name, seed_range):
         collect_data(imit_setting1, 'imit', random_seeds, type_)
         remove_npy('Experiments/' + imit_setting2)
         
-        
-        # from Equation import search
-        # search.main()
-        # search.npy2csv(setting_name)
-        # remove_npy('Experiments')
 
         for imit_dim in ['40', '50']:
             plot(setting_name, imit_dim)
             plot_supp(setting_name,imit_dim)        
+        from Equation import search
+        search.main()
+        search.npy2csv(setting_name)
+        remove_npy('Experiments')
+
     elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv':
         #omni_setting = setting_name + '_omni'
         imit_setting1 = setting_name + '_imit_20'
@@ -525,17 +485,15 @@ def CollectDataAndPlot(setting_name, seed_range):
             plot_supp(setting_name,imit_dim)
 
     elif setting_name in irl_settings:
-        omni_setting = setting_name + '_omni'
+        #omni_setting = setting_name + '_omni'
         imit_setting = setting_name + '_imit'
-
-        arguments = ['python3', 'main_irl.py', omni_setting]
-        collect_data(omni_setting, 'omni', random_seeds, arguments, type_)
-        remove_npy('Experiments/' + omni_setting)
 
         arguments = ['python3', 'main_irl.py', imit_setting]
         collect_data(imit_setting, 'imit', random_seeds, arguments, type_)
         remove_npy('Experiments/' + imit_setting)
-
+        
+        plot(setting_name)
+        plot_supp(setting_name)
     else:
         print('Invalid setting')
         return
@@ -554,6 +512,6 @@ def main():
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, seed_range = 2)
+    CollectDataAndPlot(args.setting_name, seed_range = 20)
 if __name__ == '__main__':
     main()

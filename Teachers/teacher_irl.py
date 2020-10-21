@@ -18,7 +18,7 @@ class TeacherIRL:
         value_map_max, _, _ = self.value_iter_op_(self.reward_param_, hard_max = True)
         #the level of approximation k might need to be tuned given different rewards scale
         print('approximation error: %f' % (np.max(abs(value_map_max - self.value_map_)) / np.mean(abs(value_map_max))))
-        assert(np.max(abs(value_map_max - self.value_map_)) / np.mean(abs(value_map_max)) < 0.02)
+        #assert(np.max(abs(value_map_max - self.value_map_)) / np.mean(abs(value_map_max)) < 0.02)
         q_balance = self.q_map_ - np.mean(self.q_map_, axis = 1, keepdims = True)
         exp_q = np.exp(self.config_.beta * q_balance)
         self.action_probs_ = exp_q / np.sum(exp_q, axis = 1, keepdims = True)

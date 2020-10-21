@@ -223,7 +223,7 @@ def main():
 
     manager = Manager()
     
-    if mode == 'omni':
+    if mode == 'imit':
         '''return_list = manager.list()'''
 
         teacher_rewards = []
@@ -256,6 +256,10 @@ def main():
 
         imt = return_dict[random_probs[0]]
         prag_cont = return_dict['%s_cont' % mode]
+    else:
+        learner = LearnerIRL(sess, map_l, copy.deepcopy(config_L))
+        imt = learn(teacher, learner, '%s_cont' % mode, init_ws, train_iter, test_set, 1)
+        prag_cont = learn(teacher, learner, '%s_cont' % mode, init_ws, train_iter, test_set)
 
     np.random.seed((seed + 1) * 157)
 
@@ -275,7 +279,7 @@ def main():
 
     teacher = TeacherIRL(sess, map_t, copy.deepcopy(config_T), gt_r_param_tea, gt_r_param_stu)
 
-    init_ws = np.random.uniform(-2, 2, size = [config_L.particle_num, teacher.map_.num_states_])
+    #init_ws = np.random.uniform(-2, 2, size = [config_L.particle_num, teacher.map_.num_states_])
 
     test_set = np.random.choice(teacher.map_.num_states_, size = [train_iter + 1, teacher.map_.num_states_ * 20])
     learner = LearnerIRL(sess, map_l, copy.deepcopy(config_L))
@@ -315,13 +319,13 @@ def main():
         teacher_.indices_ = prag_cont_indices
         learner = LearnerIRL(sess, map_l, copy.deepcopy(config_L))
 
-        dists, dists_, distsq, ar, mat = learn(teacher_, learner, '%s_cont' % mode, init_ws, train_iter, test_set)
+        dists, dists_, distsq, ar, mat, mini_batch_indices, mini_batch_opt_acts = learn(teacher_, learner, '%s_cont' % mode, init_ws, train_iter, test_set)
 
-        np.save('Experiments/' + directory + "action_dist%d_%d_%d" % (i, mini_size, seed), dists, allow_pickle=True)
-        np.save('Experiments/' + directory + "reward_dist%d_%d_%d" % (i, mini_size, seed), np.sqrt(dists_), allow_pickle=True)
-        np.save('Experiments/' + directory + "q_dist%d_%d_%d" % (i, mini_size, seed), distsq, allow_pickle=True)
-        np.save('Experiments/' + directory + "rewards%d_%d_%d" % (i, mini_size, seed), ar, allow_pickle=True)
-        np.save('Experiments/' + directory + "matrix%d_%d_%d" % (i, mini_size, seed), mat, allow_pickle = True)
+        np.save('Experiments/' + directory + "action_dist%d_%d_%d" % (i, seed, mini_size), dists, allow_pickle=True)
+        np.save('Experiments/' + directory + "reward_dist%d_%d_%d" % (i, seed, mini_size), np.sqrt(dists_), allow_pickle=True)
+        np.save('Experiments/' + directory + "q_dist%d_%d_%d" % (i, seed, mini_size), distsq, allow_pickle=True)
+        np.save('Experiments/' + directory + "rewards%d_%d_%d" % (i, seed, mini_size), ar, allow_pickle=True)
+        np.save('Experiments/' + directory + "matrix%d_%d_%d" % (i, seed, mini_size), mat, allow_pickle = True)
         
 if __name__ == '__main__':
     main()
