@@ -54,22 +54,28 @@ def train(model, config_train, data_package, device, model_ckpt_path):
             accuracies.append(acc.cpu().numpy())
             start_idx += config_train.batch_size
         
-        # validate
-        model.eval()
-        test_start_idx = 0
-        prediction = []
-        while test_start_idx < data_package.test_data.shape[0]:
-            batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_train.batch_size, :]).to(device)
-            pred = torch.argmax(model(batch_x), axis = 1, keepdim = True)
-            prediction.append(pred)
-            test_start_idx += config_train.batch_size
-        prediction = torch.squeeze(torch.cat(prediction, dim = 0))
-        test_acc = torch.mean(torch.tensor(prediction.cpu() == torch.tensor(data_package.test_label).type(torch.int64)).type(torch.float32))
-        if te % 5 == 0:
-            print('[%d/%d] loss: %f, train-acc: %f, test-acc: %f' %\
-                (te + 1, config_train.train_epoch, np.mean(losses), np.mean(accuracies), test_acc))
+        if te % 10 == 0:
+            # validate
+            model.eval()
+            test_start_idx = 0
+            prediction = []
+            while test_start_idx < data_package.test_data.shape[0]:
+                batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_train.batch_size, :]).to(device)
+                logits = model(batch_x)
+                _, pred = torch.topk(logits, 5)
+                prediction.append(pred)
+                test_start_idx += config_train.batch_size
+            prediction = torch.squeeze(torch.cat(prediction, dim = 0))
+            test_acc_1 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 1].cpu() ==\
+                            torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
+            test_acc_3 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 3].cpu() ==\
+                            torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
+            test_acc_5 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 5].cpu() ==\
+                            torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
+            print('[%d/%d] loss: %f, train-acc: %f, test-acc-1: %f, test-acc-3: %f, test-acc-5: %f' %\
+                (te + 1, config_train.train_epoch, np.mean(losses), np.mean(accuracies), test_acc_1, test_acc_3, test_acc_5))
         scheduler.step()
-        if te % 500 == 0:
+        if te % 200 == 0:
             torch.save(model.state_dict(), model_ckpt_path)
 
 def main():
@@ -83,7 +89,7 @@ def main():
     vgg_idx = vgg_indices[int(sys.argv[1])]
     data_package = edict({})
     feature_layer_idx = 3
-    num_classes = 100
+    num_classes = 200
 
     data_package.train_label = np.load('ImageNet_train_labels%d.npy' % vgg_idx)
     class_idx = bisect.bisect_left(data_package.train_label, num_classes) - 1
@@ -97,7 +103,7 @@ def main():
     data_package.test_label = data_package.test_label[test_indices]
 
     raw_feat_dim = 4096
-    hidden_dims = [500, 200, 80]
+    hidden_dims = [500, 200, 50]
     model_ckpt_path = 'CKPT_%d_%d_%s' % (feature_layer_idx, vgg_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes)
     try:
