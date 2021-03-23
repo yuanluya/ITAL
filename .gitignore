@@ -116,6 +116,8 @@ sftp*
 .vscode
 
 *.png
+*.jpg
+*.JPEG
 
 #Data
 Data/*
@@ -123,3 +125,10 @@ Data/*
 
 #npy
 *.npy
+
+#slides
+*.ppt
+*.pptx
+
+# ckpt
+CKPT*
