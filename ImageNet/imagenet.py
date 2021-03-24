@@ -4,6 +4,8 @@ import torch
 import numpy as np
 from easydict import EasyDict as edict
 
+from imagenet_vgg import Hook
+
 import pdb
 
 class FC_Net(torch.nn.Module):
@@ -56,27 +58,45 @@ def train(model, config_train, data_package, device, model_ckpt_path):
         
         if te % 10 == 0:
             # validate
-            model.eval()
-            test_start_idx = 0
-            prediction = []
-            while test_start_idx < data_package.test_data.shape[0]:
-                batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_train.batch_size, :]).to(device)
-                logits = model(batch_x)
-                _, pred = torch.topk(logits, 5)
-                prediction.append(pred)
-                test_start_idx += config_train.batch_size
-            prediction = torch.squeeze(torch.cat(prediction, dim = 0))
-            test_acc_1 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 1].cpu() ==\
-                            torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
-            test_acc_3 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 3].cpu() ==\
-                            torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
-            test_acc_5 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 5].cpu() ==\
-                            torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
+            test_acc_1, test_acc_3, test_acc_5 = test(model, config_train, data_package, device)
             print('[%d/%d] loss: %f, train-acc: %f, test-acc-1: %f, test-acc-3: %f, test-acc-5: %f' %\
                 (te + 1, config_train.train_epoch, np.mean(losses), np.mean(accuracies), test_acc_1, test_acc_3, test_acc_5))
         scheduler.step()
         if te % 200 == 0:
             torch.save(model.state_dict(), model_ckpt_path)
+
+def test(model, config_test, data_package, device):
+    model.eval()
+    test_start_idx = 0
+    prediction = []
+    while test_start_idx < data_package.test_data.shape[0]:
+        batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_test.batch_size, :]).to(device)
+        logits = model(batch_x)
+        _, pred = torch.topk(logits, 5)
+        prediction.append(pred)
+        test_start_idx += config_test.batch_size
+    prediction = torch.squeeze(torch.cat(prediction, dim = 0))
+    test_acc_1 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 1].cpu() ==\
+                    torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
+    test_acc_3 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 3].cpu() ==\
+                    torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
+    test_acc_5 = torch.mean(torch.sum(torch.tensor(prediction[:, 0: 5].cpu() ==\
+                    torch.unsqueeze(torch.tensor(data_package.test_label).type(torch.int64), 1)).type(torch.float32), 1))
+    return test_acc_1, test_acc_3, test_acc_5
+
+def extract_feat(model, raw_data, device, feature_layer_idx):
+    model.eval()
+    start_idx = 0
+    batch_size = 64
+    features = []
+    hook = Hook(model.network_[feature_layer_idx])
+    while start_idx < raw_data.shape[0]:
+        batch_x = torch.tensor(raw_data[start_idx: start_idx + batch_size, :]).to(device)
+        model(batch_x)
+        features.append(hook.output_.detach().cpu().numpy())
+        start_idx += batch_size
+
+    return np.concatenate(features, axis = 0)
 
 def main():
     if torch.cuda.is_available():  
@@ -85,12 +105,15 @@ def main():
         dev = "cpu"  
     device = torch.device(dev)
 
+    # experiment setup
     vgg_indices = [11, 13, 16, 19]
     vgg_idx = vgg_indices[int(sys.argv[1])]
     data_package = edict({})
     feature_layer_idx = 3
     num_classes = 200
+    feature_extraction = (len(sys.argv) == 3)
 
+    # read in raw features
     data_package.train_label = np.load('ImageNet_train_labels%d.npy' % vgg_idx)
     class_idx = bisect.bisect_left(data_package.train_label, num_classes) - 1
     data_package.train_label = data_package.train_label[0: class_idx + 1]
@@ -102,8 +125,9 @@ def main():
     data_package.test_data = data_package.test_data[test_indices, :]
     data_package.test_label = data_package.test_label[test_indices]
 
+    # initialize network
     raw_feat_dim = 4096
-    hidden_dims = [500, 200, 50]
+    hidden_dims = [500, 250, 40]
     model_ckpt_path = 'CKPT_%d_%d_%s' % (feature_layer_idx, vgg_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes)
     try:
@@ -113,6 +137,7 @@ def main():
         print('Train %s model from scratch' % model_ckpt_path)
     fc_net.to(device)
     
+    # config training
     config_train = edict({})
     config_train.decay_epoch = 2000
     config_train.train_epoch = 3 * config_train.decay_epoch
@@ -120,7 +145,21 @@ def main():
     config_train.lr = 1e-3
     config_train.momentum = 0.9
 
-    train(fc_net, config_train, data_package, device, model_ckpt_path)
+    if not feature_extraction:
+        train(fc_net, config_train, data_package, device, model_ckpt_path)
+    else:
+        ta1, ta3, ta5 = test(fc_net, config_train, data_package, device)
+        print('test-acc-1: %f, test-acc-3: %f, test-acc-5: %f' % (ta1, ta3, ta5))
+        train_feat = extract_feat(fc_net, data_package.train_data, device, 7)
+        test_feat = extract_feat(fc_net, data_package.test_data, device, 7)
+        W, b = list(fc_net.network_[-1].parameters())
+        W = W.detach().cpu().numpy()
+        b = b.detach().cpu().numpy()
+        W = np.concatenate([W, np.expand_dims(b, 1)], axis = 1)
+        pdb.set_trace()
+        np.save('ImageNet_train_features%d.npy' % vgg_idx, train_feat)
+        np.save('ImageNet_test_features%d.npy' % vgg_idx, test_feat)
+        np.save('ImageNet_gt_weights%d.npy' % vgg_idx, W)
 
     return
 
