@@ -11,13 +11,13 @@ where _setting_name_ is specified by ${experiment}\_${type of teacher}. Detailed
 python3 plot_band.py -s mnist_coop 
 ```
 
-To use the main_multi.py or main_irl.py script, run with the command line 
+To use the main.py or main_irl.py script, run with the command line 
 ```bash
-python3 main_multi.py detailed_setting_name random_seed
+python3 main.py detailed_setting_name random_seed
 ```
 where _detailed_setting_name_ is specified by ${experiment}\_${type of teacher}\_${mode of teacher} followed by '_' and the imitate teacher's data dimension(MNIST, Equation) or data type(CIFAR). <br /> An example command to collect data for Linear Classifiers on MNIST Dataset with a cooperative imitate teacher with data dimension 20 and random seed 0 is
 ```bash
-python3 main_multi.py mnist_coop_imit_20 0
+python3 main.py mnist_coop_imit_20 0
 ```
 
 The results will be saved as `pdf` in the corresponding folder inside the `Experiments` folder.

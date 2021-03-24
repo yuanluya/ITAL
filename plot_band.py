@@ -482,6 +482,23 @@ def CollectDataAndPlot(setting_name, seed_range):
         for imit_dim in ['9', '12']:
             plot(setting_name, imit_dim)
             plot_supp(setting_name,imit_dim)
+    
+    elif setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv':
+        # omni_setting = setting_name + '_omni'
+        imit_setting1 = setting_name + '_imit_13'
+        imit_setting2 = setting_name + '_imit_19'
+
+        arguments = ['python3', 'main.py', imit_setting1]
+        collect_data(imit_setting1, 'imit', random_seeds, arguments, type_)
+        remove_npy('Experiments/' + imit_setting1)
+
+        arguments = ['python3', 'main.py', imit_setting2]
+        collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
+        remove_npy('Experiments/' + imit_setting2)
+        
+        for imit_dim in ['13', '19']:
+            plot(setting_name, imit_dim)
+            plot_supp(setting_name,imit_dim)
 
     elif setting_name in irl_settings:
         #omni_setting = setting_name + '_omni'
@@ -504,13 +521,13 @@ def main():
                         help='plotband.py requires a "setting_name" as described in README.')
     args = parser.parse_args()
 
-    all_settings = ['mnist', 'cifar', 'equation', 'regression', 'class10', 'irlH', 'irlE']
+    all_settings = set(['mnist', 'cifar', 'imgnt', 'equation', 'regression', 'class10', 'irlH', 'irlE'])
     teachers = ['coop', 'adv']
     argList = args.setting_name.split('_')
     if len(argList) != 2 or argList[0] not in all_settings or argList[1] not in teachers:
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, seed_range = 20)
+    CollectDataAndPlot(args.setting_name, seed_range = 1)
 if __name__ == '__main__':
     main()

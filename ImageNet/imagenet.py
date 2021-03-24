@@ -142,7 +142,7 @@ def main():
     config_train.decay_epoch = 2000
     config_train.train_epoch = 3 * config_train.decay_epoch
     config_train.batch_size = 64
-    config_train.lr = 1e-3
+    config_train.lr = 1e-4
     config_train.momentum = 0.9
 
     if not feature_extraction:

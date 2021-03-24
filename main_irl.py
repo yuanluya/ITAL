@@ -109,7 +109,7 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, test_set, random_p
     thread_return[dict_key] = [dists, dists_, distsq, actual_rewards, ws, mini_batch_indices, mini_batch_opt_acts]
 
 def learn_thread_tf(config_T, config_L, mode, train_iter, random_prob, return_key, thread_return):
-    import tensorflow as tf
+    import tensorflow.compat.v1 as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -138,7 +138,7 @@ def learn_thread_tf(config_T, config_L, mode, train_iter, random_prob, return_ke
 
 def teacher_run_tf(config_T, config_L, train_iter, thread_return):
 
-    import tensorflow as tf
+    import tensorflow.compat.v1 as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -192,7 +192,7 @@ def main():
     if not use_tf:
         np.random.seed((seed + 1) * 157)
 
-        import tensorflow as tf
+        import tensorflow.compat.v1 as tf
         tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
         tfconfig.gpu_options.allow_growth = True
         os.environ["CUDA_VISIBLE_DEVICES"] = '0'

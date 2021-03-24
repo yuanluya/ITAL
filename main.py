@@ -131,7 +131,7 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     return dists, dists_, accuracies, losses_list, data_pool, gt_y
 
 def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
-    import tensorflow as tf
+    import tensorflow.compat.v1 as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
     sess = tf.Session(config = tfconfig)
@@ -196,7 +196,7 @@ def main():
         dists1, dists1_, accuracies1, losses1, data_poolIMT, gt_yIMT = return_dict[1]
         dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = return_dict['%s_cont' % mode]
 
-    import tensorflow as tf
+    import tensorflow.compat.v1 as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
     sess = tf.Session(config = tfconfig)

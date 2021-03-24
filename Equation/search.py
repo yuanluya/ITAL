@@ -2,7 +2,7 @@ from functools import cmp_to_key
 import numpy as np
 from Equation.equation import Equation
 from Equation.eq_value_cnn import EqValue
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from easydict import EasyDict as edict
 from copy import deepcopy
