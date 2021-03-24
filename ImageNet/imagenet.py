@@ -156,7 +156,6 @@ def main():
         W = W.detach().cpu().numpy()
         b = b.detach().cpu().numpy()
         W = np.concatenate([W, np.expand_dims(b, 1)], axis = 1)
-        pdb.set_trace()
         np.save('ImageNet_train_features%d.npy' % vgg_idx, train_feat)
         np.save('ImageNet_test_features%d.npy' % vgg_idx, test_feat)
         np.save('ImageNet_gt_weights%d.npy' % vgg_idx, W)
