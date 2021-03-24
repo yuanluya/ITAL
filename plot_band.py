@@ -229,31 +229,9 @@ def plot(setting_name, imit_dim=None):
         axes.set_ylabel('')
         plt.savefig('Experiments/' + setting_name + imit_dim + '_squareLoss.pdf', dpi=300)
 
-    elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv' :
-        df0 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/'  + '%s.csv' % ('dist' + '_'+setting_name+'_imit_' + imit_dim))
-        df1 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/'  + '%s.csv' % ('accuracies'+ '_'+setting_name+'_imit_' + imit_dim ))
-
-        f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6))
-        plt1 = sns.lineplot(x="iteration", y="data",
-                            hue="method",data=df0, ax=axes, palette=palette, ci=68)
-        plt1.legend_.remove()
-        plt1.set(xlabel='')
-        axes.set_ylabel('')
-        axes.set_title('L2 Distance', fontweight="bold", size=29)
-        plt.savefig('Experiments/' + setting_name +imit_dim + '_l2.pdf', dpi=300)
-
-        plt.figure()
-        f, axes = plt.subplots(1, 1, constrained_layout = True, figsize=(10, 6))
-        plt2 = sns.lineplot(x="iteration", y="data",
-                            hue="method",data=df1, ax=axes, palette=palette, ci=68)
-        plt2.legend_.remove()
-        plt2.set(xlabel='')
-        
-        axes.set_title('10-Class Classification Accuracy', fontweight="bold", size=29)
-        axes.set_ylabel('')
-        plt.savefig('Experiments/' + setting_name + imit_dim + '_accuracy.pdf', dpi=300)
-
-    elif setting_name == 'cifar_coop' or setting_name == 'cifar_adv': #to be modified to add more settings
+    elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv' or\
+         setting_name == 'cifar_coop' or setting_name == 'cifar_adv' or\
+         setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv': #to be modified to add more settings
         df0 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/'  + '%s.csv' % ('dist' + '_'+setting_name+'_imit_' + imit_dim))
         df1 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/'  + '%s.csv' % ('accuracies'+'_'+setting_name+'_imit_' + imit_dim))
 
@@ -273,7 +251,10 @@ def plot(setting_name, imit_dim=None):
         plt2.legend_.remove()
         plt2.set(xlabel='')
         
-        axes.set_title('10-Class Classification Accuracy', fontweight="bold", size=29)
+        if setting_name[0: 5] == 'imgnt':
+            axes.set_title('200-Class Classification Accuracy', fontweight="bold", size=29)
+        else:
+            axes.set_title('10-Class Classification Accuracy', fontweight="bold", size=29)
         axes.set_ylabel('')
         plt.savefig('Experiments/' + setting_name + imit_dim + '_accuracy.pdf', dpi=300)
 
@@ -347,19 +328,9 @@ def plot_supp(setting_name, imit_dim=None):
         plt1.set(xlabel='', ylabel='')
         plt.savefig('Experiments/' + setting_name + '_crossEntropy.pdf', dpi=300)
 
-    elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv' :
-        df0 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/' + '%s.csv' % ('losses'+ '_'+setting_name+'_imit_' + imit_dim ))
-        
-        plt1 = sns.lineplot(x="iteration", y="data",
-                            hue="method",data=df0, ax=axes, palette=palette, ci=68)
-        plt1.legend_.remove()
-        
-        axes.set_title('Cross Entropy Loss', fontweight="bold", size=29)
-        axes.set_ylabel('')
-        axes.set_xlabel('')
-        plt.savefig('Experiments/' + setting_name + imit_dim + '_crossEntropy.pdf', dpi=300)
-
-    elif setting_name == 'cifar_coop' or setting_name == 'cifar_adv':
+    elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv' or\
+         setting_name == 'cifar_coop' or setting_name == 'cifar_adv' or\
+         setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv':
         df0 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/' + '%s.csv' % ('losses'+ '_'+setting_name+'_imit_' + imit_dim ))
         
         plt1 = sns.lineplot(x="iteration", y="data",

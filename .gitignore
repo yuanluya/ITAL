@@ -132,3 +132,7 @@ Data/*
 
 # ckpt
 CKPT*
+
+# results
+*.pdf
+*.csv

@@ -79,7 +79,8 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
 
         losses_list.append(loss)
         accuracies.append(accuracy)
-        teacher.sample(step = (i if mode[-4:] == "cont" and teacher.config_.sample_size != teacher.config_.mini_batch_sample_size else None), save = (mode[-4:] == "cont" and teacher.config_.sample_size == teacher.config_.mini_batch_sample_size))
+        teacher.sample(step = (i if mode[-4:] == "cont" and teacher.config_.sample_size != teacher.config_.mini_batch_sample_size else None),\
+                       save = (mode[-4:] == "cont" and teacher.config_.sample_size == teacher.config_.mini_batch_sample_size))
         gradients, _, losses = learner.get_grads(teacher.data_pool_, teacher.gt_y_)
         if mode == 'omni':
             data_idx = teacher.choose(gradients, w, learner.config_.lr)
@@ -138,9 +139,10 @@ def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, 
     init = tf.global_variables_initializer()
 
     learnerM = LearnerSM(sess, learner)
-    dists, dists_, accuracies, logpdfs = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
+    dists, dists_, accuracies, losses_list, data_pool, gt_y =\
+        learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
 
-    thread_return[key] = [dists, dists_, accuracies, logpdfs]
+    thread_return[key] = [dists, dists_, accuracies, losses_list, data_pool, gt_y]
 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -256,10 +258,10 @@ def main():
 
         dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
 
-        np.save('Experiments/' + directory + '/dist8_' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(dists8))
-        np.save('Experiments/' + directory + '/dist8__' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(dists8_))
-        np.save('Experiments/' + directory + '/accuracies8_' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(accuracies8))
-        np.save('Experiments/' + directory + '/losses8_' + random_seed + '_' + str(config_T["mini_batch_sample_size"]) + '.npy', np.array(losses8))  
+        np.save('Experiments/' + directory + '/dist8_' + random_seed + '_' + str(teacher.config_["mini_batch_sample_size"]) + '.npy', np.array(dists8))
+        np.save('Experiments/' + directory + '/dist8__' + random_seed + '_' + str(teacher.config_["mini_batch_sample_size"]) + '.npy', np.array(dists8_))
+        np.save('Experiments/' + directory + '/accuracies8_' + random_seed + '_' + str(teacher.config_["mini_batch_sample_size"]) + '.npy', np.array(accuracies8))
+        np.save('Experiments/' + directory + '/losses8_' + random_seed + '_' + str(teacher.config_["mini_batch_sample_size"]) + '.npy', np.array(losses8))  
     
 if __name__ == '__main__':
     main()
