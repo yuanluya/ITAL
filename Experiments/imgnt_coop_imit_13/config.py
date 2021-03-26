@@ -2,8 +2,8 @@ from easydict import EasyDict as edict
 import numpy as np
 
 lr = 1e-3
-beta = 50001
-beta_decay = 1- 5e-6
+beta = 500
+beta_decay = 1
 K = 1
 multi_thread = True
 dd = 40
@@ -13,8 +13,8 @@ dps = 3 * dd
 reg_coef = 0
 num_particles = 1
 
-train_iter_simple = 200
-train_iter_smart = 200
+train_iter_simple = 1000
+train_iter_smart = 1000
 
 noise_scale_min = 0.01
 noise_scale_max = 0.1

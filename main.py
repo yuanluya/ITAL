@@ -1,5 +1,5 @@
 from easydict import EasyDict as edict
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Pool
 import numpy as np
 from scipy.stats import multivariate_normal as mn
 import os
@@ -132,16 +132,25 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
         return dists, dists_, accuracies, losses_list, data_pool, gt_y, teacher    
     return dists, dists_, accuracies, losses_list, data_pool, gt_y
 
-def learn_thread(teacher, learner, mode, init_ws, train_iter, random_prob, key, thread_return):
+def learn_thread(teacher, config, mode, init_ws, train_iter, random_prob, key, thread_return):
     import tensorflow.compat.v1 as tf
     tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
     tfconfig.gpu_options.allow_growth = True
     sess = tf.Session(config = tfconfig)
-    init = tf.global_variables_initializer()
-
-    learnerM = LearnerSM(sess, learner)
+    
+    learnerM = LearnerSM(sess, config)
 
     thread_return[key] = learn(teacher, learnerM, mode, init_ws, train_iter, random_prob)
+
+def learn_basic_thread(teacher, config, init_w, train_iter, sgd, key, thread_return):
+    import tensorflow.compat.v1 as tf
+    tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
+    tfconfig.gpu_options.allow_growth = True
+    sess = tf.Session(config = tfconfig)
+    learner = Learner(sess, init_w, config)
+    init = tf.global_variables_initializer()
+
+    thread_return[key] = learn_basic(teacher, learner, train_iter, sess, init, sgd)
 
 def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -223,23 +232,31 @@ def main():
             np.save('Experiments/' + directory + '/dist8_' + random_seed + '_' + str(mini_size) + '.npy', np.array(dists8_m))
             np.save('Experiments/' + directory + '/dist8__' + random_seed + '_' + str(mini_size) + '.npy', np.array(dists8__m))
             np.save('Experiments/' + directory + '/accuracies8_' + random_seed + '_' + str(mini_size) + '.npy', np.array(accuracies8_m))
-            np.save('Experiments/' + directory + '/losses8_' + random_seed + '_' + str(mini_size) + '.npy', np.array(losses8_m))  
-
-    import tensorflow.compat.v1 as tf
-    tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
-    tfconfig.gpu_options.allow_growth = True
-    sess = tf.Session(config = tfconfig)
-    learner = Learner(sess, init_w, copy.deepcopy(config_L))
-
-    init = tf.global_variables_initializer()
+            np.save('Experiments/' + directory + '/losses8_' + random_seed + '_' + str(mini_size) + '.npy', np.array(losses8_m))
 
     if multi_thread:
-        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch, data_poolBatch, gt_yBatch \
-             = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
-        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd, data_poolSGD, gt_ySGD \
-             = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
-    
+        return_dict = manager.dict()
+        jobs = [Process(target = learn_basic_thread, args = (teacher, config_L, init_w, train_iter_simple, sgd, sgd, return_dict))\
+                for sgd in [True, False]]
+        
+        for p in jobs:
+            p.start()
+        
+        # pdb.set_trace()
+        for j in jobs:
+            print("joining", j)
+            j.join()
+        
+        dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch, data_poolBatch, gt_yBatch = return_dict[False]
+        dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd, data_poolSGD, gt_ySGD = return_dict[True]
     else:
+        import tensorflow.compat.v1 as tf
+        tfconfig = tf.ConfigProto(allow_soft_placement = True, log_device_placement = False)
+        tfconfig.gpu_options.allow_growth = True
+        sess = tf.Session(config = tfconfig)
+        learner = Learner(sess, init_w, copy.deepcopy(config_L))
+        init = tf.global_variables_initializer()
+        
         learnerM = LearnerSM(sess, copy.deepcopy(config_LS))
 
         dists1, dists1_, accuracies1, losses1, data_poolIMT, gt_yIMT = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)

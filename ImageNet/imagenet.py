@@ -16,8 +16,11 @@ class FC_Net(torch.nn.Module):
         self.layers_ = []
         for idx in range(1, len(self.dims_)):
             self.layers_.append(torch.nn.Linear(self.dims_[idx - 1], self.dims_[idx]))
-            self.layers_.append(torch.nn.ReLU())
-            self.layers_.append(torch.nn.Dropout())
+            if idx != len(self.dims_) - 1:
+                self.layers_.append(torch.nn.ReLU())
+                self.layers_.append(torch.nn.Dropout())
+            else:
+                self.layers_.append(torch.nn.Dropout(0.25))
         self.layers_.append(torch.nn.Linear(self.dims_[-1], self.num_classes_))
         self.network_ = torch.nn.Sequential(*self.layers_)
     
@@ -127,7 +130,7 @@ def main():
 
     # initialize network
     raw_feat_dim = 4096
-    hidden_dims = [500, 250, 40]
+    hidden_dims = [500, 250, 10]
     model_ckpt_path = 'CKPT_%d_%d_%s' % (feature_layer_idx, vgg_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes)
     try:
@@ -142,7 +145,7 @@ def main():
     config_train.decay_epoch = 2000
     config_train.train_epoch = 3 * config_train.decay_epoch
     config_train.batch_size = 64
-    config_train.lr = 1e-4
+    config_train.lr = 1e-3
     config_train.momentum = 0.9
 
     if not feature_extraction:
