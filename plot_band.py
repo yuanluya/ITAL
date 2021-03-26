@@ -461,10 +461,10 @@ def CollectDataAndPlot(setting_name, seed_range):
 
         imit_dims = []
         
-        # arguments = ['python3', 'main.py', imit_setting1]
-        # collect_data(imit_setting1, 'imit', random_seeds, arguments, type_)
-        # remove_npy('Experiments/' + imit_setting1)
-        # imit_dims.append('13')
+        arguments = ['python3', 'main.py', imit_setting1]
+        collect_data(imit_setting1, 'imit', random_seeds, arguments, type_)
+        remove_npy('Experiments/' + imit_setting1)
+        imit_dims.append('13')
 
         arguments = ['python3', 'main.py', imit_setting2]
         collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
@@ -503,6 +503,6 @@ def main():
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, seed_range = 1)
+    CollectDataAndPlot(args.setting_name, seed_range = 20)
 if __name__ == '__main__':
     main()

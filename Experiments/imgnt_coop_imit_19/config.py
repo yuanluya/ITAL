@@ -3,7 +3,7 @@ import numpy as np
 
 lr = 1e-3
 beta = 1000
-beta_decay = 1# - 5e-6
+beta_decay = 1# + 5e-5
 K = 1
 multi_thread = True
 dd = 10
@@ -23,17 +23,17 @@ noise_scale_decay = 1000
 task = 'classification'
 mode = 'imit'
 
-dx = np.load("Data/ImageNet_10/ImageNet_train_features16.npy")
-dy = np.load("Data/ImageNet_10/ImageNet_train_labels.npy")
-gt_w = np.load("Data/ImageNet_10/ImageNet_gt_weights16.npy")
-tx = np.load("Data/ImageNet_10/ImageNet_test_features16.npy")
-ty = np.load("Data/ImageNet_10/ImageNet_test_labels.npy")
-
-dx_tea = np.load("Data/ImageNet_10/ImageNet_train_features%d.npy" % dd_) 
+dx_tea = np.load("Data/ImageNet_10/ImageNet_train_features16.npy")
 dy_tea = np.load("Data/ImageNet_10/ImageNet_train_labels.npy")
-gt_w_tea = np.load("Data/ImageNet_10/ImageNet_gt_weights%d.npy" % dd_)  
-tx_tea = np.load("Data/ImageNet_10/ImageNet_test_features%d.npy" % dd_)  
-ty_tea = np.load("Data/ImageNet_10/ImageNet_test_labels.npy") 
+gt_w_tea = np.load("Data/ImageNet_10/ImageNet_gt_weights16.npy")
+tx_tea = np.load("Data/ImageNet_10/ImageNet_test_features16.npy")
+ty_tea = np.load("Data/ImageNet_10/ImageNet_test_labels.npy")
+
+dx = np.load("Data/ImageNet_10/ImageNet_train_features%d.npy" % dd_) 
+dy = np.load("Data/ImageNet_10/ImageNet_train_labels.npy")
+gt_w = np.load("Data/ImageNet_10/ImageNet_gt_weights%d.npy" % dd_)  
+tx = np.load("Data/ImageNet_10/ImageNet_test_features%d.npy" % dd_)  
+ty = np.load("Data/ImageNet_10/ImageNet_test_labels.npy") 
 
 config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                   'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
