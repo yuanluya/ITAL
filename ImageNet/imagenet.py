@@ -117,13 +117,13 @@ def main():
     feature_extraction = (len(sys.argv) == 3)
 
     # read in raw features
-    data_package.train_label = np.load('ImageNet_train_labels%d.npy' % vgg_idx)
+    data_package.train_label = np.load('ImageNet_train_labels.npy')
     class_idx = bisect.bisect_left(data_package.train_label, num_classes) - 1
     data_package.train_label = data_package.train_label[0: class_idx + 1]
     data_package.train_data = np.load('ImageNet_train_raw_features_%d_%d.npy' % (feature_layer_idx, vgg_idx))[0: class_idx + 1, :]
 
     data_package.test_data = np.load('ImageNet_test_raw_features_%d_%d.npy' % (feature_layer_idx, vgg_idx))
-    data_package.test_label = np.load('ImageNet_test_labels%d.npy' % vgg_idx)
+    data_package.test_label = np.load('ImageNet_test_labels.npy')
     test_indices = np.nonzero(data_package.test_label < num_classes)[0]
     data_package.test_data = data_package.test_data[test_indices, :]
     data_package.test_label = data_package.test_label[test_indices]
@@ -134,7 +134,7 @@ def main():
     model_ckpt_path = 'CKPT_%d_%d_%s' % (feature_layer_idx, vgg_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes)
     try:
-        fc_net.load_state_dict(torch.load(model_ckpt_path))
+        fc_net.load_state_dict(torch.load(model_ckpt_path, map_location = dev))
         print('Load model from %s' % model_ckpt_path)
     except:
         print('Train %s model from scratch' % model_ckpt_path)
@@ -142,8 +142,8 @@ def main():
     
     # config training
     config_train = edict({})
-    config_train.decay_epoch = 2000
-    config_train.train_epoch = 3 * config_train.decay_epoch
+    config_train.decay_epoch = 3000
+    config_train.train_epoch = 4 * config_train.decay_epoch
     config_train.batch_size = 64
     config_train.lr = 1e-3
     config_train.momentum = 0.9

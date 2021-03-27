@@ -99,8 +99,8 @@ def main():
     
     np.save('ImageNet_train_raw_features_%d_%d.npy' % (feature_layer_idx, vgg_idx), train_image_feats)
     np.save('ImageNet_test_raw_features_%d_%d.npy' % (feature_layer_idx, vgg_idx), test_image_feats)
-    np.save('ImageNet_train_labels%d.npy' % vgg_idx, train_labels)
-    np.save('ImageNet_test_labels%d.npy' % vgg_idx, test_labels)
+    np.save('ImageNet_train_labels.npy', train_labels)
+    np.save('ImageNet_test_labels.npy', test_labels)
     return
 
 if __name__ == '__main__':
