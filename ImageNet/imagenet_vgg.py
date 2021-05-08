@@ -83,7 +83,6 @@ def main():
     vgg_idx = vgg_indices[int(sys.argv[1])]
     vgg = eval('TV.models.vgg%d_bn(pretrained = True, progress = True)' % vgg_idx)
     feature_layer_idx = 3
-    pdb.set_trace()
     vgg.classifier[feature_layer_idx + 1].inplace = False # to get unrelued feature
     vgg.eval()
     vgg.to(device)

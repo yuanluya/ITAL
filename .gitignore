@@ -122,6 +122,7 @@ sftp*
 #Data
 Data/*
 *.gz
+ImageNet/tiny-imagenet-200/*
 
 #npy
 *.npy
