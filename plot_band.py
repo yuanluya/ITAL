@@ -231,7 +231,8 @@ def plot(setting_name, imit_dim=None):
 
     elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv' or\
          setting_name == 'cifar_coop' or setting_name == 'cifar_adv' or\
-         setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv': #to be modified to add more settings
+         setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv' or\
+         setting_name == 'cub_coop' or setting_name == 'cub_adv': #to be modified to add more settings
         df0 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/'  + '%s.csv' % ('dist' + '_'+setting_name+'_imit_' + imit_dim))
         df1 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/'  + '%s.csv' % ('accuracies'+'_'+setting_name+'_imit_' + imit_dim))
 
@@ -251,7 +252,7 @@ def plot(setting_name, imit_dim=None):
         plt2.legend_.remove()
         plt2.set(xlabel='')
         
-        if setting_name[0: 5] == 'imgnt':
+        if setting_name[0: 5] == 'imgnt' or setting_name[0: 5] == 'cub':
             axes.set_title('200-Class Classification Accuracy', fontweight="bold", size=29)
         else:
             axes.set_title('10-Class Classification Accuracy', fontweight="bold", size=29)
@@ -330,7 +331,8 @@ def plot_supp(setting_name, imit_dim=None):
 
     elif setting_name == 'mnist_coop' or setting_name == 'mnist_adv' or\
          setting_name == 'cifar_coop' or setting_name == 'cifar_adv' or\
-         setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv':
+         setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv' or\
+         setting_name == 'cub_coop' or setting_name == 'cub_adv':
         df0 = pd.read_csv(imit_path[:-1] + '_' + imit_dim + '/' + '%s.csv' % ('losses'+ '_'+setting_name+'_imit_' + imit_dim ))
         
         plt1 = sns.lineplot(x="iteration", y="data",
@@ -474,6 +476,27 @@ def CollectDataAndPlot(setting_name, seed_range):
         for imit_dim in imit_dims:
             plot(setting_name, imit_dim)
             plot_supp(setting_name,imit_dim)
+            
+    elif setting_name == 'cub_coop' or setting_name == 'cub_adv':
+        # omni_setting = setting_name + '_omni'
+        imit_setting1 = setting_name + '_imit_50'
+        # imit_setting2 = setting_name + '_imit_152'
+
+        imit_dims = []
+        
+        arguments = ['python3', 'main.py', imit_setting1]
+        collect_data(imit_setting1, 'imit', random_seeds, arguments, type_)
+        remove_npy('Experiments/' + imit_setting1)
+        imit_dims.append('50')
+
+        # arguments = ['python3', 'main.py', imit_setting2]
+        # collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
+        # remove_npy('Experiments/' + imit_setting2)
+        # imit_dims.append('152')
+        
+        for imit_dim in imit_dims:
+            plot(setting_name, imit_dim)
+            plot_supp(setting_name,imit_dim)
 
     elif setting_name in irl_settings:
         #omni_setting = setting_name + '_omni'
@@ -496,13 +519,13 @@ def main():
                         help='plotband.py requires a "setting_name" as described in README.')
     args = parser.parse_args()
 
-    all_settings = set(['mnist', 'cifar', 'imgnt', 'equation', 'regression', 'class10', 'irlH', 'irlE'])
+    all_settings = set(['mnist', 'cifar', 'imgnt', 'cub', 'equation', 'regression', 'class10', 'irlH', 'irlE'])
     teachers = ['coop', 'adv']
     argList = args.setting_name.split('_')
     if len(argList) != 2 or argList[0] not in all_settings or argList[1] not in teachers:
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, seed_range = 20)
+    CollectDataAndPlot(args.setting_name, seed_range = 1)
 if __name__ == '__main__':
     main()
