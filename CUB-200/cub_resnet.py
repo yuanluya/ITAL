@@ -71,9 +71,14 @@ def main():
                                                    processor, resnet, device, extract_format)
     test_image_feats, test_labels = get_raw_feat(data_folder, annot_folder, (index_file[2], index_file[3]),
                                                  processor, resnet, device, extract_format)
-    
-    np.save('CUB200_train_raw_%ss_%d.npy' % (extract_format, resnet_idx), train_image_feats)
-    np.save('CUB200_test_raw_%ss_%d.npy' % (extract_format, resnet_idx), test_image_feats)
+    if extract_format == 'feature':
+        np.save('CUB200_train_raw_%ss_%d.npy' % (extract_format, resnet_idx), train_image_feats)
+        np.save('CUB200_test_raw_%ss_%d.npy' % (extract_format, resnet_idx), test_image_feats)
+    elif extract_format == 'image':
+        np.save('CUB200_train_raw_%ss.npy' % extract_format, train_image_feats)
+        np.save('CUB200_test_raw_%ss.npy' % extract_format, test_image_feats)
+    else:
+        assert(0)
     np.save('CUB200_train_labels.npy', train_labels)
     np.save('CUB200_test_labels.npy', test_labels)
     

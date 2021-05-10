@@ -71,8 +71,12 @@ def main():
     test_image_feats, test_labels = get_raw_feat(data_folder + '_test', 'cars_test_annos_withlabels',\
                                                  processor, resnet, device, extract_format)
     
-    np.save('CARS196_train_raw_%ss_%d.npy' % (extract_format, resnet_idx), train_image_feats)
-    np.save('CARS196_test_raw_%ss_%d.npy' % (extract_format, resnet_idx), test_image_feats)
+    if extract_format == 'feature':
+        np.save('CARS196_train_raw_%ss_%d.npy' % (extract_format, resnet_idx), train_image_feats)
+        np.save('CARS196_test_raw_%ss_%d.npy' % (extract_format, resnet_idx), test_image_feats)
+    elif extract_format == 'image':
+        np.save('CARS196_train_raw_%ss.npy' % extract_format, train_image_feats)
+        np.save('CARS196_test_raw_%ss.npy' % extract_format, test_image_feats)
     np.save('CARS196_train_labels.npy', train_labels)
     np.save('CARS196_test_labels.npy', test_labels)
 

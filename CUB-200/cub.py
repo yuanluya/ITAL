@@ -7,6 +7,7 @@ from easydict import EasyDict as edict
 from tqdm import tqdm
 
 import torchvision as TV
+import torchvision.transforms as T
 
 from cub_resnet import Hook
 
@@ -28,10 +29,14 @@ class FC_Net(torch.nn.Module):
         self.layers_.append(torch.nn.Linear(self.dims_[-1], self.num_classes_))
         self.new_fc_ = torch.nn.Sequential(*self.layers_)
         if resnet_idx:
+            self.processor_ = torch.nn.Sequential(
+                T.RandomApply(torch.nn.ModuleList([T.RandomHorizontalFlip()]), p = 0.3),
+                T.RandomApply(torch.nn.ModuleList([T.ColorJitter()]), p = 0.3),
+                T.RandomApply(torch.nn.ModuleList([T.RandomAffine(30, (0.25, 0.25), (0.8, 1.2))]), p = 0.3))
             self.resnet_ = eval('TV.models.resnet%d(pretrained = True, progress = True)' % resnet_idx)
-            self.resnet_params_ = list(self.resnet_.parameters())
+            self.resnet_params_ = list(self.resnet_.layer4.parameters())
             self.resnet_.fc = self.new_fc_
-            self.network_ = self.resnet_
+            self.network_ = torch.nn.Sequential(self.processor_, self.resnet_)
         else:
             self.network_ = self.new_fc_
     
@@ -136,9 +141,12 @@ def main():
     data_package.train_label = np.load('CUB200_train_labels.npy')
     class_idx = bisect.bisect_left(data_package.train_label, num_classes) - 1
     data_package.train_label = data_package.train_label[0: class_idx + 1]
-    data_package.train_data = np.load('CUB200_train_raw_%ss_%d.npy' % (extract_format, resnet_idx))[0: class_idx + 1, ...]
-
-    data_package.test_data = np.load('CUB200_test_raw_%ss_%d.npy' % (extract_format, resnet_idx))
+    if extract_format == 'feature':
+        data_package.train_data = np.load('CUB200_train_raw_%ss_%d.npy' % (extract_format, resnet_idx))[0: class_idx + 1, ...]
+        data_package.test_data = np.load('CUB200_test_raw_%ss_%d.npy' % (extract_format, resnet_idx))
+    elif extract_format == 'image':
+        data_package.train_data = np.load('CUB200_train_raw_%ss.npy' % extract_format)[0: class_idx + 1, ...]
+        data_package.test_data = np.load('CUB200_test_raw_%ss.npy' % extract_format)
     data_package.test_label = np.load('CUB200_test_labels.npy')
     test_indices = np.nonzero(data_package.test_label < num_classes)[0]
     data_package.test_data = data_package.test_data[test_indices, ...]
@@ -146,7 +154,7 @@ def main():
 
     # initialize network
     raw_feat_dim = 2048
-    hidden_dims = [360, 120, 10]
+    hidden_dims = [500, 200, 100]
     model_ckpt_path = 'CKPT_%d_%s' % (resnet_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes,
                     resnet_idx if extract_format == 'image' else None)
@@ -173,9 +181,8 @@ def main():
     else:
         ta1, ta3, ta5 = test(fc_net, config_train, data_package, device)
         print('test-acc-1: %f, test-acc-3: %f, test-acc-5: %f' % (ta1, ta3, ta5))
-        feature_layer_idx = 7
-        train_feat = extract_feat(fc_net, data_package.train_data, device, feature_layer_idx)
-        test_feat = extract_feat(fc_net, data_package.test_data, device, feature_layer_idx)
+        train_feat = extract_feat(fc_net, data_package.train_data, device)
+        test_feat = extract_feat(fc_net, data_package.test_data, device)
         W, b = list(fc_net.network_[-1].parameters())
         W = W.detach().cpu().numpy()
         b = b.detach().cpu().numpy()
