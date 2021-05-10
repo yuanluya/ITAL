@@ -1,15 +1,19 @@
 import sys
+import os
 import bisect
 import torch
 import numpy as np
 from easydict import EasyDict as edict
+from tqdm import tqdm
+
+import torchvision as TV
 
 from cub_resnet import Hook
 
 import pdb
 
 class FC_Net(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dims, num_classes):
+    def __init__(self, input_dim, hidden_dims, num_classes, resnet_idx = None):
         super(FC_Net, self).__init__()
         self.dims_ = [input_dim] + hidden_dims
         self.num_classes_ = num_classes
@@ -22,18 +26,29 @@ class FC_Net(torch.nn.Module):
             else:
                 self.layers_.append(torch.nn.Dropout(0.5))
         self.layers_.append(torch.nn.Linear(self.dims_[-1], self.num_classes_))
-        self.network_ = torch.nn.Sequential(*self.layers_)
+        self.new_fc_ = torch.nn.Sequential(*self.layers_)
+        if resnet_idx:
+            self.resnet_ = eval('TV.models.resnet%d(pretrained = True, progress = True)' % resnet_idx)
+            self.resnet_params_ = list(self.resnet_.parameters())
+            self.resnet_.fc = self.new_fc_
+            self.network_ = self.resnet_
+        else:
+            self.network_ = self.new_fc_
     
     def forward(self, x):
         x = self.network_(x)
         return x
 
 def train(model, config_train, data_package, device, model_ckpt_path):
-    opt = torch.optim.SGD(model.parameters(), lr = config_train.lr,
-                          momentum = config_train.momentum, weight_decay = 1e-3)
+    if config_train.get('resnet_lr'):
+        opt = torch.optim.SGD([{'params': model.new_fc_.parameters()}, {'params': model.resnet_params_, 'lr': config_train.resnet_lr}],
+                                lr = config_train.lr, momentum = config_train.momentum, weight_decay = 1e-3)
+    else:
+        opt = torch.optim.SGD(model.parameters(), lr = config_train.lr,
+                              momentum = config_train.momentum, weight_decay = 1e-3)
     scheduler = torch.optim.lr_scheduler.LambdaLR(opt, lambda epoch: 0.5 ** (epoch // config_train.decay_epoch))
     
-    for te in range(config_train.train_epoch):
+    for te in tqdm(range(config_train.train_epoch)):
         # train
         model.train()
         losses = []
@@ -43,7 +58,7 @@ def train(model, config_train, data_package, device, model_ckpt_path):
         np.random.shuffle(indices)
         while start_idx < data_package.train_data.shape[0]:
             opt.zero_grad()
-            batch_x = torch.tensor(data_package.train_data[indices[start_idx: start_idx + config_train.batch_size], :]).to(device)
+            batch_x = torch.tensor(data_package.train_data[indices[start_idx: start_idx + config_train.batch_size], ...]).to(device)
             batch_y = torch.tensor(data_package.train_label\
                 [indices[start_idx: start_idx + config_train.batch_size]]).type(torch.int64).to(device)
             logits = model(batch_x)
@@ -59,13 +74,13 @@ def train(model, config_train, data_package, device, model_ckpt_path):
             accuracies.append(acc.cpu().numpy())
             start_idx += config_train.batch_size
         
-        if te % 50 == 0:
+        if te % 3 == 0:
             # validate
             test_acc_1, test_acc_3, test_acc_5 = test(model, config_train, data_package, device)
             print('[%d/%d] loss: %f, train-acc: %f, test-acc-1: %f, test-acc-3: %f, test-acc-5: %f' %\
                 (te + 1, config_train.train_epoch, np.mean(losses), np.mean(accuracies), test_acc_1, test_acc_3, test_acc_5))
         scheduler.step()
-        if (te + 1) % 500 == 0:
+        if (te + 1) % 20 == 0:
             torch.save(model.state_dict(), model_ckpt_path)
 
 def test(model, config_test, data_package, device):
@@ -73,7 +88,7 @@ def test(model, config_test, data_package, device):
     test_start_idx = 0
     prediction = []
     while test_start_idx < data_package.test_data.shape[0]:
-        batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_test.batch_size, :]).to(device)
+        batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_test.batch_size, ...]).to(device)
         logits = model(batch_x)
         _, pred = torch.topk(logits, 5)
         prediction.append(pred)
@@ -102,11 +117,13 @@ def extract_feat(model, raw_data, device, feature_layer_idx = -2):
     return np.concatenate(features, axis = 0)
 
 def main():
+    # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     if torch.cuda.is_available():  
         dev = "cuda:0" 
     else:
         dev = "cpu"  
     device = torch.device(dev)
+    extract_format = 'image'#'feature'
 
     # experiment setup
     resnet_indices = [34, 50, 101, 152]
@@ -119,32 +136,36 @@ def main():
     data_package.train_label = np.load('CUB200_train_labels.npy')
     class_idx = bisect.bisect_left(data_package.train_label, num_classes) - 1
     data_package.train_label = data_package.train_label[0: class_idx + 1]
-    data_package.train_data = np.load('CUB200_train_raw_features_%d.npy' % resnet_idx)[0: class_idx + 1, :]
+    data_package.train_data = np.load('CUB200_train_raw_%ss_%d.npy' % (extract_format, resnet_idx))[0: class_idx + 1, ...]
 
-    data_package.test_data = np.load('CUB200_test_raw_features_%d.npy' % resnet_idx)
+    data_package.test_data = np.load('CUB200_test_raw_%ss_%d.npy' % (extract_format, resnet_idx))
     data_package.test_label = np.load('CUB200_test_labels.npy')
     test_indices = np.nonzero(data_package.test_label < num_classes)[0]
-    data_package.test_data = data_package.test_data[test_indices, :]
+    data_package.test_data = data_package.test_data[test_indices, ...]
     data_package.test_label = data_package.test_label[test_indices]
 
     # initialize network
     raw_feat_dim = 2048
-    hidden_dims = [500, 250, 100]
+    hidden_dims = [360, 120, 10]
     model_ckpt_path = 'CKPT_%d_%s' % (resnet_idx, '_'.join([str(hd) for hd in hidden_dims]))
-    fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes)
+    fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes,
+                    resnet_idx if extract_format == 'image' else None)
     try:
         fc_net.load_state_dict(torch.load(model_ckpt_path, map_location = dev))
         print('Load model from %s' % model_ckpt_path)
     except:
         print('Train %s model from scratch' % model_ckpt_path)
     fc_net.to(device)
+    print(next(fc_net.parameters()).is_cuda)
     
     # config training
     config_train = edict({})
     config_train.decay_epoch = 2000
     config_train.train_epoch = 1 * config_train.decay_epoch
-    config_train.batch_size = 64
+    config_train.batch_size = 32
     config_train.lr = 1e-3
+    if extract_format == 'image':
+        config_train.resnet_lr = config_train.lr / 50
     config_train.momentum = 0.9
 
     if not feature_extraction:

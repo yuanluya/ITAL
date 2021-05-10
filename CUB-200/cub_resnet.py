@@ -25,7 +25,8 @@ class Hook():
     def close(self):
         self.hook_.remove()
 
-def get_raw_feat(img_directory, annotate_directory, label_file, processor, feat_network, device):
+def get_raw_feat(img_directory, annotate_directory, label_file,
+                 processor, feat_network, device, extract_format):
     image_feats = []
     labels = []
     hook = Hook(feat_network.avgpool)
@@ -37,10 +38,14 @@ def get_raw_feat(img_directory, annotate_directory, label_file, processor, feat_
         if raw_img.mode[0: 3] == 'RGB':
             crop_raw_img = raw_img.crop(box = [int(annot['bbox'][0][0][i]) for i in range(4)])
             img = torch.unsqueeze(processor(raw_img), 0).to(device)
-            feat_network(img)
-            image_feats.append(np.squeeze(hook.output_.detach().cpu().numpy(), axis = (2, 3)))
+            if extract_format == 'feature':
+                feat_network(img)
+                image_feats.append(np.squeeze(hook.output_.detach().cpu().numpy(), axis = (2, 3)))
+            elif extract_format == 'image':
+                image_feats.append(img.cpu().numpy())
+            else:
+                assert(0)
             labels.append(label_file[1][0][il] - 1)# if class_dict.get(words[1]) else -1)
-
     return np.concatenate(image_feats, axis = 0), np.array(labels)
 
 def main():
@@ -51,6 +56,7 @@ def main():
     device = torch.device(dev)
     data_folder = 'images'
     annot_folder = 'annotations-mat'
+    extract_format = 'image'#'features'
     
     resnet_indices = [34, 50, 101, 152]
     resnet_idx = resnet_indices[int(sys.argv[1])]
@@ -61,11 +67,13 @@ def main():
     processor = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), normalize])
 
     index_file = sio.loadmat('lists/splits.mat')['splits'][0][0]
-    train_image_feats, train_labels = get_raw_feat(data_folder, annot_folder, (index_file[0], index_file[1]), processor, resnet, device)
-    test_image_feats, test_labels = get_raw_feat(data_folder, annot_folder, (index_file[2], index_file[3]), processor, resnet, device)
+    train_image_feats, train_labels = get_raw_feat(data_folder, annot_folder, (index_file[0], index_file[1]),
+                                                   processor, resnet, device, extract_format)
+    test_image_feats, test_labels = get_raw_feat(data_folder, annot_folder, (index_file[2], index_file[3]),
+                                                 processor, resnet, device, extract_format)
     
-    np.save('CUB200_train_raw_features_%d.npy' % resnet_idx, train_image_feats)
-    np.save('CUB200_test_raw_features_%d.npy' % resnet_idx, test_image_feats)
+    np.save('CUB200_train_raw_%ss_%d.npy' % (extract_format, resnet_idx), train_image_feats)
+    np.save('CUB200_test_raw_%ss_%d.npy' % (extract_format, resnet_idx), test_image_feats)
     np.save('CUB200_train_labels.npy', train_labels)
     np.save('CUB200_test_labels.npy', test_labels)
     

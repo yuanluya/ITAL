@@ -43,7 +43,7 @@ def train(model, config_train, data_package, device, model_ckpt_path):
         np.random.shuffle(indices)
         while start_idx < data_package.train_data.shape[0]:
             opt.zero_grad()
-            batch_x = torch.tensor(data_package.train_data[indices[start_idx: start_idx + config_train.batch_size], :]).to(device)
+            batch_x = torch.tensor(data_package.train_data[indices[start_idx: start_idx + config_train.batch_size], ...]).to(device)
             batch_y = torch.tensor(data_package.train_label\
                 [indices[start_idx: start_idx + config_train.batch_size]]).type(torch.int64).to(device)
             logits = model(batch_x)
@@ -73,7 +73,7 @@ def test(model, config_test, data_package, device):
     test_start_idx = 0
     prediction = []
     while test_start_idx < data_package.test_data.shape[0]:
-        batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_test.batch_size, :]).to(device)
+        batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_test.batch_size, ...]).to(device)
         logits = model(batch_x)
         _, pred = torch.topk(logits, 5)
         prediction.append(pred)
@@ -119,12 +119,12 @@ def main():
     data_package.train_label = np.load('CARS196_train_labels.npy')
     class_idx = bisect.bisect_left(data_package.train_label, num_classes) - 1
     data_package.train_label = data_package.train_label[0: class_idx + 1]
-    data_package.train_data = np.load('CARS196_train_raw_features_%d.npy' % resnet_idx)[0: class_idx + 1, :]
+    data_package.train_data = np.load('CARS196_train_raw_features_%d.npy' % resnet_idx)[0: class_idx + 1, ...]
 
     data_package.test_data = np.load('CARS196_test_raw_features_%d.npy' % resnet_idx)
     data_package.test_label = np.load('CARS196_test_labels.npy')
     test_indices = np.nonzero(data_package.test_label < num_classes)[0]
-    data_package.test_data = data_package.test_data[test_indices, :]
+    data_package.test_data = data_package.test_data[test_indices, ...]
     data_package.test_label = data_package.test_label[test_indices]
 
     # initialize network

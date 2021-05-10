@@ -25,7 +25,7 @@ class Hook():
     def close(self):
         self.hook_.remove()
 
-def get_raw_feat(directory, annot_dir, processor, feat_network, device):
+def get_raw_feat(directory, annot_dir, processor, feat_network, device, extract_format):
     image_feats = []
     labels = []
     annotate_mat = sio.loadmat('car_devkit/devkit/%s.mat' % annot_dir)['annotations']
@@ -38,8 +38,13 @@ def get_raw_feat(directory, annot_dir, processor, feat_network, device):
         crop_raw_img = raw_img.crop(box = [int(annot[i]) for i in range(4)])
         if raw_img.mode[0: 3] == 'RGB':
             img = torch.unsqueeze(processor(crop_raw_img), 0).to(device)
-            feat_network(img)
-            image_feats.append(np.squeeze(hook.output_.detach().cpu().numpy(), axis = (2, 3)))
+            if extract_format == 'feature':
+                feat_network(img)
+                image_feats.append(np.squeeze(hook.output_.detach().cpu().numpy(), axis = (2, 3)))
+            elif extract_format == 'image':
+                image_feats.append(img.cpu().numpy())
+            else:
+                assert(0)
             labels.append(int(annot[4]) - 1)
     return np.concatenate(image_feats, axis = 0), np.array(labels)
 
@@ -50,6 +55,7 @@ def main():
         dev = "cpu"  
     device = torch.device(dev)
     data_folder = 'cars'
+    extract_format = 'image'#'features'
     
     resnet_indices = [34, 50, 101, 152]
     resnet_idx = resnet_indices[int(sys.argv[1])]
@@ -60,11 +66,13 @@ def main():
     normalize = T.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
     processor = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), normalize])
 
-    train_image_feats, train_labels = get_raw_feat(data_folder + '_train', 'cars_train_annos', processor, resnet, device)
-    test_image_feats, test_labels = get_raw_feat(data_folder + '_test', 'cars_test_annos_withlabels', processor, resnet, device)
+    train_image_feats, train_labels = get_raw_feat(data_folder + '_train', 'cars_train_annos',\
+                                                   processor, resnet, device, extract_format)
+    test_image_feats, test_labels = get_raw_feat(data_folder + '_test', 'cars_test_annos_withlabels',\
+                                                 processor, resnet, device, extract_format)
     
-    np.save('CARS196_train_raw_features_%d.npy' % resnet_idx, train_image_feats)
-    np.save('CARS196_test_raw_features_%d.npy' % resnet_idx, test_image_feats)
+    np.save('CARS196_train_raw_%ss_%d.npy' % (extract_format, resnet_idx), train_image_feats)
+    np.save('CARS196_test_raw_%ss_%d.npy' % (extract_format, resnet_idx), test_image_feats)
     np.save('CARS196_train_labels.npy', train_labels)
     np.save('CARS196_test_labels.npy', test_labels)
 
