@@ -32,12 +32,13 @@ class FC_Net(torch.nn.Module):
             self.processor_ = torch.nn.Sequential(
                 T.RandomApply(torch.nn.ModuleList([T.RandomHorizontalFlip()]), p = 0.3),
                 T.RandomApply(torch.nn.ModuleList([T.ColorJitter()]), p = 0.3),
-                T.RandomApply(torch.nn.ModuleList([T.RandomAffine(30, (0.25, 0.25), (0.8, 1.2))]), p = 0.3))
+                T.RandomApply(torch.nn.ModuleList([T.RandomAffine(30, (0.25, 0.25), (0.8, 1.2))]), p = 0.6))
             self.resnet_ = eval('TV.models.resnet%d(pretrained = True, progress = True)' % resnet_idx)
             self.resnet_params_ = list(self.resnet_.layer4.parameters())
             self.resnet_.fc = self.new_fc_
             self.network_ = torch.nn.Sequential(self.processor_, self.resnet_)
         else:
+            self.processor_ = None
             self.network_ = self.new_fc_
     
     def forward(self, x):
@@ -94,7 +95,10 @@ def test(model, config_test, data_package, device):
     prediction = []
     while test_start_idx < data_package.test_data.shape[0]:
         batch_x = torch.tensor(data_package.test_data[test_start_idx: test_start_idx + config_test.batch_size, ...]).to(device)
-        logits = model(batch_x)
+        if config_test.get('resnet_lr'):
+            logits = model.resnet_(batch_x)
+        else:
+            logits = model(batch_x)
         _, pred = torch.topk(logits, 5)
         prediction.append(pred)
         test_start_idx += config_test.batch_size
@@ -112,10 +116,16 @@ def extract_feat(model, raw_data, device, feature_layer_idx = -2):
     start_idx = 0
     batch_size = 64
     features = []
-    hook = Hook(model.network_[feature_layer_idx])
+    if model.processor_:
+        hook = Hook(model.network.resnet_.fc[feature_layer_idx])
+    else:
+        hook = Hook(model.network_[feature_layer_idx])
     while start_idx < raw_data.shape[0]:
         batch_x = torch.tensor(raw_data[start_idx: start_idx + batch_size, :]).to(device)
-        model(batch_x)
+        if model.processor_:
+            model.resnet_(batch_x)
+        else:
+            model(batch_x)
         features.append(hook.output_.detach().cpu().numpy())
         start_idx += batch_size
 
