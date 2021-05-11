@@ -84,15 +84,15 @@ class LearnerSM:
         current_w_losses = copy.deepcopy(prev_loss)
         current_w_losses_gradient = copy.deepcopy(gradients)
         exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
-
+        
         self.current_mean_ -= self.config_.lr * current_w_losses_gradient[data_idx: data_idx + 1, ...]
         current_w_losses_gradient, _, current_w_losses = self.get_grads(data_pool, data_y)
         exp_cache = exp_cache_func(exp_cache_prev_func(current_w_losses))
-
+        
         lle_gradient = lle_gradient_func(current_w_losses_gradient, exp_cache)
         self.current_mean_ += self.config_.lr * lle_gradient
         current_w_losses_gradient, _, _ = self.get_grads(data_pool, data_y)
-
+        
         self.config_.beta *= np.power(self.config_.beta_decay, step)
         return self.current_mean_
 

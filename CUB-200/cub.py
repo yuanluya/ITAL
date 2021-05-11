@@ -80,13 +80,13 @@ def train(model, config_train, data_package, device, model_ckpt_path):
             accuracies.append(acc.cpu().numpy())
             start_idx += config_train.batch_size
         
-        if te % 3 == 0:
+        if te % 50 == 0:
             # validate
             test_acc_1, test_acc_3, test_acc_5 = test(model, config_train, data_package, device)
             print('[%d/%d] loss: %f, train-acc: %f, test-acc-1: %f, test-acc-3: %f, test-acc-5: %f' %\
                 (te + 1, config_train.train_epoch, np.mean(losses), np.mean(accuracies), test_acc_1, test_acc_3, test_acc_5))
         scheduler.step()
-        if (te + 1) % 20 == 0:
+        if (te + 1) % 50000 == 0:
             torch.save(model.state_dict(), model_ckpt_path)
 
 def test(model, config_test, data_package, device):
@@ -138,7 +138,7 @@ def main():
     else:
         dev = "cpu"  
     device = torch.device(dev)
-    extract_format = 'image'#'feature'
+    extract_format = 'feature'
 
     # experiment setup
     resnet_indices = [34, 50, 101, 152]
@@ -168,11 +168,11 @@ def main():
     model_ckpt_path = 'CKPT_%d_%s' % (resnet_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes,
                     resnet_idx if extract_format == 'image' else None)
-    try:
+    if True:
         fc_net.load_state_dict(torch.load(model_ckpt_path, map_location = dev))
         print('Load model from %s' % model_ckpt_path)
-    except:
-        print('Train %s model from scratch' % model_ckpt_path)
+    # except:
+    #     print('Train %s model from scratch' % model_ckpt_path)
     fc_net.to(device)
     print(next(fc_net.parameters()).is_cuda)
     

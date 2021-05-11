@@ -12,6 +12,7 @@ num_classes = 200
 dps = 3 * dd
 reg_coef = 0
 num_particles = 1
+accuracy_top_K = 5
 
 train_iter_simple = 2000
 train_iter_smart = 2000
@@ -42,8 +43,10 @@ config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_
 
 config_LS = edict({'particle_num': num_particles, 'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'task': task, 'beta_decay': beta_decay,
                    'num_classes': num_classes, 'noise_scale_min': noise_scale_min, 'noise_scale_max': noise_scale_max, 'beta': beta, 'cont_K': K,
-                   'noise_scale_decay': noise_scale_decay, 'target_ratio': 0, 'new_ratio': 1, 'replace_count': 1, "prob": 1})
+                   'noise_scale_decay': noise_scale_decay, 'target_ratio': 0, 'new_ratio': 1,
+                   'replace_count': 1, "prob": 1, 'accuracy_top_K': accuracy_top_K})
 
 
-config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0, 'num_classes': num_classes, 'task': task})
+config_L =  edict({'data_dim': dd, 'reg_coef': reg_coef, 'lr': lr, 'loss_type': 0,
+                   'num_classes': num_classes, 'task': task, 'accuracy_top_K': accuracy_top_K})
 
