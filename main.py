@@ -29,7 +29,12 @@ def learn_basic(teacher, learner, train_iter, sess, init, sgd=True):
         if teacher.config_.task == 'classification':
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w.T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
-            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w.T), 1) == teacher.gt_y_label_full_test_)
+            if learner.config_.get('accuracy_top_K'):
+                prediction = np.matmul(teacher.data_pool_full_test_, w.T)
+                prediction_top_k = np.argsort(prediction, axis = 1)[:, ::-1][:, 0: learner.config_.accuracy_top_K]
+                accuracy = np.mean(np.sum(prediction_top_k == np.expand_dims(teacher.gt_y_label_full_test_, 1), 1))
+            else:
+                accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w.T), 1) == teacher.gt_y_label_full_test_)
 
             loss = np.mean(np.sum(-1 * np.log(probs) * teacher.gt_y_full_test_, 1))
         else:
@@ -68,7 +73,12 @@ def learn(teacher, learner, mode, init_ws, train_iter, random_prob = None, plot_
     gt_y = []
     for i in tqdm(range(train_iter)):
         if teacher.config_.task == 'classification':
-            accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
+            if learner.config_.get('accuracy_top_K'):
+                prediction = np.matmul(teacher.data_pool_full_test_, w[0, ...].T)
+                prediction_top_k = np.argsort(prediction, axis = 1)[:, ::-1][:, 0: learner.config_.accuracy_top_K]
+                accuracy = np.mean(np.sum(prediction_top_k == np.expand_dims(teacher.gt_y_label_full_test_, 1), 1))
+            else:
+                accuracy = np.mean(np.argmax(np.matmul(teacher.data_pool_full_test_, w[0, ...].T), 1) == teacher.gt_y_label_full_test_)
 
             logits = np.exp(np.matmul(teacher.data_pool_full_test_, w[0, ...].T))
             probs = logits / np.sum(logits, axis = 1, keepdims = True)
@@ -178,7 +188,7 @@ def main():
     config_T["mini_batch_sample_size"] = config_T["sample_size"]
 
     print(config_LS, config_T)
-    init_ws = np.concatenate([np.random.uniform(-1, 1, size = [config_LS.particle_num, config_LS.num_classes, config.dd]),
+    init_ws = np.concatenate([np.random.normal(0, 0.1, size = [config_LS.particle_num, config_LS.num_classes, config.dd]),
                               np.zeros([config_LS.particle_num, config_LS.num_classes, 1])], 2)
     init_w = np.mean(init_ws, 0)
 
@@ -259,8 +269,8 @@ def main():
         
         learnerM = LearnerSM(sess, copy.deepcopy(config_LS))
 
-        dists1, dists1_, accuracies1, losses1, data_poolIMT, gt_yIMT = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
         dists8, dists8_, accuracies8, losses8, data_poolITAL, gt_yITAL = learn(teacher, learnerM, '%s_cont' % mode, init_ws, train_iter_smart)
+        dists1, dists1_, accuracies1, losses1, data_poolIMT, gt_yIMT = learn(teacher, learnerM, mode, init_ws, train_iter_smart, 1)
         dists_neg1_batch, dists_neg1_batch_, accuracies_neg1_batch, losses_neg1_batch, data_poolBatch, gt_yBatch = learn_basic(teacher, learner, train_iter_simple, sess, init, False)
         dists_neg1_sgd, dists_neg1_sgd_, accuracies_neg1_sgd, losses_neg1_sgd, data_poolSGD, gt_ySGD = learn_basic(teacher, learner, train_iter_simple, sess, init, True)
 

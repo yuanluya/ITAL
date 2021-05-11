@@ -6,15 +6,15 @@ beta = 500
 beta_decay = 1
 K = 1
 multi_thread = True
-dd = 100
+dd = 10
 dd_ = 50
 num_classes = 200
 dps = 3 * dd
 reg_coef = 0
 num_particles = 1
 
-train_iter_simple = 5000
-train_iter_smart = 5000
+train_iter_simple = 500
+train_iter_smart = 500
 
 noise_scale_min = 0.01
 noise_scale_max = 0.1
@@ -23,17 +23,17 @@ noise_scale_decay = 1000
 task = 'classification'
 mode = 'imit'
 
-dx_tea = np.load("Data/CUB_10/CUB200_train_features101.npy")
-dy_tea = np.load("Data/CUB_10/CUB200_train_labels_oh.npy")
-gt_w_tea = np.load("Data/CUB_10/CUB200_gt_weights101.npy")
-tx_tea = np.load("Data/CUB_10/CUB200_test_features101.npy")
-ty_tea = np.load("Data/CUB_10/CUB200_test_labels_oh.npy")
+dx_tea = np.load("Data/CUB_res_10/CUB200_train_features101.npy")
+dy_tea = np.load("Data/CUB_res_10/CUB200_train_labels_oh.npy")
+gt_w_tea = np.load("Data/CUB_res_10/CUB200_gt_weights101.npy")
+tx_tea = np.load("Data/CUB_res_10/CUB200_test_features101.npy")
+ty_tea = np.load("Data/CUB_res_10/CUB200_test_labels_oh.npy")
 
-dx = np.load("Data/CUB_10/CUB200_train_features%d.npy" % dd_) 
-dy = np.load("Data/CUB_10/CUB200_train_labels_oh.npy")
-gt_w = np.load("Data/CUB_10/CUB200_gt_weights%d.npy" % dd_)  
-tx = np.load("Data/CUB_10/CUB200_test_features%d.npy" % dd_)  
-ty = np.load("Data/CUB_10/CUB200_test_labels_oh.npy") 
+dx = np.load("Data/CUB_res_10/CUB200_train_features%d.npy" % dd_) 
+dy = np.load("Data/CUB_res_10/CUB200_train_labels_oh.npy")
+gt_w = np.load("Data/CUB_res_10/CUB200_gt_weights%d.npy" % dd_)  
+tx = np.load("Data/CUB_res_10/CUB200_test_features%d.npy" % dd_)  
+ty = np.load("Data/CUB_res_10/CUB200_test_labels_oh.npy") 
 
 config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
                   'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,

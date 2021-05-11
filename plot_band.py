@@ -459,7 +459,7 @@ def CollectDataAndPlot(setting_name, seed_range):
     elif setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv':
         # omni_setting = setting_name + '_omni'
         imit_setting1 = setting_name + '_imit_13'
-        imit_setting2 = setting_name + '_imit_19'
+        # imit_setting2 = setting_name + '_imit_19'
 
         imit_dims = []
         
