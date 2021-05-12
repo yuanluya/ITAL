@@ -83,7 +83,7 @@ def main():
     else:
         dev = "cpu"  
     device = torch.device(dev)
-    data_folder = 'tiny-imagenet-200'
+    data_folder = '../tiny-imagenet-200'
     
     extract_format = 'image'#"features"
     vgg_indices = [11, 13, 16, 19]
@@ -103,13 +103,13 @@ def main():
                  os.path.join(data_folder, 'val', 'val_annotations.txt'),\
                  class_names, processor, vgg, feature_layer_idx, device, extract_format)
     if extract_format == 'features':
-        np.save('ImageNet_train_raw_features_%d.npy' % vgg_idx, train_image_feats)
-        np.save('ImageNet_test_raw_features_%d.npy' % vgg_idx, test_image_feats)
+        np.save('../ImageNet_train_raw_features_%d.npy' % vgg_idx, train_image_feats)
+        np.save('../ImageNet_test_raw_features_%d.npy' % vgg_idx, test_image_feats)
     elif extract_format == 'image':
-        np.save('ImageNet_train_raw_images.npy', train_image_feats)
-        np.save('ImageNet_test_raw_images.npy', test_image_feats)
-    np.save('ImageNet_train_labels.npy', train_labels)
-    np.save('ImageNet_test_labels.npy', test_labels)
+        np.save('../ImageNet_train_raw_images.npy', train_image_feats)
+        np.save('../ImageNet_test_raw_images.npy', test_image_feats)
+    np.save('../ImageNet_train_labels.npy', train_labels)
+    np.save('../ImageNet_test_labels.npy', test_labels)
     return
 
 if __name__ == '__main__':

@@ -148,16 +148,16 @@ def main():
     feature_extraction = (len(sys.argv) == 3)
 
     # read in raw features
-    data_package.train_label = np.load('ImageNet_train_labels.npy')
+    data_package.train_label = np.load('../ImageNet_train_labels.npy')
     class_idx = bisect.bisect_left(data_package.train_label, num_classes) - 1
     data_package.train_label = data_package.train_label[0: class_idx + 1]
     if extract_format == 'feature':
-        data_package.train_data = np.load('ImageNet_train_raw_%ss_%d.npy' % (extract_format, resnet_idx))[0: class_idx + 1, ...]
-        data_package.test_data = np.load('ImageNet_test_raw_%ss_%d.npy' % (extract_format, resnet_idx))
+        data_package.train_data = np.load('../ImageNet_train_raw_%ss_%d.npy' % (extract_format, resnet_idx))[0: class_idx + 1, ...]
+        data_package.test_data = np.load('../ImageNet_test_raw_%ss_%d.npy' % (extract_format, resnet_idx))
     elif extract_format == 'image':
-        data_package.train_data = np.load('ImageNet_train_raw_%ss.npy' % extract_format)[0: class_idx + 1, ...]
-        data_package.test_data = np.load('ImageNet_test_raw_%ss.npy' % extract_format)
-    data_package.test_label = np.load('ImageNet_test_labels.npy')
+        data_package.train_data = np.load('../ImageNet_train_raw_%ss.npy' % extract_format)[0: class_idx + 1, ...]
+        data_package.test_data = np.load('../ImageNet_test_raw_%ss.npy' % extract_format)
+    data_package.test_label = np.load('../ImageNet_test_labels.npy')
     test_indices = np.nonzero(data_package.test_label < num_classes)[0]
     data_package.test_data = data_package.test_data[test_indices, ...]
     data_package.test_label = data_package.test_label[test_indices]
@@ -165,7 +165,7 @@ def main():
     # initialize network
     raw_feat_dim = 2048
     hidden_dims = [500, 200, 10]
-    model_ckpt_path = 'CKPT_%d_%s' % (resnet_idx, '_'.join([str(hd) for hd in hidden_dims]))
+    model_ckpt_path = '../CKPT_%d_%s' % (resnet_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes,
                     resnet_idx if extract_format == 'image' else None)
     try:
@@ -197,9 +197,9 @@ def main():
         W = W.detach().cpu().numpy()
         b = b.detach().cpu().numpy()
         W = np.concatenate([W, np.expand_dims(b, 1)], axis = 1)
-        np.save('ImageNet_train_features%d.npy' % resnet_idx, train_feat)
-        np.save('ImageNet_test_features%d.npy' % resnet_idx, test_feat)
-        np.save('ImageNet_gt_weights%d.npy' % resnet_idx, W)
+        np.save('../ImageNet_train_features%d.npy' % resnet_idx, train_feat)
+        np.save('../ImageNet_test_features%d.npy' % resnet_idx, test_feat)
+        np.save('../ImageNet_gt_weights%d.npy' % resnet_idx, W)
 
     return
 

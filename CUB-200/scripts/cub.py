@@ -117,7 +117,7 @@ def extract_feat(model, raw_data, device, feature_layer_idx = -2):
     batch_size = 64
     features = []
     if model.processor_:
-        hook = Hook(model.resnet_.fc[feature_layer_idx])
+        hook = Hook(model.network.resnet_.fc[feature_layer_idx])
     else:
         hook = Hook(model.network_[feature_layer_idx])
     while start_idx < raw_data.shape[0]:
@@ -134,7 +134,7 @@ def extract_feat(model, raw_data, device, feature_layer_idx = -2):
 def main():
     # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     if torch.cuda.is_available():  
-        dev = "cuda:2" 
+        dev = "cuda:0" 
     else:
         dev = "cpu"  
     device = torch.device(dev)
@@ -164,7 +164,7 @@ def main():
 
     # initialize network
     raw_feat_dim = 2048
-    hidden_dims = [500, 200, 10]
+    hidden_dims = [500, 200, 100]
     model_ckpt_path = 'CKPT_%d_%s' % (resnet_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes,
                     resnet_idx if extract_format == 'image' else None)
@@ -193,7 +193,7 @@ def main():
         print('test-acc-1: %f, test-acc-3: %f, test-acc-5: %f' % (ta1, ta3, ta5))
         train_feat = extract_feat(fc_net, data_package.train_data, device)
         test_feat = extract_feat(fc_net, data_package.test_data, device)
-        W, b = list(fc_net.new_fc_[-1].parameters())
+        W, b = list(fc_net.network_[-1].parameters())
         W = W.detach().cpu().numpy()
         b = b.detach().cpu().numpy()
         W = np.concatenate([W, np.expand_dims(b, 1)], axis = 1)
