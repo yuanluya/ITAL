@@ -468,10 +468,10 @@ def CollectDataAndPlot(setting_name, seed_range):
         remove_npy('Experiments/' + imit_setting1)
         imit_dims.append('13')
 
-        arguments = ['python3', 'main.py', imit_setting2]
-        collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
-        remove_npy('Experiments/' + imit_setting2)
-        imit_dims.append('19')
+        # arguments = ['python3', 'main.py', imit_setting2]
+        # collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
+        # remove_npy('Experiments/' + imit_setting2)
+        # imit_dims.append('19')
         
         for imit_dim in imit_dims:
             plot(setting_name, imit_dim)

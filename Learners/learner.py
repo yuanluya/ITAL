@@ -93,7 +93,7 @@ class LearnerSM:
         self.current_mean_ += self.config_.lr * lle_gradient
         current_w_losses_gradient, _, _ = self.get_grads(data_pool, data_y)
         
-        self.config_.beta *= np.power(self.config_.beta_decay, step)
+        self.config_.beta *= np.power(self.config_.beta_decay, 1)#step)
         return self.current_mean_
 
 

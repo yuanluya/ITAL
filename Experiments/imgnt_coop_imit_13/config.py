@@ -2,8 +2,8 @@ from easydict import EasyDict as edict
 import numpy as np
 
 lr = 1e-3
-beta = 1000
-beta_decay = 1
+beta = 2000
+beta_decay = 1# + 1e-3
 K = 1
 multi_thread = True
 dd = 10
@@ -36,7 +36,7 @@ gt_w = np.load("Data/ImageNet_10/ImageNet_gt_weights%d.npy" % dd_)
 tx = np.load("Data/ImageNet_10/ImageNet_test_features%d.npy" % dd_)  
 ty = np.load("Data/ImageNet_10/ImageNet_test_labels.npy") 
 
-config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 20,
+config_T = edict({'data_pool_size_class': dps, 'data_dim': dd,'lr': lr, 'sample_size': 30,
                   'transform': mode == 'imit', 'num_classes': num_classes, 'task': task,
                   'data_x': dx, 'data_y': dy, 'test_x': tx, 'test_y': ty, 'gt_w': gt_w, 'beta': beta,
                   'data_x_tea': dx_tea, 'data_y_tea': dy_tea, 'test_x_tea': tx_tea, 'test_y_tea': ty_tea, 'gt_w_tea': gt_w_tea})

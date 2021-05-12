@@ -168,11 +168,11 @@ def main():
     model_ckpt_path = 'CKPT_%d_%s' % (resnet_idx, '_'.join([str(hd) for hd in hidden_dims]))
     fc_net = FC_Net(raw_feat_dim, hidden_dims, num_classes,
                     resnet_idx if extract_format == 'image' else None)
-    if True:
+    try:
         fc_net.load_state_dict(torch.load(model_ckpt_path, map_location = dev))
         print('Load model from %s' % model_ckpt_path)
-    # except:
-    #     print('Train %s model from scratch' % model_ckpt_path)
+    except:
+        print('Train %s model from scratch' % model_ckpt_path)
     fc_net.to(device)
     print(next(fc_net.parameters()).is_cuda)
     

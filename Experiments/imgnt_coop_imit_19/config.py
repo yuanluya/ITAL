@@ -2,7 +2,7 @@ from easydict import EasyDict as edict
 import numpy as np
 
 lr = 1e-3
-beta = 1000
+beta = 2000
 beta_decay = 1# + 5e-5
 K = 1
 multi_thread = True

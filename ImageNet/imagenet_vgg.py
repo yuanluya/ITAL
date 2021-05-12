@@ -24,7 +24,7 @@ class Hook():
     def close(self):
         self.hook_.remove()
 
-def get_train(directory, processor, feat_network, feature_layer_idx, device):
+def get_train(directory, processor, feat_network, feature_layer_idx, device, extract_format):
     folder_names = os.listdir(directory)
     folder_names = [fn for fn in folder_names if fn[0] == 'n']
     folder_names.sort()
@@ -45,13 +45,16 @@ def get_train(directory, processor, feat_network, feature_layer_idx, device):
                 invalid_dirs.append(os.path.join(images_dir, image))
             else:
                 img = torch.unsqueeze(processor(raw_img), 0).to(device)
-                feat_network(img)
-                image_feats.append(hook.output_.detach().cpu().numpy())
+                if extract_format == 'features':
+                    feat_network(img)
+                    image_feats.append(hook.output_.detach().cpu().numpy())
+                elif extract_format == 'image':
+                    image_feats.append(img.cpu().numpy().astype('int8'))
                 labels.append(ifn)
     
     return np.concatenate(image_feats, axis = 0), np.array(labels), class_dict, invalid_dirs
 
-def get_test(directory, label_file, class_dict, processor, feat_network, feature_layer_idx, device):
+def get_test(directory, label_file, class_dict, processor, feat_network, feature_layer_idx, device, extract_format):
     label_file = open(label_file, 'r')
     lines = label_file.readlines()
     image_feats = []
@@ -65,8 +68,11 @@ def get_test(directory, label_file, class_dict, processor, feat_network, feature
             invalid_dirs.append(os.path.join(directory, words[0]))
         else:
             img = torch.unsqueeze(processor(raw_img), 0).to(device)
-            feat_network(img)
-            image_feats.append(hook.output_.detach().cpu().numpy())
+            if extract_format == 'features':
+                feat_network(img)
+                image_feats.append(hook.output_.detach().cpu().numpy())
+            elif extract_format == 'image':
+                image_feats.append(img.cpu().numpy().astype('int8'))
             labels.append(class_dict[words[1]])# if class_dict.get(words[1]) else -1)
 
     return np.concatenate(image_feats, axis = 0), np.array(labels), invalid_dirs
@@ -79,6 +85,7 @@ def main():
     device = torch.device(dev)
     data_folder = 'tiny-imagenet-200'
     
+    extract_format = 'image'#"features"
     vgg_indices = [11, 13, 16, 19]
     vgg_idx = vgg_indices[int(sys.argv[1])]
     vgg = eval('TV.models.vgg%d_bn(pretrained = True, progress = True)' % vgg_idx)
@@ -90,14 +97,17 @@ def main():
     processor = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), normalize])
 
     train_image_feats, train_labels, class_names, _ =\
-        get_train(os.path.join(data_folder, 'train'), processor, vgg, feature_layer_idx, device)
+        get_train(os.path.join(data_folder, 'train'), processor, vgg, feature_layer_idx, device, extract_format)
     test_image_feats, test_labels, _ =\
         get_test(os.path.join(data_folder, 'val'),\
                  os.path.join(data_folder, 'val', 'val_annotations.txt'),\
-                 class_names, processor, vgg, feature_layer_idx, device)
-    
-    np.save('ImageNet_train_raw_features_%d_%d.npy' % (feature_layer_idx, vgg_idx), train_image_feats)
-    np.save('ImageNet_test_raw_features_%d_%d.npy' % (feature_layer_idx, vgg_idx), test_image_feats)
+                 class_names, processor, vgg, feature_layer_idx, device, extract_format)
+    if extract_format == 'features':
+        np.save('ImageNet_train_raw_features_%d.npy' % vgg_idx, train_image_feats)
+        np.save('ImageNet_test_raw_features_%d.npy' % vgg_idx, test_image_feats)
+    elif extract_format == 'image':
+        np.save('ImageNet_train_raw_images.npy', train_image_feats)
+        np.save('ImageNet_test_raw_images.npy', test_image_feats)
     np.save('ImageNet_train_labels.npy', train_labels)
     np.save('ImageNet_test_labels.npy', test_labels)
     return
