@@ -12,6 +12,7 @@ num_classes = 200
 dps = 3 * dd
 reg_coef = 0
 num_particles = 1
+accuracy_top_K = 5
 
 train_iter_simple = 2000
 train_iter_smart = 2000

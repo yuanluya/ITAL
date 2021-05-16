@@ -459,7 +459,7 @@ def CollectDataAndPlot(setting_name, seed_range):
     elif setting_name == 'imgnt_coop' or setting_name == 'imgnt_adv':
         # omni_setting = setting_name + '_omni'
         imit_setting1 = setting_name + '_imit_13'
-        # imit_setting2 = setting_name + '_imit_19'
+        imit_setting2 = setting_name + '_imit_19'
 
         imit_dims = []
         
@@ -468,10 +468,10 @@ def CollectDataAndPlot(setting_name, seed_range):
         remove_npy('Experiments/' + imit_setting1)
         imit_dims.append('13')
 
-        # arguments = ['python3', 'main.py', imit_setting2]
-        # collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
-        # remove_npy('Experiments/' + imit_setting2)
-        # imit_dims.append('19')
+        arguments = ['python3', 'main.py', imit_setting2]
+        collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
+        remove_npy('Experiments/' + imit_setting2)
+        imit_dims.append('19')
         
         for imit_dim in imit_dims:
             plot(setting_name, imit_dim)
@@ -480,7 +480,7 @@ def CollectDataAndPlot(setting_name, seed_range):
     elif setting_name == 'cub_coop' or setting_name == 'cub_adv':
         # omni_setting = setting_name + '_omni'
         imit_setting1 = setting_name + '_imit_50'
-        # imit_setting2 = setting_name + '_imit_152'
+        imit_setting2 = setting_name + '_imit_152'
 
         imit_dims = []
         
@@ -489,10 +489,10 @@ def CollectDataAndPlot(setting_name, seed_range):
         remove_npy('Experiments/' + imit_setting1)
         imit_dims.append('50')
 
-        # arguments = ['python3', 'main.py', imit_setting2]
-        # collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
-        # remove_npy('Experiments/' + imit_setting2)
-        # imit_dims.append('152')
+        arguments = ['python3', 'main.py', imit_setting2]
+        collect_data(imit_setting2, 'imit', random_seeds, arguments, type_)
+        remove_npy('Experiments/' + imit_setting2)
+        imit_dims.append('152')
         
         for imit_dim in imit_dims:
             plot(setting_name, imit_dim)
@@ -526,6 +526,6 @@ def main():
         print('--Invalid setting')
         exit()
 
-    CollectDataAndPlot(args.setting_name, seed_range = 1)
+    CollectDataAndPlot(args.setting_name, seed_range = 20)
 if __name__ == '__main__':
     main()
