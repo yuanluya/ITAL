@@ -1,5 +1,9 @@
 # Iterative Teacher-Aware Learning
 
+## Paper
+
+Coming soon at NeurIPS 2021.
+
 ## Usage
 
 To collect data and plots for a cooperative or adversarial teacher for a particular experiment, run with the command line
@@ -58,3 +62,7 @@ In this project, we used the following version of libraries:<br />
 Tensorflow v1.15<br /> 
 scikit-learn v0.22.1<br /> 
 numpy v1.18.2<br /> 
+
+## Human Study Repo
+
+https://github.com/yuanluya/CL_Human
