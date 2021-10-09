@@ -1,8 +1,19 @@
 # Iterative Teacher-Aware Learning
 
 ## Paper
+[arxiv](https://arxiv.org/abs/2110.00137)
 
-Coming soon at NeurIPS 2021.
+[NeurIPS 2021](https://neurips.cc/Conferences/2021/ScheduleMultitrack?event=28854)
+```
+@misc{yuan2021iterative,
+      title={Iterative Teacher-Aware Learning}, 
+      author={Luyao Yuan and Dongruo Zhou and Junhong Shen and Jingdong Gao and Jeffrey L. Chen and Quanquan Gu and Ying Nian Wu and Song-Chun Zhu},
+      year={2021},
+      eprint={2110.00137},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
 
 ## Usage
 
