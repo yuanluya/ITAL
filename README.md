@@ -1,9 +1,7 @@
 # Iterative Teacher-Aware Learning
 
 ## Paper
-[arxiv](https://arxiv.org/abs/2110.00137)
-
-[NeurIPS 2021](https://neurips.cc/Conferences/2021/ScheduleMultitrack?event=28854)
+[arxiv](https://arxiv.org/abs/2110.00137), [NeurIPS 2021](https://neurips.cc/Conferences/2021/ScheduleMultitrack?event=28854), [OpenReview](https://openreview.net/forum?id=aLkuboH1SQX)
 ```
 @misc{yuan2021iterative,
       title={Iterative Teacher-Aware Learning}, 
